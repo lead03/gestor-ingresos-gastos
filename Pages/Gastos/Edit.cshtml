@@ -163,13 +163,13 @@ function toggleDivision(chk) {
 function agregarParticipante(tipo, datos = {}) {
     if (tipo === 'Yo') {
         if (participantes.some(p => p.tipo === 'Yo')) {
-            alert('Ya existe un participante "Yo".');
+            mostrarError('Participante duplicado', 'Ya existe un participante "Yo".');
             return;
         }
     }
     if (tipo === 'Persona' && datos.personaId) {
         if (participantes.some(p => p.tipo === 'Persona' && p.personaId === datos.personaId)) {
-            alert('Esa persona ya está agregada.');
+            mostrarError('Persona duplicada', 'Esa persona ya está agregada.');
             return;
         }
     }
@@ -218,7 +218,7 @@ function onPersonaChange(idx, sel) {
             i !== idx && p.tipo === 'Persona' && p.personaId === personaId
         );
         if (duplicado) {
-            alert('Esa persona ya está agregada.');
+            mostrarError('Persona duplicada', 'Esa persona ya está agregada.');
             sel.value = participantes[idx].personaId ?? '';
             return;
         }
@@ -262,18 +262,23 @@ function actualizarTotales() {
 
 function prepararSubmit() {
     const chk = document.getElementById('chk-divide');
+    const total = parseFloat(document.getElementById('monto-total').value) || 0;
+    if (total <= 0) {
+        mostrarError('Monto inválido', 'El monto del gasto debe ser mayor a $0.');
+        return false;
+    }
     if (chk.checked) {
         // Validar personas sin asignar
         const sinAsignar = participantes.filter(p => p.tipo === 'Persona' && !p.personaId);
         if (sinAsignar.length > 0) {
-            alert('Hay participantes tipo "Persona" sin asignar. Asigná una persona o eliminá esas filas.');
+            mostrarError('Persona sin asignar', 'Hay participantes tipo "Persona" sin asignar. Asigná una persona o eliminá esas filas.');
             return false;
         }
         // Validar que el total cierre
         const total    = parseFloat(document.getElementById('monto-total').value) || 0;
         const asignado = participantes.reduce((s, p) => s + (p.monto || 0), 0);
         if (Math.abs(total - asignado) > 0.01) {
-            alert(`El total asignado ($${asignado.toFixed(2)}) no coincide con el monto ($${total.toFixed(2)}). Revisá los participantes.`);
+            mostrarError('Total incorrecto', `El asignado ($${asignado.toFixed(2)}) no coincide con el monto ($${total.toFixed(2)}).`);
             return false;
         }
     }

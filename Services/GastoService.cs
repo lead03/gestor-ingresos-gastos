@@ -70,14 +70,18 @@ public class GastoService(
         {
             var gasto = new GastoItem
             {
-                Mes = vm.Mes, Anio = vm.Anio, Dia = vm.Dia,
-                CategoriaId = vm.CategoriaId, Monto = vm.Monto,
-                SeDivide = vm.SeDivide, MiParte = miParte,
+                Mes = vm.Mes,
+                Anio = vm.Anio,
+                Dia = vm.Dia,
+                CategoriaId = vm.CategoriaId,
+                Monto = vm.Monto,
+                SeDivide = vm.SeDivide,
+                MiParte = miParte,
                 Descripcion = vm.Descripcion,
-                MedioPago = vm.MedioPago, TarjetaCuotaId = vm.TarjetaCuotaId
+                MedioPago = vm.MedioPago,
+                TarjetaCuotaId = vm.TarjetaCuotaId
             };
             await gastoRepo.AddAsync(gasto);
-
             if (vm.SeDivide && vm.Participantes.Any())
                 await GuardarParticipantesAsync(gasto.Id, vm.Participantes);
         }
@@ -85,16 +89,13 @@ public class GastoService(
         {
             var g = await gastoRepo.GetByIdAsync(vm.Id)
                     ?? throw new KeyNotFoundException($"Gasto {vm.Id} no encontrado");
-
             g.Mes = vm.Mes; g.Anio = vm.Anio; g.Dia = vm.Dia;
             g.CategoriaId = vm.CategoriaId; g.Monto = vm.Monto;
             g.SeDivide = vm.SeDivide; g.MiParte = miParte;
             g.Descripcion = vm.Descripcion;
             g.MedioPago = vm.MedioPago; g.TarjetaCuotaId = vm.TarjetaCuotaId;
-
             await gastoRepo.UpdateAsync(g);
             await participanteRepo.DeleteByGastoAsync(vm.Id);
-
             if (vm.SeDivide && vm.Participantes.Any())
                 await GuardarParticipantesAsync(vm.Id, vm.Participantes);
         }
