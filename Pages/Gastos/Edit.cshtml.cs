@@ -13,7 +13,7 @@ public class EditModel(GastoService svc) : PageModel
     public async Task OnGetAsync(int? id, int mes = 0, int anio = 0)
     {
         VM = await svc.GetFormAsync(id);
-        if (mes != 0) VM.Mes = mes;
+        if (mes  != 0) VM.Mes  = mes;
         if (anio != 0) VM.Anio = anio;
         ViewData["Active"] = "gastos";
         ViewData["Mes"]    = VM.Mes;
@@ -23,12 +23,6 @@ public class EditModel(GastoService svc) : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!ModelState.IsValid)
-        {
-            VM.Categorias = (await svc.GetFormAsync()).Categorias;
-            VM.Cuotas     = (await svc.GetFormAsync()).Cuotas;
-            return Page();
-        }
         await svc.SaveAsync(VM);
         return RedirectToPage("./Index", new { mes = VM.Mes, anio = VM.Anio });
     }

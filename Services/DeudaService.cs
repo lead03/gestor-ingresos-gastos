@@ -29,9 +29,14 @@ public class DeudaService(IDeudaRepository repo)
         {
             await repo.AddAsync(new Deuda
             {
-                Persona = vm.Persona, Monto = vm.Monto, Fecha = vm.Fecha,
-                Descripcion = vm.Descripcion, Direccion = vm.Direccion,
-                Estado = vm.Estado, MontoPagado = vm.MontoPagado
+                PersonaId     = vm.PersonaId,
+                NombrePersona = vm.NombrePersona,
+                Monto         = vm.Monto,
+                Fecha         = vm.Fecha,
+                Descripcion   = vm.Descripcion,
+                Direccion     = vm.Direccion,
+                Estado        = vm.Estado,
+                MontoPagado   = vm.MontoPagado
             });
         }
         else
@@ -39,9 +44,14 @@ public class DeudaService(IDeudaRepository repo)
             var d = await repo.GetByIdAsync(vm.Id)
                     ?? throw new KeyNotFoundException($"Deuda {vm.Id} no encontrada");
 
-            d.Persona = vm.Persona; d.Monto = vm.Monto; d.Fecha = vm.Fecha;
-            d.Descripcion = vm.Descripcion; d.Direccion = vm.Direccion;
-            d.Estado = vm.Estado; d.MontoPagado = vm.MontoPagado;
+            d.PersonaId     = vm.PersonaId;
+            d.NombrePersona = vm.NombrePersona;
+            d.Monto         = vm.Monto;
+            d.Fecha         = vm.Fecha;
+            d.Descripcion   = vm.Descripcion;
+            d.Direccion     = vm.Direccion;
+            d.Estado        = vm.Estado;
+            d.MontoPagado   = vm.MontoPagado;
 
             await repo.UpdateAsync(d);
         }

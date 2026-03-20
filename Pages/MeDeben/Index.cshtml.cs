@@ -32,17 +32,21 @@ public class IndexModel(DeudaService svc) : PageModel
 
     public async Task<IActionResult> OnPostMarcarPagadaAsync(int id, decimal montoPagado)
     {
-        var d = await svc.GetListAsync();
-        var deuda = d.MeDeben.Concat(d.LeDebo).FirstOrDefault(x => x.Id == id);
+        var lista = await svc.GetListAsync();
+        var deuda = lista.MeDeben.Concat(lista.LeDebo).FirstOrDefault(x => x.Id == id);
         if (deuda != null)
         {
             await svc.SaveAsync(new DeudaFormVM
             {
-                Id = deuda.Id, Persona = deuda.Persona, Monto = deuda.Monto,
-                Fecha = deuda.Fecha, Descripcion = deuda.Descripcion,
-                Direccion = deuda.Direccion,
-                Estado = montoPagado >= deuda.Monto ? "Pagada" : "Parcial",
-                MontoPagado = montoPagado
+                Id           = deuda.Id,
+                NombrePersona= deuda.NombrePersona,
+                PersonaId    = deuda.PersonaId,
+                Monto        = deuda.Monto,
+                Fecha        = deuda.Fecha,
+                Descripcion  = deuda.Descripcion,
+                Direccion    = deuda.Direccion,
+                Estado       = montoPagado >= deuda.Monto ? "Pagada" : "Parcial",
+                MontoPagado  = montoPagado
             });
         }
         return RedirectToPage();

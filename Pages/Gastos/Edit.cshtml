@@ -5,34 +5,29 @@
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
     bool esEdicion = vm.Id != 0;
-
     var medios = new[] { "Efectivo","Galicia","Santander","PersonalPay","ClaroPay","Binance","Brubank","MercadoPago","Cuotas tarjeta","Otro" };
     var tiposGasto = vm.Categorias.GroupBy(c => c.Tipo).OrderBy(g => g.Key);
 }
 
 <div class="page-header">
-    <div>
-        <div class="page-title">@(esEdicion ? "Editar gasto" : "Nuevo gasto")</div>
-    </div>
+    <div><div class="page-title">@(esEdicion ? "Editar gasto" : "Nuevo gasto")</div></div>
     <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">← Volver</a>
 </div>
 
-<div class="card" style="max-width:680px">
+<div class="card" style="max-width:720px">
     <form method="post">
         <input type="hidden" asp-for="VM.Id" />
 
         <div class="form-grid">
-            <!-- Fecha -->
             <div class="form-group">
                 <label>Fecha</label>
                 <input type="date" id="fecha-gasto"
                        value="@(new DateTime(vm.Anio, vm.Mes, vm.Dia).ToString("yyyy-MM-dd"))" />
-                <input type="hidden" asp-for="VM.Dia" id="h-dia" />
-                <input type="hidden" asp-for="VM.Mes" id="h-mes" />
+                <input type="hidden" asp-for="VM.Dia"  id="h-dia" />
+                <input type="hidden" asp-for="VM.Mes"  id="h-mes" />
                 <input type="hidden" asp-for="VM.Anio" id="h-anio" />
             </div>
 
-            <!-- Categoría -->
             <div class="form-group full">
                 <label>Categoría</label>
                 <select asp-for="VM.CategoriaId">
@@ -40,19 +35,21 @@
                     {
                         <optgroup label="@grp.Key">
                         @foreach (var cat in grp.OrderBy(c => c.Nombre))
-                        { <option value="@cat.Id">@cat.Nombre</option> }
+                        {
+                            var nombreCat = cat.Nombre;
+                            <option value="@cat.Id">@nombreCat</option>
+                        }
                         </optgroup>
                     }
                 </select>
             </div>
 
-            <!-- Monto -->
             <div class="form-group">
-                <label>Monto ($)</label>
-                <input asp-for="VM.Monto" type="number" step="0.01" min="0" id="monto" oninput="calcDivision()" />
+                <label>Monto total ($)</label>
+                <input asp-for="VM.Monto" type="number" step="0.01" min="0"
+                       id="monto-total" oninput="onMontoChange()" />
             </div>
 
-            <!-- Medio de pago -->
             <div class="form-group">
                 <label>Medio de pago</label>
                 <select asp-for="VM.MedioPago">
@@ -62,88 +59,250 @@
                 </select>
             </div>
 
-            <!-- Descripción -->
             <div class="form-group full">
                 <label>Descripción (opcional)</label>
-                <input asp-for="VM.Descripcion" type="text" placeholder="Ej: Supermercado, nafta..." />
+                <input asp-for="VM.Descripcion" type="text" placeholder="Ej: Supermercado, pizzeada..." />
             </div>
 
-            <!-- División -->
             <div class="form-group full">
                 <label class="toggle-wrap" style="cursor:pointer">
                     <input asp-for="VM.SeDivide" type="checkbox" id="chk-divide" onchange="toggleDivision(this)" />
                     <span>Este gasto se divide entre varias personas</span>
                 </label>
             </div>
-
-            <div class="form-group divide-fields @(vm.SeDivide?"visible":"")" id="div-personas">
-                <label>Cantidad de personas</label>
-                <input asp-for="VM.CantidadPersonas" type="number" min="2" max="20" id="cant-personas" oninput="calcDivision()" />
-            </div>
-
-            <div class="form-group divide-fields @(vm.SeDivide?"visible":"")" id="div-miparte">
-                <label>Mi parte (calculada)</label>
-                <input asp-for="VM.MontoDividido" type="number" step="0.01" id="monto-dividido" readonly style="opacity:.7" />
-            </div>
-
-            <!-- Cuota de tarjeta (opcional) -->
-            @if (vm.Cuotas.Any())
-            {
-            <div class="form-group full">
-                <label>Vincular a cuota de tarjeta (opcional)</label>
-                <select asp-for="VM.TarjetaCuotaId">
-                    <option value="">— Sin vincular —</option>
-                    @foreach (var c in vm.Cuotas)
-                    { <option value="@c.Id">@c.Tarjeta.Nombre — @c.Comercio — Cuota @(c.CuotasPagadas+1)/@c.TotalCuotas ($@c.MontoCuota.ToString("N2"))</option> }
-                </select>
-            </div>
-            }
         </div>
+
+        <!-- Sección participantes -->
+        <div id="seccion-participantes" style="display:none;margin-top:20px">
+            <div class="totals-strip" style="margin-bottom:16px">
+                <div class="total-item">
+                    <span class="lbl">Total</span>
+                    <span class="val" id="lbl-total">$ 0,00</span>
+                </div>
+                <div class="total-item">
+                    <span class="lbl">Asignado</span>
+                    <span class="val accent" id="lbl-asignado">$ 0,00</span>
+                </div>
+                <div class="total-item">
+                    <span class="lbl">Resta</span>
+                    <span class="val" id="lbl-resta">$ 0,00</span>
+                </div>
+                <div style="margin-left:auto">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="dividirIgual()">
+                        ÷ Dividir en partes iguales
+                    </button>
+                </div>
+            </div>
+
+            <div id="lista-participantes"></div>
+
+            <div class="btn-group" style="margin-top:12px">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="agregarParticipante('Yo')">+ Yo</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="agregarParticipante('Persona')">+ Persona</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="agregarParticipante('Pagado')">+ Ya pagado</button>
+            </div>
+        </div>
+
+        <div id="participantes-hidden"></div>
+
+        @if (vm.Cuotas.Any())
+        {
+        <div class="form-group full" style="margin-top:16px">
+            <label>Vincular a cuota de tarjeta (opcional)</label>
+            <select asp-for="VM.TarjetaCuotaId">
+                <option value="">— Sin vincular —</option>
+                @foreach (var c in vm.Cuotas)
+                {
+                    var labelCuota = $"{c.Tarjeta.Nombre} — {c.Comercio} — Cuota {c.CuotasPagadas+1}/{c.TotalCuotas} (${c.MontoCuota:N2})";
+                    <option value="@c.Id">@labelCuota</option>
+                }
+            </select>
+        </div>
+        }
 
         <div class="modal-footer" style="margin-top:24px">
             <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Cancelar</a>
-            <button type="submit" class="btn btn-primary">@(esEdicion ? "Guardar cambios" : "Registrar gasto")</button>
+            <button type="submit" class="btn btn-primary" onclick="return prepararSubmit()">
+                @(esEdicion ? "Guardar cambios" : "Registrar gasto")
+            </button>
         </div>
     </form>
 </div>
 
 @section Scripts {
-    <script>
-        // ── Fecha ──────────────────────────────────────────────────────────────
-        document.getElementById('fecha-gasto').addEventListener('change', function() {
-            const d = new Date(this.value + 'T00:00:00');
-            document.getElementById('h-dia').value  = d.getDate();
-            document.getElementById('h-mes').value  = d.getMonth() + 1;
-            document.getElementById('h-anio').value = d.getFullYear();
-        });
-        document.getElementById('fecha-gasto').dispatchEvent(new Event('change'));
+<script>
+const PERSONAS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    vm.Personas.Select(p => new { id = p.Id, nombre = p.Nombre })
+));
 
-        // ── División ───────────────────────────────────────────────────────────
-        function toggleDivision(chk) {
-            document.querySelectorAll('.divide-fields').forEach(el => {
-                el.style.display = chk.checked ? 'contents' : 'none';
-            });
-            if (!chk.checked) {
-                document.getElementById('monto-dividido').value = '';
-                document.getElementById('cant-personas').value = '';
-            }
+let participantes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    vm.Participantes.Select(p => new {
+        tipo        = p.Tipo,
+        descripcion = p.Descripcion,
+        monto       = p.Monto,
+        personaId   = p.PersonaId
+    })
+));
+
+let nextKey = 0;
+
+document.getElementById('fecha-gasto').addEventListener('change', function() {
+    const d = new Date(this.value + 'T00:00:00');
+    document.getElementById('h-dia').value  = d.getDate();
+    document.getElementById('h-mes').value  = d.getMonth() + 1;
+    document.getElementById('h-anio').value = d.getFullYear();
+});
+document.getElementById('fecha-gasto').dispatchEvent(new Event('change'));
+
+function toggleDivision(chk) {
+    document.getElementById('seccion-participantes').style.display = chk.checked ? 'block' : 'none';
+    if (chk.checked && participantes.length === 0) agregarParticipante('Yo');
+    actualizarTotales();
+}
+
+function agregarParticipante(tipo, datos = {}) {
+    if (tipo === 'Yo') {
+        if (participantes.some(p => p.tipo === 'Yo')) {
+            alert('Ya existe un participante "Yo".');
+            return;
         }
-
-        function calcDivision() {
-            const monto = parseFloat(document.getElementById('monto').value) || 0;
-            const cant  = parseInt(document.getElementById('cant-personas')?.value) || 0;
-            const field = document.getElementById('monto-dividido');
-            if (field && monto > 0 && cant >= 2)
-                field.value = (monto / cant).toFixed(2);
+    }
+    if (tipo === 'Persona' && datos.personaId) {
+        if (participantes.some(p => p.tipo === 'Persona' && p.personaId === datos.personaId)) {
+            alert('Esa persona ya está agregada.');
+            return;
         }
+    }
+    participantes.push({
+        _key: nextKey++,
+        tipo,
+        descripcion: datos.descripcion ?? (tipo === 'Yo' ? 'Yo' : tipo === 'Pagado' ? 'Pagado' : ''),
+        monto: datos.monto ?? 0,
+        personaId: datos.personaId ?? null
+    });
+    renderParticipantes();
+}
 
-        // ── Init ───────────────────────────────────────────────────────────────
-        document.addEventListener('DOMContentLoaded', () => {
-            const chk = document.getElementById('chk-divide');
-            if (chk && !chk.checked) {
-                document.querySelectorAll('.divide-fields').forEach(el => el.style.display = 'none');
+function renderParticipantes() {
+    const lista = document.getElementById('lista-participantes');
+    lista.innerHTML = '';
+    participantes.forEach((p, idx) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:grid;grid-template-columns:110px 1fr 160px 36px;gap:8px;align-items:center;margin-bottom:8px';
+        const badgeColor = p.tipo === 'Yo' ? 'badge-fijo' : p.tipo === 'Persona' ? 'badge-var' : 'badge-ok';
+        const inputStyle = 'background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:7px;font-size:.88rem';
+        row.innerHTML = `
+            <span class="badge ${badgeColor}" style="text-align:center">${p.tipo}</span>
+            ${p.tipo === 'Persona'
+                ? `<select onchange="onPersonaChange(${idx}, this)" style="${inputStyle}">
+                     <option value="">— Seleccionar persona —</option>
+                     ${PERSONAS.map(per => `<option value="${per.id}" ${p.personaId == per.id ? 'selected' : ''}>${per.nombre}</option>`).join('')}
+                   </select>`
+                : `<input type="text" value="${p.descripcion}" placeholder="${p.tipo === 'Yo' ? 'Yo' : 'Descripción'}"
+                     onchange="onDescChange(${idx}, this)" style="${inputStyle}">`
             }
-            calcDivision();
-        });
-    </script>
+            <input type="number" step="0.01" min="0" value="${p.monto}"
+                   oninput="onMontoPartChange(${idx}, this)" style="${inputStyle}" />
+            <button type="button" onclick="eliminarParticipante(${idx})"
+                    class="btn btn-danger btn-sm" style="padding:6px 10px">✕</button>
+        `;
+        lista.appendChild(row);
+    });
+    actualizarTotales();
+}
+
+function onPersonaChange(idx, sel) {
+    const personaId = sel.value ? parseInt(sel.value) : null;
+    if (personaId) {
+        const duplicado = participantes.some((p, i) =>
+            i !== idx && p.tipo === 'Persona' && p.personaId === personaId
+        );
+        if (duplicado) {
+            alert('Esa persona ya está agregada.');
+            sel.value = participantes[idx].personaId ?? '';
+            return;
+        }
+    }
+    participantes[idx].personaId   = personaId;
+    participantes[idx].descripcion = sel.options[sel.selectedIndex].text;
+}
+
+function onDescChange(idx, input)      { participantes[idx].descripcion = input.value; }
+function onMontoPartChange(idx, input) { participantes[idx].monto = parseFloat(input.value) || 0; actualizarTotales(); }
+function onMontoChange()               { actualizarTotales(); }
+function eliminarParticipante(idx)     { participantes.splice(idx, 1); renderParticipantes(); }
+
+function dividirIgual() {
+    const total = parseFloat(document.getElementById('monto-total').value) || 0;
+    const n = participantes.length;
+    if (n === 0 || total === 0) return;
+    const parte = Math.floor((total / n) * 100) / 100;
+    let asignado = 0;
+    participantes.forEach((p, idx) => {
+        if (idx > 0) {
+            p.monto = parte;
+            asignado += parte;
+        } else {
+            p.monto = Math.round((total - (parte * (n - 1))) * 100) / 100;
+        }
+    });
+    renderParticipantes();
+}
+
+function actualizarTotales() {
+    const total    = parseFloat(document.getElementById('monto-total').value) || 0;
+    const asignado = participantes.reduce((s, p) => s + (p.monto || 0), 0);
+    const resta    = total - asignado;
+    document.getElementById('lbl-total').textContent    = '$ ' + total.toLocaleString('es-AR', {minimumFractionDigits:2});
+    document.getElementById('lbl-asignado').textContent = '$ ' + asignado.toLocaleString('es-AR', {minimumFractionDigits:2});
+    const lblResta = document.getElementById('lbl-resta');
+    lblResta.textContent = '$ ' + Math.abs(resta).toLocaleString('es-AR', {minimumFractionDigits:2});
+    lblResta.style.color = Math.abs(resta) < 0.01 ? 'var(--green)' : 'var(--red)';
+}
+
+function prepararSubmit() {
+    const chk = document.getElementById('chk-divide');
+    if (chk.checked) {
+        // Validar personas sin asignar
+        const sinAsignar = participantes.filter(p => p.tipo === 'Persona' && !p.personaId);
+        if (sinAsignar.length > 0) {
+            alert('Hay participantes tipo "Persona" sin asignar. Asigná una persona o eliminá esas filas.');
+            return false;
+        }
+        // Validar que el total cierre
+        const total    = parseFloat(document.getElementById('monto-total').value) || 0;
+        const asignado = participantes.reduce((s, p) => s + (p.monto || 0), 0);
+        if (Math.abs(total - asignado) > 0.01) {
+            alert(`El total asignado ($${asignado.toFixed(2)}) no coincide con el monto ($${total.toFixed(2)}). Revisá los participantes.`);
+            return false;
+        }
+    }
+    const container = document.getElementById('participantes-hidden');
+    container.innerHTML = '';
+    participantes.forEach((p, i) => {
+        const add = (name, val) => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = `VM.Participantes[${i}].${name}`;
+            inp.value = val ?? '';
+            container.appendChild(inp);
+        };
+        add('Tipo',        p.tipo);
+        add('Descripcion', p.descripcion);
+        add('Monto',       p.monto);
+        add('PersonaId',   p.personaId ?? '');
+    });
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const chk = document.getElementById('chk-divide');
+    if (chk.checked) {
+        document.getElementById('seccion-participantes').style.display = 'block';
+        if (participantes.length > 0) renderParticipantes();
+        else agregarParticipante('Yo');
+    }
+    actualizarTotales();
+});
+</script>
 }

@@ -1,0 +1,131 @@
+@page "{id:int}"
+@model ControlGastos.Pages.Personas.DetalleModel
+@{
+    ViewData["Title"] = Model.VM.Persona.Nombre;
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">@vm.Persona.Nombre</div>
+        @if (!string.IsNullOrEmpty(vm.Persona.Notas))
+        { <div class="page-subtitle">@vm.Persona.Notas</div> }
+    </div>
+    <a asp-page="./Index" class="btn btn-ghost">← Personas</a>
+</div>
+
+<!-- KPI balance -->
+<div class="kpi-grid" style="margin-bottom:24px">
+    <div class="kpi-card">
+        <div class="kpi-label">Balance</div>
+        <div class="kpi-value @vm.ClaseBalance">@vm.EstadoBalance</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Gastos compartidos</div>
+        <div class="kpi-value accent">@vm.PorMes.Sum(m => m.Participaciones.Count) movimiento(s)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Deudas directas</div>
+        <div class="kpi-value @(vm.TotalDeudas > 0 ? "amber" : "accent")">
+            $ @Peso(Math.Abs(vm.TotalDeudas))
+        </div>
+    </div>
+</div>
+
+<!-- Movimientos por mes -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><span class="card-title">Gastos compartidos por mes</span></div>
+
+    @if (!vm.PorMes.Any())
+    {
+        <div style="padding:24px;text-align:center;color:var(--text2)">
+            Sin movimientos registrados todavía.
+        </div>
+    }
+
+    @foreach (var mes in vm.PorMes)
+    {
+        <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;
+                        padding:8px 14px;background:var(--bg3);border-radius:6px;margin-bottom:8px">
+                <span style="font-weight:600;font-size:.9rem">@mes.Label</span>
+                <span class="amount amber">$ @Peso(mes.Total)</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Categoría</th>
+                            <th>Descripción</th>
+                            <th class="text-right">Su parte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in mes.Participaciones)
+                    {
+                        <tr>
+                            <td>@p.GastoItem.Dia/@p.GastoItem.Mes/@p.GastoItem.Anio</td>
+                            <td>@p.GastoItem.Categoria.Nombre</td>
+                            <td>@(string.IsNullOrEmpty(p.GastoItem.Descripcion) ? "—" : p.GastoItem.Descripcion)</td>
+                            <td class="text-right amount amber">$ @Peso(p.Monto)</td>
+                        </tr>
+                    }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3">Total @mes.Label</td>
+                            <td class="text-right">$ @Peso(mes.Total)</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Deudas directas -->
+@if (vm.Deudas.Any())
+{
+<div class="card">
+    <div class="card-header"><span class="card-title">Deudas directas</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th class="text-center">Dirección</th>
+                    <th class="text-right">Monto</th>
+                    <th class="text-right">Pagado</th>
+                    <th class="text-right">Saldo</th>
+                    <th class="text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var d in vm.Deudas)
+            {
+                decimal saldo = d.Monto - (d.MontoPagado ?? 0);
+                <tr>
+                    <td>@d.Fecha.ToString("dd/MM/yy")</td>
+                    <td>@d.Descripcion</td>
+                    <td class="text-center">
+                        <span class="badge @(d.Direccion=="MeDeben"?"badge-ok":"badge-pend")">
+                            @(d.Direccion == "MeDeben" ? "Me debe" : "Le debo")
+                        </span>
+                    </td>
+                    <td class="text-right amount">$ @Peso(d.Monto)</td>
+                    <td class="text-right amount pos">$ @Peso(d.MontoPagado ?? 0)</td>
+                    <td class="text-right amount amber">$ @Peso(saldo)</td>
+                    <td class="text-center">
+                        <span class="badge @(d.Estado=="Pagada"?"badge-ok":"badge-pend")">@d.Estado</span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+}

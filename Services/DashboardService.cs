@@ -20,7 +20,7 @@ public class DashboardService(
                            .ToList();
 
         decimal MontoEfectivo(GastoItem g) =>
-            g.SeDivide ? g.MontoDividido ?? g.Monto : g.Monto;
+            g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
 
         var vm = new DashboardVM
         {

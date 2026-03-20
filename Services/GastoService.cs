@@ -4,14 +4,18 @@ using ControlGastos.ViewModels;
 
 namespace ControlGastos.Services;
 
-public class GastoService(IGastoRepository gastoRepo, ITarjetaRepository tarjetaRepo)
+public class GastoService(
+    IGastoRepository             gastoRepo,
+    IGastoParticipanteRepository participanteRepo,
+    ITarjetaRepository           tarjetaRepo,
+    IPersonaRepository           personaRepo)
 {
     public async Task<GastoListVM> GetListAsync(int mes, int anio)
     {
         var items = await gastoRepo.GetByMesAsync(mes, anio);
 
         decimal MontoEfectivo(GastoItem g) =>
-            g.SeDivide ? g.MontoDividido ?? g.Monto : g.Monto;
+            g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
 
         return new GastoListVM
         {
@@ -30,19 +34,27 @@ public class GastoService(IGastoRepository gastoRepo, ITarjetaRepository tarjeta
         var vm = new GastoFormVM
         {
             Categorias = await gastoRepo.GetCategoriasAsync(),
-            Cuotas     = await tarjetaRepo.GetCuotasActivasAsync()
+            Cuotas     = await tarjetaRepo.GetCuotasActivasAsync(),
+            Personas   = await personaRepo.GetAllAsync()
         };
 
         if (id.HasValue)
         {
-            var g = await gastoRepo.GetByIdAsync(id.Value);
+            var g = await gastoRepo.GetByIdWithParticipantesAsync(id.Value);
             if (g != null)
             {
                 vm.Id = g.Id; vm.Mes = g.Mes; vm.Anio = g.Anio; vm.Dia = g.Dia;
                 vm.CategoriaId = g.CategoriaId; vm.Monto = g.Monto;
-                vm.SeDivide = g.SeDivide; vm.CantidadPersonas = g.CantidadPersonas;
-                vm.MontoDividido = g.MontoDividido; vm.Descripcion = g.Descripcion;
+                vm.SeDivide = g.SeDivide; vm.Descripcion = g.Descripcion;
                 vm.MedioPago = g.MedioPago; vm.TarjetaCuotaId = g.TarjetaCuotaId;
+                vm.Participantes = g.Participantes.Select(p => new ParticipanteFormVM
+                {
+                    Id          = p.Id,
+                    Tipo        = p.Tipo,
+                    Descripcion = p.Descripcion,
+                    Monto       = p.Monto,
+                    PersonaId   = p.PersonaId
+                }).ToList();
             }
         }
         return vm;
@@ -50,19 +62,24 @@ public class GastoService(IGastoRepository gastoRepo, ITarjetaRepository tarjeta
 
     public async Task SaveAsync(GastoFormVM vm)
     {
-        if (vm.SeDivide && vm.CantidadPersonas.HasValue && vm.CantidadPersonas > 0)
-            vm.MontoDividido = Math.Round(vm.Monto / vm.CantidadPersonas.Value, 2);
+        decimal miParte = vm.SeDivide
+            ? vm.Participantes.Where(p => p.Tipo == "Yo").Sum(p => p.Monto)
+            : vm.Monto;
 
         if (vm.Id == 0)
         {
-            await gastoRepo.AddAsync(new GastoItem
+            var gasto = new GastoItem
             {
                 Mes = vm.Mes, Anio = vm.Anio, Dia = vm.Dia,
                 CategoriaId = vm.CategoriaId, Monto = vm.Monto,
-                SeDivide = vm.SeDivide, CantidadPersonas = vm.CantidadPersonas,
-                MontoDividido = vm.MontoDividido, Descripcion = vm.Descripcion,
+                SeDivide = vm.SeDivide, MiParte = miParte,
+                Descripcion = vm.Descripcion,
                 MedioPago = vm.MedioPago, TarjetaCuotaId = vm.TarjetaCuotaId
-            });
+            };
+            await gastoRepo.AddAsync(gasto);
+
+            if (vm.SeDivide && vm.Participantes.Any())
+                await GuardarParticipantesAsync(gasto.Id, vm.Participantes);
         }
         else
         {
@@ -71,13 +88,27 @@ public class GastoService(IGastoRepository gastoRepo, ITarjetaRepository tarjeta
 
             g.Mes = vm.Mes; g.Anio = vm.Anio; g.Dia = vm.Dia;
             g.CategoriaId = vm.CategoriaId; g.Monto = vm.Monto;
-            g.SeDivide = vm.SeDivide; g.CantidadPersonas = vm.CantidadPersonas;
-            g.MontoDividido = vm.MontoDividido; g.Descripcion = vm.Descripcion;
+            g.SeDivide = vm.SeDivide; g.MiParte = miParte;
+            g.Descripcion = vm.Descripcion;
             g.MedioPago = vm.MedioPago; g.TarjetaCuotaId = vm.TarjetaCuotaId;
 
             await gastoRepo.UpdateAsync(g);
+            await participanteRepo.DeleteByGastoAsync(vm.Id);
+
+            if (vm.SeDivide && vm.Participantes.Any())
+                await GuardarParticipantesAsync(vm.Id, vm.Participantes);
         }
     }
 
     public Task DeleteAsync(int id) => gastoRepo.DeleteAsync(id);
+
+    private Task GuardarParticipantesAsync(int gastoId, List<ParticipanteFormVM> participantes) =>
+        participanteRepo.AddRangeAsync(participantes.Select(p => new GastoParticipante
+        {
+            GastoItemId = gastoId,
+            Tipo        = p.Tipo,
+            Descripcion = p.Descripcion,
+            Monto       = p.Monto,
+            PersonaId   = p.Tipo == "Persona" ? p.PersonaId : null
+        }));
 }

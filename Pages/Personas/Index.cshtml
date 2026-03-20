@@ -1,0 +1,96 @@
+@page
+@model ControlGastos.Pages.Personas.IndexModel
+@{
+    ViewData["Title"] = "Personas";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Personas</div>
+        <div class="page-subtitle">@vm.Personas.Count persona(s) registrada(s)</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Nueva persona</button>
+</div>
+
+@if (!vm.Personas.Any())
+{
+    <div class="card" style="text-align:center;padding:48px;color:var(--text2)">
+        No hay personas registradas todavía.
+        <br><br>
+        <button class="btn btn-primary" onclick="openModal()">+ Registrar primera persona</button>
+    </div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+        @foreach (var p in vm.Personas)
+        {
+            <div class="card" style="position:relative">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                    <div>
+                        <div style="font-size:1.05rem;font-weight:700">@p.Nombre</div>
+                        @if (!string.IsNullOrEmpty(p.Notas))
+                        { <div style="font-size:.8rem;color:var(--text2);margin-top:2px">@p.Notas</div> }
+                    </div>
+                    <form method="post" asp-page-handler="Delete" style="display:inline">
+                        <input type="hidden" name="id" value="@p.Id" />
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                onclick="return confirm('¿Eliminar a @p.Nombre?')">✕</button>
+                    </form>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <div>
+                        <div style="font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Balance</div>
+                        <div style="font-size:1.2rem;font-weight:700;color:var(--@p.ClaseBalance)">
+                            @p.EstadoBalance
+                        </div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Movimientos</div>
+                        <div style="font-size:1.1rem;font-weight:600">@p.TotalMovimientos</div>
+                    </div>
+                </div>
+
+                <a asp-page="./Detalle" asp-route-id="@p.Id" class="btn btn-ghost" style="width:100%;justify-content:center">
+                    Ver detalle →
+                </a>
+            </div>
+        }
+    </div>
+}
+
+<!-- Modal nueva persona -->
+<div class="modal-bg" id="modal-persona">
+    <div class="modal">
+        <div class="modal-title">Nueva persona</div>
+        <form method="post" asp-page-handler="Save">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Nombre</label>
+                    <input asp-for="Form.Nombre" type="text" placeholder="Ej: Natalia, Ignacio..." />
+                </div>
+                <div class="form-group full">
+                    <label>Notas (opcional)</label>
+                    <input asp-for="Form.Notas" type="text" placeholder="Ej: hermana, amigo del trabajo..." />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openModal()  { document.getElementById('modal-persona').classList.add('open'); }
+function closeModal() { document.getElementById('modal-persona').classList.remove('open'); }
+document.getElementById('modal-persona').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+}

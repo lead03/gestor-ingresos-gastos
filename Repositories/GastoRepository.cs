@@ -10,12 +10,18 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
         db.Gastos
           .Include(g => g.Categoria)
           .Include(g => g.TarjetaCuota)
+          .Include(g => g.Participantes).ThenInclude(p => p.Persona)
           .Where(g => g.Mes == mes && g.Anio == anio)
           .OrderBy(g => g.Dia)
           .ToListAsync();
 
     public Task<GastoItem?> GetByIdAsync(int id) =>
         db.Gastos.FindAsync(id).AsTask();
+
+    public Task<GastoItem?> GetByIdWithParticipantesAsync(int id) =>
+        db.Gastos
+          .Include(g => g.Participantes).ThenInclude(p => p.Persona)
+          .FirstOrDefaultAsync(g => g.Id == id);
 
     public Task<List<CategoriaGasto>> GetCategoriasAsync() =>
         db.CategoriasGasto
@@ -43,5 +49,38 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
             db.Gastos.Remove(g);
             await db.SaveChangesAsync();
         }
+    }
+}
+
+public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRepository
+{
+    public Task<List<GastoParticipante>> GetByGastoAsync(int gastoItemId) =>
+        db.GastoParticipantes
+          .Include(p => p.Persona)
+          .Where(p => p.GastoItemId == gastoItemId)
+          .ToListAsync();
+
+    public Task<List<GastoParticipante>> GetByPersonaAsync(int personaId) =>
+        db.GastoParticipantes
+          .Include(p => p.GastoItem).ThenInclude(g => g.Categoria)
+          .Where(p => p.PersonaId == personaId)
+          .OrderByDescending(p => p.GastoItem.Anio)
+          .ThenByDescending(p => p.GastoItem.Mes)
+          .ThenByDescending(p => p.GastoItem.Dia)
+          .ToListAsync();
+
+    public async Task AddRangeAsync(IEnumerable<GastoParticipante> participantes)
+    {
+        db.GastoParticipantes.AddRange(participantes);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteByGastoAsync(int gastoItemId)
+    {
+        var items = await db.GastoParticipantes
+                            .Where(p => p.GastoItemId == gastoItemId)
+                            .ToListAsync();
+        db.GastoParticipantes.RemoveRange(items);
+        await db.SaveChangesAsync();
     }
 }

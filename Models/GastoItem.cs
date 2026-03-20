@@ -15,19 +15,21 @@ public class GastoItem
     [Required]
     public decimal Monto { get; set; }
 
-    // Si el monto se divide entre varias personas
+    // Si el gasto se divide entre participantes
     public bool SeDivide { get; set; }
-    public decimal? MontoDividido { get; set; }
-    public int? CantidadPersonas { get; set; }
+
+    // Mi parte final (calculada de los participantes tipo "Yo")
+    public decimal? MiParte { get; set; }
 
     [MaxLength(200)]
     public string? Descripcion { get; set; }
 
-    // "Efectivo" | "Galicia" | "Santander" | etc.
     [MaxLength(50)]
     public string? MedioPago { get; set; }
 
-    // Si corresponde a una cuota de tarjeta
     public int? TarjetaCuotaId { get; set; }
     public TarjetaCuota? TarjetaCuota { get; set; }
+
+    // Participantes del gasto dividido
+    public ICollection<GastoParticipante> Participantes { get; set; } = new List<GastoParticipante>();
 }
