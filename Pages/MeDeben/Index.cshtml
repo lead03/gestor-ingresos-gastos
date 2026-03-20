@@ -1,0 +1,174 @@
+@page
+@model ControlGastos.Pages.MeDeben.IndexModel
+@{
+    ViewData["Title"] = "Me deben";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Deudas</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Nueva deuda</button>
+</div>
+
+<!-- Resumen neto -->
+<div class="kpi-grid" style="margin-bottom:24px">
+    <div class="kpi-card">
+        <div class="kpi-label">Me deben</div>
+        <div class="kpi-value green">$ @Peso(vm.TotalMeDeben)</div>
+        <div class="kpi-delta">@vm.MeDeben.Count(d=>d.Estado!="Pagada") activa(s)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Le debo</div>
+        <div class="kpi-value red">$ @Peso(vm.TotalLeDebo)</div>
+        <div class="kpi-delta">@vm.LeDebo.Count(d=>d.Estado!="Pagada") activa(s)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Neto a favor</div>
+        <div class="kpi-value @(vm.Neto>=0?"green":"red")">$ @Peso(vm.Neto)</div>
+    </div>
+</div>
+
+<!-- Me deben -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header"><span class="card-title">Me deben</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Persona</th><th>Descripción</th><th>Fecha</th><th class="text-right">Monto</th><th class="text-right">Pagado</th><th class="text-right">Saldo</th><th class="text-center">Estado</th><th class="text-center">Acciones</th></tr>
+            </thead>
+            <tbody>
+            @if (!vm.MeDeben.Any())
+            { <tr><td colspan="8" class="text-center" style="padding:24px;color:var(--text2)">Sin deudas registradas.</td></tr> }
+            @foreach (var d in vm.MeDeben)
+            {
+                decimal saldo = d.Monto - (d.MontoPagado ?? 0);
+                <tr style="@(d.Estado=="Pagada"?"opacity:.5":"")">
+                    <td>@d.Persona</td>
+                    <td>@d.Descripcion</td>
+                    <td>@d.Fecha.ToString("dd/MM/yy")</td>
+                    <td class="text-right amount">$ @Peso(d.Monto)</td>
+                    <td class="text-right amount pos">$ @Peso(d.MontoPagado ?? 0)</td>
+                    <td class="text-right amount @(saldo>0?"amber":"pos")">$ @Peso(saldo)</td>
+                    <td class="text-center">
+                        <span class="badge @(d.Estado=="Pagada"?"badge-ok":d.Estado=="Parcial"?"badge-var":"badge-pend")">@d.Estado</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group" style="justify-content:center">
+                            @if (d.Estado != "Pagada")
+                            {
+                                <form method="post" asp-page-handler="MarcarPagada" style="display:inline">
+                                    <input type="hidden" name="id" value="@d.Id" />
+                                    <input type="hidden" name="montoPagado" value="@d.Monto" />
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="Marcar como pagada">✓</button>
+                                </form>
+                            }
+                            <form method="post" asp-page-handler="Delete" style="display:inline">
+                                <input type="hidden" name="id" value="@d.Id" />
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar?')">✕</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            @if (vm.MeDeben.Any())
+            {
+            <tfoot><tr><td colspan="5">TOTAL me deben</td><td class="text-right">$ @Peso(vm.TotalMeDeben)</td><td colspan="2"></td></tr></tfoot>
+            }
+        </table>
+    </div>
+</div>
+
+<!-- Le debo -->
+<div class="card">
+    <div class="card-header"><span class="card-title">Le debo</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Persona</th><th>Descripción</th><th>Fecha</th><th class="text-right">Monto</th><th class="text-right">Saldo</th><th class="text-center">Estado</th><th class="text-center">Acciones</th></tr>
+            </thead>
+            <tbody>
+            @if (!vm.LeDebo.Any())
+            { <tr><td colspan="7" class="text-center" style="padding:24px;color:var(--text2)">Sin deudas registradas.</td></tr> }
+            @foreach (var d in vm.LeDebo)
+            {
+                decimal saldo = d.Monto - (d.MontoPagado ?? 0);
+                <tr style="@(d.Estado=="Pagada"?"opacity:.5":"")">
+                    <td>@d.Persona</td>
+                    <td>@d.Descripcion</td>
+                    <td>@d.Fecha.ToString("dd/MM/yy")</td>
+                    <td class="text-right amount">$ @Peso(d.Monto)</td>
+                    <td class="text-right amount red">$ @Peso(saldo)</td>
+                    <td class="text-center">
+                        <span class="badge @(d.Estado=="Pagada"?"badge-ok":"badge-pend")">@d.Estado</span>
+                    </td>
+                    <td class="text-center">
+                        <form method="post" asp-page-handler="Delete" style="display:inline">
+                            <input type="hidden" name="id" value="@d.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar?')">✕</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal nueva deuda -->
+<div class="modal-bg" id="modal-deuda">
+    <div class="modal">
+        <div class="modal-title">Registrar deuda</div>
+        <form method="post" asp-page-handler="Save">
+            <div class="form-grid">
+
+                <div class="form-group full">
+                    <label>Dirección</label>
+                    <select asp-for="Form.Direccion">
+                        <option value="MeDeben">Me deben</option>
+                        <option value="LeDebo">Le debo</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Persona</label>
+                    <input asp-for="Form.Persona" type="text" placeholder="Nombre de la persona" />
+                </div>
+
+                <div class="form-group">
+                    <label>Monto ($)</label>
+                    <input asp-for="Form.Monto" type="number" step="0.01" min="0" />
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input asp-for="Form.Fecha" type="date" />
+                </div>
+
+                <div class="form-group full">
+                    <label>Descripción</label>
+                    <input asp-for="Form.Descripcion" type="text" placeholder="Ej: prestado 13-03" />
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openModal()  { document.getElementById('modal-deuda').classList.add('open'); }
+function closeModal() { document.getElementById('modal-deuda').classList.remove('open'); }
+document.getElementById('modal-deuda').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+}

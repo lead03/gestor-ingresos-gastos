@@ -1,0 +1,96 @@
+@page
+@model ControlGastos.Pages.Ingresos.IndexModel
+@{
+    ViewData["Title"] = "Ingresos";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+    string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+
+    var tiposConTotal = new[]
+    {
+        ("Propio",        "Ing. Dist. - Propio", vm.TotalPropio),
+        ("Distribuido",   "C.C. Propias",        vm.TotalDistribuido),
+        ("CuentaPropia",  "Cuenta propia",       vm.TotalCuentaPropia),
+        ("Ahorro",        "Ahorros",             vm.TotalAhorro),
+        ("Dpto",          "Dpto",                vm.TotalDpto),
+        ("USS",           "U$S",                 vm.TotalUSS),
+        ("FIMA",          "FIMA",                vm.TotalFIMA),
+        ("Resto",         "Resto",               vm.TotalResto),
+    };
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Ingresos</div>
+        <div class="page-subtitle">@MesNombre(vm.Mes) @vm.Anio</div>
+    </div>
+    <a asp-page="./Edit" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-primary">+ Nuevo ingreso</a>
+</div>
+
+<!-- Totales por tipo -->
+<div class="totals-strip">
+    @foreach (var (_, label, total) in tiposConTotal.Where(x => x.Item3 > 0))
+    {
+        <div class="total-item">
+            <span class="lbl">@label</span>
+            <span class="val green">$ @Peso(total)</span>
+        </div>
+    }
+    <div class="total-item">
+        <span class="lbl">TOTAL</span>
+        <span class="val" style="color:var(--accent2)">$ @Peso(vm.Total)</span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th>Tipo</th>
+                    <th>Fuente</th>
+                    <th>Descripción</th>
+                    <th class="text-right">Monto</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!vm.Items.Any())
+            {
+                <tr><td colspan="6" class="text-center" style="padding:32px;color:var(--text2)">No hay ingresos registrados para este mes.</td></tr>
+            }
+            @foreach (var i in vm.Items.OrderBy(x => x.Dia))
+            {
+                <tr>
+                    <td class="text-center">@i.Dia</td>
+                    <td><span class="badge badge-ok">@i.Tipo</span></td>
+                    <td>@i.Fuente</td>
+                    <td>@i.Descripcion</td>
+                    <td class="text-right amount pos">$ @Peso(i.Monto)</td>
+                    <td class="text-center">
+                        <form method="post" asp-page-handler="Delete" style="display:inline">
+                            <input type="hidden" name="id"   value="@i.Id" />
+                            <input type="hidden" name="mes"  value="@vm.Mes" />
+                            <input type="hidden" name="anio" value="@vm.Anio" />
+                            <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('¿Eliminar este ingreso?')">✕</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            @if (vm.Items.Any())
+            {
+            <tfoot>
+                <tr>
+                    <td colspan="4">TOTAL</td>
+                    <td class="text-right">$ @Peso(vm.Total)</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+            }
+        </table>
+    </div>
+</div>

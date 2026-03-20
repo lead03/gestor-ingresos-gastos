@@ -1,0 +1,149 @@
+@page "{id:int?}"
+@model ControlGastos.Pages.Gastos.EditModel
+@{
+    ViewData["Title"] = Model.VM.Id == 0 ? "Nuevo gasto" : "Editar gasto";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    bool esEdicion = vm.Id != 0;
+
+    var medios = new[] { "Efectivo","Galicia","Santander","PersonalPay","ClaroPay","Binance","Brubank","MercadoPago","Cuotas tarjeta","Otro" };
+    var tiposGasto = vm.Categorias.GroupBy(c => c.Tipo).OrderBy(g => g.Key);
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">@(esEdicion ? "Editar gasto" : "Nuevo gasto")</div>
+    </div>
+    <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">← Volver</a>
+</div>
+
+<div class="card" style="max-width:680px">
+    <form method="post">
+        <input type="hidden" asp-for="VM.Id" />
+
+        <div class="form-grid">
+            <!-- Fecha -->
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" id="fecha-gasto"
+                       value="@(new DateTime(vm.Anio, vm.Mes, vm.Dia).ToString("yyyy-MM-dd"))" />
+                <input type="hidden" asp-for="VM.Dia" id="h-dia" />
+                <input type="hidden" asp-for="VM.Mes" id="h-mes" />
+                <input type="hidden" asp-for="VM.Anio" id="h-anio" />
+            </div>
+
+            <!-- Categoría -->
+            <div class="form-group full">
+                <label>Categoría</label>
+                <select asp-for="VM.CategoriaId">
+                    @foreach (var grp in tiposGasto)
+                    {
+                        <optgroup label="@grp.Key">
+                        @foreach (var cat in grp.OrderBy(c => c.Nombre))
+                        { <option value="@cat.Id">@cat.Nombre</option> }
+                        </optgroup>
+                    }
+                </select>
+            </div>
+
+            <!-- Monto -->
+            <div class="form-group">
+                <label>Monto ($)</label>
+                <input asp-for="VM.Monto" type="number" step="0.01" min="0" id="monto" oninput="calcDivision()" />
+            </div>
+
+            <!-- Medio de pago -->
+            <div class="form-group">
+                <label>Medio de pago</label>
+                <select asp-for="VM.MedioPago">
+                    <option value="">— Seleccionar —</option>
+                    @foreach (var m in medios)
+                    { <option value="@m">@m</option> }
+                </select>
+            </div>
+
+            <!-- Descripción -->
+            <div class="form-group full">
+                <label>Descripción (opcional)</label>
+                <input asp-for="VM.Descripcion" type="text" placeholder="Ej: Supermercado, nafta..." />
+            </div>
+
+            <!-- División -->
+            <div class="form-group full">
+                <label class="toggle-wrap" style="cursor:pointer">
+                    <input asp-for="VM.SeDivide" type="checkbox" id="chk-divide" onchange="toggleDivision(this)" />
+                    <span>Este gasto se divide entre varias personas</span>
+                </label>
+            </div>
+
+            <div class="form-group divide-fields @(vm.SeDivide?"visible":"")" id="div-personas">
+                <label>Cantidad de personas</label>
+                <input asp-for="VM.CantidadPersonas" type="number" min="2" max="20" id="cant-personas" oninput="calcDivision()" />
+            </div>
+
+            <div class="form-group divide-fields @(vm.SeDivide?"visible":"")" id="div-miparte">
+                <label>Mi parte (calculada)</label>
+                <input asp-for="VM.MontoDividido" type="number" step="0.01" id="monto-dividido" readonly style="opacity:.7" />
+            </div>
+
+            <!-- Cuota de tarjeta (opcional) -->
+            @if (vm.Cuotas.Any())
+            {
+            <div class="form-group full">
+                <label>Vincular a cuota de tarjeta (opcional)</label>
+                <select asp-for="VM.TarjetaCuotaId">
+                    <option value="">— Sin vincular —</option>
+                    @foreach (var c in vm.Cuotas)
+                    { <option value="@c.Id">@c.Tarjeta.Nombre — @c.Comercio — Cuota @(c.CuotasPagadas+1)/@c.TotalCuotas ($@c.MontoCuota.ToString("N2"))</option> }
+                </select>
+            </div>
+            }
+        </div>
+
+        <div class="modal-footer" style="margin-top:24px">
+            <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">@(esEdicion ? "Guardar cambios" : "Registrar gasto")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        // ── Fecha ──────────────────────────────────────────────────────────────
+        document.getElementById('fecha-gasto').addEventListener('change', function() {
+            const d = new Date(this.value + 'T00:00:00');
+            document.getElementById('h-dia').value  = d.getDate();
+            document.getElementById('h-mes').value  = d.getMonth() + 1;
+            document.getElementById('h-anio').value = d.getFullYear();
+        });
+        document.getElementById('fecha-gasto').dispatchEvent(new Event('change'));
+
+        // ── División ───────────────────────────────────────────────────────────
+        function toggleDivision(chk) {
+            document.querySelectorAll('.divide-fields').forEach(el => {
+                el.style.display = chk.checked ? 'contents' : 'none';
+            });
+            if (!chk.checked) {
+                document.getElementById('monto-dividido').value = '';
+                document.getElementById('cant-personas').value = '';
+            }
+        }
+
+        function calcDivision() {
+            const monto = parseFloat(document.getElementById('monto').value) || 0;
+            const cant  = parseInt(document.getElementById('cant-personas')?.value) || 0;
+            const field = document.getElementById('monto-dividido');
+            if (field && monto > 0 && cant >= 2)
+                field.value = (monto / cant).toFixed(2);
+        }
+
+        // ── Init ───────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            const chk = document.getElementById('chk-divide');
+            if (chk && !chk.checked) {
+                document.querySelectorAll('.divide-fields').forEach(el => el.style.display = 'none');
+            }
+            calcDivision();
+        });
+    </script>
+}

@@ -1,0 +1,84 @@
+@page
+@model ControlGastos.Pages.Ingresos.EditModel
+@{
+    ViewData["Title"] = "Nuevo ingreso";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+
+    var tipos = new[]
+    {
+        ("Propio",       "Ing. Dist. - Propio"),
+        ("Distribuido",  "C.C. Propias / Distribuido"),
+        ("CuentaPropia", "Cuenta propia"),
+        ("Ahorro",       "Ahorros"),
+        ("Dpto",         "Departamento"),
+        ("USS",          "U$S / Dólares"),
+        ("FIMA",         "FIMA"),
+        ("Resto",        "Resto / Varios"),
+    };
+
+    var fuentes = new[] { "Galicia","PersonalPay","Binance","Santander","Brubank","MercadoPago","Efectivo","Otro" };
+}
+
+<div class="page-header">
+    <div><div class="page-title">Nuevo ingreso</div></div>
+    <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">← Volver</a>
+</div>
+
+<div class="card" style="max-width:560px">
+    <form method="post">
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label>Año</label>
+                <input asp-for="VM.Anio" type="number" min="2020" max="2035" />
+            </div>
+            <div class="form-group">
+                <label>Mes</label>
+                <select asp-for="VM.Mes">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var nombreMes = new DateTime(2000, m, 1).ToString("MMMM");
+                        <option value="@m">@nombreMes</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Día</label>
+                <input asp-for="VM.Dia" type="number" min="1" max="31" />
+            </div>
+
+            <div class="form-group full">
+                <label>Tipo de ingreso</label>
+                <select asp-for="VM.Tipo">
+                    @foreach (var (val, label) in tipos)
+                    { <option value="@val">@label</option> }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Monto ($)</label>
+                <input asp-for="VM.Monto" type="number" step="0.01" min="0" />
+            </div>
+
+            <div class="form-group">
+                <label>Fuente / cuenta</label>
+                <select asp-for="VM.Fuente">
+                    <option value="">— Seleccionar —</option>
+                    @foreach (var f in fuentes)
+                    { <option value="@f">@f</option> }
+                </select>
+            </div>
+
+            <div class="form-group full">
+                <label>Descripción (opcional)</label>
+                <input asp-for="VM.Descripcion" type="text" placeholder="Ej: Sueldo, alquiler cobrado..." />
+            </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top:24px">
+            <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Registrar ingreso</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,130 @@
+@page
+@model ControlGastos.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+    string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">@MesNombre(vm.Mes) @vm.Anio</div>
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Ingresos</div>
+        <div class="kpi-value green">$ @Peso(vm.TotalIngresos)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Gastos</div>
+        <div class="kpi-value red">$ @Peso(vm.TotalGastos)</div>
+        <div class="kpi-delta">Fijos: $@Peso(vm.TotalGastosFijos) · Variables: $@Peso(vm.TotalGastosVariables)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Balance</div>
+        <div class="kpi-value @(vm.Balance >= 0 ? "green" : "red")">$ @Peso(vm.Balance)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total cuentas</div>
+        <div class="kpi-value accent">$ @Peso(vm.TotalCuentas)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Me deben</div>
+        <div class="kpi-value amber">$ @Peso(vm.TotalMeDeben)</div>
+        <div class="kpi-delta">@vm.DeudasActivas.Count deuda(s) activa(s)</div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="charts-grid">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Gastos por categoría</span></div>
+        <div class="chart-wrap"><canvas id="chartTorta"></canvas></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><span class="card-title">Histórico 6 meses</span></div>
+        <div class="chart-wrap"><canvas id="chartHistorico"></canvas></div>
+    </div>
+    <div class="card full">
+        <div class="card-header"><span class="card-title">Gastos vs Ingresos por día</span></div>
+        <div class="chart-wrap"><canvas id="chartDia"></canvas></div>
+    </div>
+</div>
+
+<!-- Deudas activas -->
+@if (vm.DeudasActivas.Any())
+{
+<div class="card" style="margin-bottom:24px">
+    <div class="card-header"><span class="card-title">Me deben — activas</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Persona</th><th>Descripción</th><th>Fecha</th><th class="text-right">Monto</th><th class="text-right">Estado</th></tr></thead>
+            <tbody>
+            @foreach (var d in vm.DeudasActivas.Take(10))
+            {
+                <tr>
+                    <td>@d.Persona</td>
+                    <td>@d.Descripcion</td>
+                    <td>@d.Fecha.ToString("dd/MM/yy")</td>
+                    <td class="text-right amount pos">$ @Peso(d.Monto - (d.MontoPagado ?? 0))</td>
+                    <td class="text-right"><span class="badge badge-pend">@d.Estado</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+}
+
+@section Scripts {
+<script>
+const PALETTE = ['#6c7bff','#4caf7d','#ffb347','#f44747','#26c6da','#ab47bc','#ff7043','#26a69a','#ec407a','#78909c'];
+const dark = '#1a1d27';
+const text2 = '#9099c4';
+Chart.defaults.color = text2;
+Chart.defaults.borderColor = '#2e3250';
+
+// Torta
+new Chart(document.getElementById('chartTorta'), {
+    type: 'doughnut',
+    data: {
+        labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.GastosPorCategoria.Select(x => x.Cat))),
+        datasets: [{ data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.GastosPorCategoria.Select(x => x.Total))),
+            backgroundColor: PALETTE, borderWidth: 0 }]
+    },
+    options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '60%', maintainAspectRatio: false }
+});
+
+// Histórico barras
+const histLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.Historico.Select(x => x.Mes)));
+const histGastos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.Historico.Select(x => x.Gastos)));
+const histIng    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.Historico.Select(x => x.Ingresos)));
+new Chart(document.getElementById('chartHistorico'), {
+    type: 'bar',
+    data: { labels: histLabels, datasets: [
+        { label: 'Gastos',   data: histGastos, backgroundColor: 'rgba(244,71,71,.7)' },
+        { label: 'Ingresos', data: histIng,    backgroundColor: 'rgba(76,175,125,.7)' }
+    ]},
+    options: { scales: { x: { grid:{display:false} }, y: { ticks: { callback: v => '$'+v.toLocaleString('es-AR') } } }, plugins:{legend:{labels:{boxWidth:12}}}, maintainAspectRatio: false }
+});
+
+// Línea por día
+const dias  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.PorDia.Select(x => x.Dia)));
+const dGast = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.PorDia.Select(x => x.Gastos)));
+const dIng  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(vm.PorDia.Select(x => x.Ingresos)));
+new Chart(document.getElementById('chartDia'), {
+    type: 'line',
+    data: { labels: dias, datasets: [
+        { label: 'Gastos',   data: dGast, borderColor: '#f44747', tension: .35, pointRadius: 3, fill: false },
+        { label: 'Ingresos', data: dIng,  borderColor: '#4caf7d', tension: .35, pointRadius: 3, fill: false }
+    ]},
+    options: { scales: { y: { ticks: { callback: v => '$'+v.toLocaleString('es-AR') } } }, plugins:{legend:{labels:{boxWidth:12}}}, maintainAspectRatio: false }
+});
+</script>
+}

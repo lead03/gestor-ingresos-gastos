@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Control de Gastos</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-brand">
+        <span class="nav-icon">$</span>
+        Control de Gastos
+    </div>
+    <div class="nav-links">
+        <a asp-page="/Dashboard/Index" class="nav-link @(ViewData["Active"]?.ToString()=="dashboard"?"active":"")">Dashboard</a>
+        <a asp-page="/Gastos/Index" class="nav-link @(ViewData["Active"]?.ToString()=="gastos"?"active":"")">Gastos</a>
+        <a asp-page="/Ingresos/Index" class="nav-link @(ViewData["Active"]?.ToString()=="ingresos"?"active":"")">Ingresos</a>
+        <a asp-page="/Tarjetas/Index" class="nav-link @(ViewData["Active"]?.ToString()=="tarjetas"?"active":"")">Tarjetas</a>
+        <a asp-page="/MeDeben/Index" class="nav-link @(ViewData["Active"]?.ToString()=="medeben"?"active":"")">Me deben</a>
+    </div>
+    <div class="nav-period">
+        <form method="get" id="period-form" style="display:flex;gap:8px;align-items:center">
+            <select name="mes" onchange="document.getElementById('period-form').submit()" class="period-select">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var nombreMes = new DateTime(2000, m, 1).ToString("MMMM");
+                        var seleccionado = m == (int)(ViewData["Mes"] ?? DateTime.Today.Month);
+                        <option value="@m" selected="@seleccionado">@nombreMes</option>
+                    }
+                </select>
+            <input type="number" name="anio" value="@(ViewData["Anio"] ?? DateTime.Today.Year)"
+                   class="period-input" min="2020" max="2035"
+                   onchange="document.getElementById('period-form').submit()" />
+        </form>
+    </div>
+</nav>
+
+<main class="main-content">
+    @RenderBody()
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

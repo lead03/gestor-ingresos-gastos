@@ -1,0 +1,123 @@
+@page
+@model ControlGastos.Pages.Tarjetas.IndexModel
+@{
+    ViewData["Title"] = "Tarjetas";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+    string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Tarjetas de crédito</div>
+        <div class="page-subtitle">Resumen @MesNombre(vm.Mes) @vm.Anio</div>
+    </div>
+    <div class="btn-group">
+        <a asp-page="./EditCuota" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-primary">+ Nueva compra</a>
+    </div>
+</div>
+
+<div class="totals-strip">
+    <div class="total-item">
+        <span class="lbl">Total tarjetas</span>
+        <span class="val red">$ @Peso(vm.TotalGeneral)</span>
+    </div>
+    @foreach (var t in vm.Tarjetas.Where(t => vm.TotalPorTarjeta.ContainsKey(t.Id)))
+    {
+        <div class="total-item">
+            <span class="lbl">@t.Nombre</span>
+            <span class="val">$ @Peso(vm.TotalPorTarjeta[t.Id])</span>
+        </div>
+    }
+</div>
+
+@foreach (var tarjeta in vm.Tarjetas)
+{
+    var cuotas = vm.CuotasPorTarjeta.GetValueOrDefault(tarjeta.Id) ?? new();
+    if (!cuotas.Any()) continue;
+
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+            <span class="card-title">@tarjeta.Nombre</span>
+            <div class="btn-group">
+                <span style="font-size:.8rem;color:var(--text2)">
+                    Cierre: @tarjeta.DiaCierre · Vto: @tarjeta.DiaVencimiento
+                </span>
+                <form method="post" asp-page-handler="Avanzar" style="display:inline">
+                    <input type="hidden" name="tarjetaId" value="@tarjeta.Id" />
+                    <input type="hidden" name="mes"  value="@vm.Mes" />
+                    <input type="hidden" name="anio" value="@vm.Anio" />
+                    <button type="submit" class="btn btn-ghost btn-sm"
+                            title="Copiar cuotas con saldo al mes siguiente"
+                            onclick="return confirm('¿Avanzar cuotas al mes siguiente?')">
+                        → Siguiente mes
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Comercio</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-right">Cuota</th>
+                        <th class="text-center">Cuotas</th>
+                        <th class="text-center">Progreso</th>
+                        <th class="text-center">Paga parte</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var c in cuotas)
+                {
+                    int pct = c.TotalCuotas > 0 ? (int)(c.CuotasPagadas * 100.0 / c.TotalCuotas) : 0;
+                    <tr>
+                        <td>@c.FechaCompra.ToString("dd/MM/yy")</td>
+                        <td>@c.Comercio</td>
+                        <td class="text-right amount">$ @Peso(c.MontoTotal)</td>
+                        <td class="text-right amount red">$ @Peso(c.MontoCuota)</td>
+                        <td class="text-center">
+                            <span class="badge badge-fijo">@(c.CuotasPagadas+1) / @c.TotalCuotas</span>
+                        </td>
+                        <td style="width:100px">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width:@pct%"></div>
+                            </div>
+                            <div style="font-size:.72rem;color:var(--text2);margin-top:2px">@c.CuotasRestantes restante(s)</div>
+                        </td>
+                        <td class="text-center">
+                            @if (c.PagaParte == "DEBE")
+                            { <span class="badge badge-pend">DEBE $@Peso(c.MontoPagoOtro ?? 0)</span> }
+                            else
+                            { <span class="badge badge-ok">NO</span> }
+                        </td>
+                        <td class="text-center">
+                            <a asp-page="./EditCuota" asp-route-id="@c.Id" class="btn btn-ghost btn-sm">✎</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">TOTAL @tarjeta.Nombre</td>
+                        <td class="text-right">$ @Peso(vm.TotalPorTarjeta.GetValueOrDefault(tarjeta.Id))</td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}
+
+@if (!vm.CuotasPorTarjeta.Any())
+{
+    <div class="card" style="text-align:center;padding:48px;color:var(--text2)">
+        No hay compras registradas para este mes.
+        <br><br>
+        <a asp-page="./EditCuota" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-primary">+ Registrar compra</a>
+    </div>
+}

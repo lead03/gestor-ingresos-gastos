@@ -1,0 +1,108 @@
+@page "{id:int?}"
+@model ControlGastos.Pages.Tarjetas.EditCuotaModel
+@{
+    ViewData["Title"] = "Registrar compra";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+}
+
+<div class="page-header">
+    <div><div class="page-title">@(vm.Id == 0 ? "Nueva compra en cuotas" : "Editar compra")</div></div>
+    <a asp-page="./Index" asp-route-mes="@vm.MesCierre" asp-route-anio="@vm.AnioCierre" class="btn btn-ghost">← Volver</a>
+</div>
+
+<div class="card" style="max-width:680px">
+    <form method="post">
+        <input type="hidden" asp-for="VM.Id" />
+        <div class="form-grid">
+
+            <div class="form-group full">
+                <label>Tarjeta</label>
+                <select asp-for="VM.TarjetaId">
+                    @foreach (var t in vm.Tarjetas)
+                    { <option value="@t.Id">@t.Nombre</option> }
+                </select>
+            </div>
+
+            <div class="form-group full">
+                <label>Comercio / descripción</label>
+                <input asp-for="VM.Comercio" type="text" placeholder="Ej: MercadoLibre (joystick)" />
+            </div>
+
+            <div class="form-group">
+                <label>Fecha de compra</label>
+                <input asp-for="VM.FechaCompra" type="date" />
+            </div>
+
+            <div class="form-group">
+                <label>Monto total ($)</label>
+                <input asp-for="VM.MontoTotal" type="number" step="0.01" min="0" id="monto-total" oninput="calcCuota()" />
+            </div>
+
+            <div class="form-group">
+                <label>Cantidad de cuotas</label>
+                <input asp-for="VM.TotalCuotas" type="number" min="1" max="48" id="total-cuotas" oninput="calcCuota()" />
+            </div>
+
+            <div class="form-group">
+                <label>Monto por cuota (calculado)</label>
+                <input asp-for="VM.MontoCuota" type="number" step="0.01" id="monto-cuota" readonly style="opacity:.7" />
+            </div>
+
+            <div class="form-group">
+                <label>Mes de cierre actual</label>
+                <select asp-for="VM.MesCierre">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var nombreMes = new DateTime(2000, m, 1).ToString("MMMM");
+                        <option value="@m">@nombreMes</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Año de cierre</label>
+                <input asp-for="VM.AnioCierre" type="number" min="2020" max="2035" />
+            </div>
+
+            <div class="form-group">
+                <label>Cuotas ya pagadas</label>
+                <input asp-for="VM.CuotasPagadas" type="number" min="0" />
+            </div>
+
+            <!-- Paga parte otra persona -->
+            <div class="form-group full">
+                <label>¿Otra persona paga parte?</label>
+                <select asp-for="VM.PagaParte" id="paga-parte" onchange="togglePagaParte(this)">
+                    <option value="NO">No</option>
+                    <option value="DEBE">Sí — me debe</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="monto-otro-wrap" style="display:@(vm.PagaParte=="DEBE"?"block":"none")">
+                <label>Monto que me debe ($)</label>
+                <input asp-for="VM.MontoPagoOtro" type="number" step="0.01" min="0" />
+            </div>
+
+        </div>
+
+        <div class="modal-footer" style="margin-top:24px">
+            <a asp-page="./Index" asp-route-mes="@vm.MesCierre" asp-route-anio="@vm.AnioCierre" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">@(vm.Id == 0 ? "Registrar compra" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+function calcCuota() {
+    const total  = parseFloat(document.getElementById('monto-total').value)  || 0;
+    const cuotas = parseInt(document.getElementById('total-cuotas').value) || 1;
+    document.getElementById('monto-cuota').value = cuotas > 0 ? (total / cuotas).toFixed(2) : '';
+}
+function togglePagaParte(sel) {
+    document.getElementById('monto-otro-wrap').style.display = sel.value === 'DEBE' ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', calcCuota);
+</script>
+}
