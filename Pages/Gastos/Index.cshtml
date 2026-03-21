@@ -55,14 +55,14 @@
             }
             @foreach (var grp in vm.PorDia.OrderBy(x => x.Key))
             {
-                decimal totalDia = grp.Value.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
+                decimal totalDia = grp.Value.Sum(g => g.MiParteMes);
                 <tr class="day-row">
                     <td colspan="4">Día @grp.Key</td>
                     <td class="text-right" colspan="4">$ @Peso(totalDia)</td>
                 </tr>
                 foreach (var g in grp.Value)
                 {
-                    decimal miParte = g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
+                    decimal miParte = g.MiParteMes;
                     <tr>
                         <td class="text-center">@g.Dia</td>
                         <td>@g.Categoria.Nombre</td>
@@ -78,7 +78,15 @@
                             }
                         </td>
                         <td>@g.MedioPagoNombre</td>
-                        <td class="text-right amount">$ @Peso(g.Monto)</td>
+                        <td class="text-right amount">
+                            $ @Peso(g.MontoMes)
+                            @if (g.TarjetaCuota != null && g.TarjetaCuota.TotalCuotas > 1)
+                            {
+                                <div style="font-size:.72rem;color:var(--text2)">
+                                    @(g.TarjetaCuota.CuotasPagadas + 1)/@g.TarjetaCuota.TotalCuotas de $ @Peso(g.Monto)
+                                </div>
+                            }
+                        </td>
                         <td class="text-right amount @(g.SeDivide?"amber":"")">$ @Peso(miParte)</td>
                         <td class="text-center">
                             <span class="badge @(g.Categoria.Tipo=="Fijo"?"badge-fijo":"badge-var")">@g.Categoria.Tipo</span>

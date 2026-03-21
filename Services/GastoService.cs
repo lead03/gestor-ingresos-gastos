@@ -16,8 +16,7 @@ public class GastoService(
     {
         var items = await gastoRepo.GetByMesAsync(mes, anio);
 
-        decimal MontoEfectivo(GastoItem g) =>
-            g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
+        decimal MontoEfectivo(GastoItem g) => g.MiParteMes;
 
         return new GastoListVM
         {
@@ -54,6 +53,7 @@ public class GastoService(
                 vm.SeDivide = g.SeDivide; vm.Descripcion = g.Descripcion;
                 vm.CuentaId = g.CuentaId; vm.TarjetaId = g.TarjetaId;
                 vm.TarjetaCuotaId = g.TarjetaCuotaId;
+                if (g.TarjetaCuota != null) vm.CantidadCuotas = g.TarjetaCuota.TotalCuotas;
                 vm.Participantes = g.Participantes.Select(p => new ParticipanteFormVM
                 {
                     Id          = p.Id,

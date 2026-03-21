@@ -23,6 +23,7 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
     public Task<GastoItem?> GetByIdWithParticipantesAsync(int id) =>
         db.Gastos
           .Include(g => g.Participantes).ThenInclude(p => p.Persona)
+          .Include(g => g.TarjetaCuota)
           .FirstOrDefaultAsync(g => g.Id == id);
 
     public Task<List<CategoriaGasto>> GetCategoriasAsync() =>

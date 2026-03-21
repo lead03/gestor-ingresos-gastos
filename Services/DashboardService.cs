@@ -19,8 +19,7 @@ public class DashboardService(
                            .Where(d => d.Estado == EstadoDeuda.Activa && d.Direccion == DireccionDeuda.MeDeben)
                            .ToList();
 
-        decimal MontoEfectivo(GastoItem g) =>
-            g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
+        decimal MontoEfectivo(GastoItem g) => g.MiParteMes;
 
         var vm = new DashboardVM
         {

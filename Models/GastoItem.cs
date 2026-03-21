@@ -38,4 +38,19 @@ public class GastoItem
         Cuenta  != null ? Cuenta.Nombre  :
         Tarjeta != null ? Tarjeta.Nombre :
         "—";
+
+    /// <summary>Monto que impacta en el mes: cuota si es TC en cuotas, total si es contado.</summary>
+    public decimal MontoMes => TarjetaCuota?.MontoCuota ?? Monto;
+
+    /// <summary>Mi parte del monto del mes (proporciona cuota si hay TC dividida).</summary>
+    public decimal MiParteMes
+    {
+        get
+        {
+            if (!SeDivide) return MontoMes;
+            if (TarjetaCuota == null) return MiParte ?? Monto;
+            if (Monto == 0) return 0;
+            return (MiParte ?? Monto) / Monto * TarjetaCuota.MontoCuota;
+        }
+    }
 }
