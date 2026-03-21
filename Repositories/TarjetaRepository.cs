@@ -76,4 +76,16 @@ public class TarjetaRepository(AppDbContext db) : ITarjetaRepository
 
     public Task<bool> TieneCuotasAsync(int tarjetaId) =>
         db.TarjetaCuotas.AnyAsync(tc => tc.TarjetaId == tarjetaId);
+
+    public async Task DeleteCuotasGrupoAsync(int tarjetaId, DateTime fechaCompra, decimal montoTotal, int totalCuotas)
+    {
+        var cuotas = await db.TarjetaCuotas
+            .Where(tc => tc.TarjetaId   == tarjetaId
+                      && tc.FechaCompra == fechaCompra
+                      && tc.MontoTotal  == montoTotal
+                      && tc.TotalCuotas == totalCuotas)
+            .ToListAsync();
+        db.TarjetaCuotas.RemoveRange(cuotas);
+        await db.SaveChangesAsync();
+    }
 }

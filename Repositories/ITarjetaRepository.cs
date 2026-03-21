@@ -19,4 +19,5 @@ public interface ITarjetaRepository
     Task UpdateTarjetaAsync(Tarjeta t);
     Task DeleteTarjetaAsync(int id);
     Task<bool> TieneCuotasAsync(int tarjetaId);
+    Task DeleteCuotasGrupoAsync(int tarjetaId, DateTime fechaCompra, decimal montoTotal, int totalCuotas);
 }

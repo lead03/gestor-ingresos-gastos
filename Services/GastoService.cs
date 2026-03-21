@@ -73,6 +73,22 @@ public class GastoService(
             ? vm.Participantes.Where(p => p.Tipo == "Yo").Sum(p => p.Monto)
             : vm.Monto;
 
+        // Al editar con tarjeta: borrar cuotas viejas antes de crear las nuevas
+        if (vm.Id != 0 && vm.TarjetaId.HasValue && vm.CantidadCuotas >= 1)
+        {
+            var gastoActual = await gastoRepo.GetByIdAsync(vm.Id);
+            if (gastoActual?.TarjetaCuotaId.HasValue == true)
+            {
+                var primeraCuota = await tarjetaRepo.GetCuotaByIdAsync(gastoActual.TarjetaCuotaId.Value);
+                if (primeraCuota != null)
+                    await tarjetaRepo.DeleteCuotasGrupoAsync(
+                        primeraCuota.TarjetaId,
+                        primeraCuota.FechaCompra,
+                        primeraCuota.MontoTotal,
+                        primeraCuota.TotalCuotas);
+            }
+        }
+
         // Si paga con tarjeta y tiene más de 1 cuota, crear TarjetaCuotas automáticamente
         int? tarjetaCuotaId = vm.TarjetaCuotaId;
         if (vm.TarjetaId.HasValue && vm.CantidadCuotas >= 1)
