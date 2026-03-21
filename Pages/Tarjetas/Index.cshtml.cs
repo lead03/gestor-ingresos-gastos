@@ -63,6 +63,40 @@ public class EditCuotaModel(TarjetaService svc) : PageModel
     }
 }
 
+public class EditFechaMensualModel(TarjetaService svc) : PageModel
+{
+    [BindProperty]
+    public FechaMensualFormVM VM { get; set; } = new();
+
+    public async Task OnGetAsync(int tarjetaId, int mes, int anio)
+    {
+        var tarjeta = await svc.GetTarjetaByIdAsync(tarjetaId);
+        var fechaMensual = await svc.GetFechaMensualAsync(tarjetaId, mes, anio);
+
+        VM = new FechaMensualFormVM
+        {
+            TarjetaId      = tarjetaId,
+            Mes            = mes,
+            Anio           = anio,
+            TarjetaNombre  = tarjeta?.Nombre ?? "",
+            // Pre-cargar con fechas del mes si ya existen, sino con las de la tarjeta
+            DiaCierre      = fechaMensual?.DiaCierre      ?? tarjeta?.DiaCierre      ?? 1,
+            DiaVencimiento = fechaMensual?.DiaVencimiento ?? tarjeta?.DiaVencimiento ?? 1
+        };
+
+        ViewData["Active"] = "tarjetas";
+        ViewData["Mes"]    = mes;
+        ViewData["Anio"]   = anio;
+    }
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        if (!ModelState.IsValid) return Page();
+        await svc.SaveFechaMensualAsync(VM);
+        return RedirectToPage("./Index", new { mes = VM.Mes, anio = VM.Anio, tab = "gestionar" });
+    }
+}
+
 public class EditTarjetaModel(TarjetaService svc) : PageModel
 {
     [BindProperty]

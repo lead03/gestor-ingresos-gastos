@@ -16,7 +16,8 @@ public class AppDbContext : DbContext
     public DbSet<Cuenta>            Cuentas            => Set<Cuenta>();
     public DbSet<Deuda>             Deudas             => Set<Deuda>();
     public DbSet<Persona>           Personas           => Set<Persona>();
-    public DbSet<EfectivoDesglose>  EfectivoDesgloses  => Set<EfectivoDesglose>();
+    public DbSet<EfectivoDesglose>    EfectivoDesgloses    => Set<EfectivoDesglose>();
+    public DbSet<TarjetaFechaMensual> TarjetaFechasMensuales => Set<TarjetaFechaMensual>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -78,6 +79,16 @@ public class AppDbContext : DbContext
             .HasOne(tc => tc.Tarjeta)
             .WithMany(t => t.Cuotas)
             .HasForeignKey(tc => tc.TarjetaId);
+
+        // TarjetaFechaMensual → Tarjeta
+        mb.Entity<TarjetaFechaMensual>()
+            .HasOne(f => f.Tarjeta)
+            .WithMany(t => t.FechasMensuales)
+            .HasForeignKey(f => f.TarjetaId);
+
+        mb.Entity<TarjetaFechaMensual>()
+            .HasIndex(f => new { f.TarjetaId, f.Mes, f.Anio })
+            .IsUnique();
 
         // Ingreso → Cuenta
         mb.Entity<Ingreso>()

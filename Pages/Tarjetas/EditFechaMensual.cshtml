@@ -1,0 +1,54 @@
+@page
+@model ControlGastos.Pages.Tarjetas.EditFechaMensualModel
+@{
+    ViewData["Title"] = "Fechas del mes";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Fechas de cierre — @MesNombre(vm.Mes) @vm.Anio</div>
+        <div class="page-subtitle">@vm.TarjetaNombre</div>
+    </div>
+    <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio"
+       asp-route-tab="gestionar" class="btn btn-ghost">← Volver</a>
+</div>
+
+<div class="card" style="max-width:480px">
+    <p style="font-size:.85rem;color:var(--text2);margin-bottom:20px">
+        Estas fechas aplican <strong>solo a @MesNombre(vm.Mes) @vm.Anio</strong> y determinan
+        en qué mes se contabiliza cada cuota. No afectan meses anteriores ni posteriores.
+    </p>
+
+    <form method="post">
+        <input type="hidden" asp-for="VM.TarjetaId" />
+        <input type="hidden" asp-for="VM.Mes" />
+        <input type="hidden" asp-for="VM.Anio" />
+        <input type="hidden" asp-for="VM.TarjetaNombre" />
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Día de cierre</label>
+                <input asp-for="VM.DiaCierre" type="number" min="1" max="31" />
+                <span asp-validation-for="VM.DiaCierre" class="val-error"></span>
+                <small style="color:var(--text2);font-size:.78rem">
+                    Gastos realizados hasta este día cierran este mes
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label>Día de vencimiento</label>
+                <input asp-for="VM.DiaVencimiento" type="number" min="1" max="31" />
+                <span asp-validation-for="VM.DiaVencimiento" class="val-error"></span>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top:24px">
+            <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio"
+               asp-route-tab="gestionar" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar fechas</button>
+        </div>
+    </form>
+</div>

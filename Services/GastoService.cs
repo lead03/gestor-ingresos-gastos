@@ -151,13 +151,17 @@ public class GastoService(
         var fechaCompra = new DateTime(vm.Anio, vm.Mes, vm.Dia);
         decimal montoCuota = Math.Round(vm.Monto / vm.CantidadCuotas, 2);
 
+        // Usar DiaCierre del mes específico si existe; si no, el default de la tarjeta
+        var fechaMensual = await tarjetaRepo.GetFechaMensualAsync(vm.TarjetaId.Value, vm.Mes, vm.Anio);
+        int diaCierre    = fechaMensual?.DiaCierre ?? tarjeta.DiaCierre;
+
         // Determinar mes de cierre de la primera cuota
         // Si el día del gasto es ANTES o EN el día de cierre → cierra este mes
         // Si es DESPUÉS del día de cierre → cierra el mes siguiente
-        int mesCierre  = fechaCompra.Day <= tarjeta.DiaCierre
+        int mesCierre  = fechaCompra.Day <= diaCierre
             ? fechaCompra.Month
             : (fechaCompra.Month == 12 ? 1 : fechaCompra.Month + 1);
-        int anioCierre = fechaCompra.Day <= tarjeta.DiaCierre
+        int anioCierre = fechaCompra.Day <= diaCierre
             ? fechaCompra.Year
             : (fechaCompra.Month == 12 ? fechaCompra.Year + 1 : fechaCompra.Year);
 

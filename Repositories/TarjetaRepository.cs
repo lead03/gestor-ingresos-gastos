@@ -88,4 +88,39 @@ public class TarjetaRepository(AppDbContext db) : ITarjetaRepository
         db.TarjetaCuotas.RemoveRange(cuotas);
         await db.SaveChangesAsync();
     }
+
+    // ── Fechas mensuales ───────────────────────────────────────────────
+    public Task<TarjetaFechaMensual?> GetFechaMensualAsync(int tarjetaId, int mes, int anio) =>
+        db.TarjetaFechasMensuales
+          .FirstOrDefaultAsync(f => f.TarjetaId == tarjetaId && f.Mes == mes && f.Anio == anio);
+
+    public Task<List<TarjetaFechaMensual>> GetFechasMensualesByMesAsync(int mes, int anio) =>
+        db.TarjetaFechasMensuales
+          .Where(f => f.Mes == mes && f.Anio == anio)
+          .ToListAsync();
+
+    public async Task UpsertFechaMensualAsync(TarjetaFechaMensual fecha)
+    {
+        var existente = await db.TarjetaFechasMensuales
+            .FirstOrDefaultAsync(f => f.TarjetaId == fecha.TarjetaId
+                                   && f.Mes       == fecha.Mes
+                                   && f.Anio      == fecha.Anio);
+        if (existente == null)
+        {
+            db.TarjetaFechasMensuales.Add(fecha);
+        }
+        else
+        {
+            existente.DiaCierre      = fecha.DiaCierre;
+            existente.DiaVencimiento = fecha.DiaVencimiento;
+        }
+        await db.SaveChangesAsync();
+    }
+
+    public Task<List<TarjetaCuota>> GetCuotasByTarjetaYCompraAsync(int tarjetaId, int mesFechaCompra, int anioFechaCompra) =>
+        db.TarjetaCuotas
+          .Where(tc => tc.TarjetaId == tarjetaId
+                    && tc.FechaCompra.Month == mesFechaCompra
+                    && tc.FechaCompra.Year  == anioFechaCompra)
+          .ToListAsync();
 }

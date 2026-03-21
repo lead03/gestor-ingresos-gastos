@@ -33,6 +33,23 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
     // Migración manual: agregar columna LimiteCredito si no existe
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Tarjetas ADD COLUMN LimiteCredito REAL"); } catch { /* ya existe */ }
+
+    // Migración manual: tabla de fechas mensuales por tarjeta
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS TarjetaFechasMensuales (
+                Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                TarjetaId      INTEGER NOT NULL,
+                Mes            INTEGER NOT NULL,
+                Anio           INTEGER NOT NULL,
+                DiaCierre      INTEGER NOT NULL,
+                DiaVencimiento INTEGER NOT NULL,
+                FOREIGN KEY (TarjetaId) REFERENCES Tarjetas(Id),
+                UNIQUE (TarjetaId, Mes, Anio)
+            )
+            """);
+    } catch { /* ya existe */ }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

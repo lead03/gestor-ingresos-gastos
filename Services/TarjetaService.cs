@@ -11,6 +11,10 @@ public class TarjetaService(ITarjetaRepository repo)
     {
         var tarjetas = await repo.GetAllAsync();
 
+        // Fechas mensuales de todas las tarjetas para este mes
+        var fechasMensualesList = await repo.GetFechasMensualesByMesAsync(mes, anio);
+        var fechasMensuales = fechasMensualesList.ToDictionary(f => f.TarjetaId);
+
         // Cuotas que cierran este mes (con filtro opcional)
         var cuotasMes = await repo.GetCuotasByMesAsync(mes, anio);
         if (tarjetaId.HasValue)
@@ -53,6 +57,7 @@ public class TarjetaService(ITarjetaRepository repo)
             Anio             = anio,
             TarjetaIdFiltro  = tarjetaId,
             Tarjetas         = tarjetas,
+            FechasMensuales  = fechasMensuales,
             CuotasPorTarjeta = agrupadas,
             TotalPorTarjeta  = totales,
             TotalGeneral     = totales.Values.Sum(),
@@ -134,6 +139,67 @@ public class TarjetaService(ITarjetaRepository repo)
             return Result.Fail("No se puede eliminar: la tarjeta tiene compras registradas.");
         await repo.DeleteTarjetaAsync(id);
         return Result.Ok();
+    }
+
+    // ── Fechas mensuales ──────────────────────────────────────────────
+    public Task<TarjetaFechaMensual?> GetFechaMensualAsync(int tarjetaId, int mes, int anio) =>
+        repo.GetFechaMensualAsync(tarjetaId, mes, anio);
+
+    /// <summary>
+    /// Guarda la fecha mensual (DiaCierre/DiaVencimiento) para una tarjeta en un mes/año
+    /// y recalcula las cuotas cuyos gastos fueron comprados en ese mes.
+    /// </summary>
+    public async Task SaveFechaMensualAsync(FechaMensualFormVM vm)
+    {
+        await repo.UpsertFechaMensualAsync(new TarjetaFechaMensual
+        {
+            TarjetaId      = vm.TarjetaId,
+            Mes            = vm.Mes,
+            Anio           = vm.Anio,
+            DiaCierre      = vm.DiaCierre,
+            DiaVencimiento = vm.DiaVencimiento
+        });
+
+        // Recalcular cuotas cuyas fechas de compra caen en este mes
+        await RecalcularCuotasGrupoAsync(vm.TarjetaId, vm.Mes, vm.Anio, vm.DiaCierre);
+    }
+
+    /// <summary>
+    /// Recalcula MesCierre/AnioCierre de todas las cuotas de una tarjeta
+    /// cuyos gastos fueron comprados en mesFechaCompra/anioFechaCompra,
+    /// usando el nuevoDiaCierre.
+    /// </summary>
+    private async Task RecalcularCuotasGrupoAsync(int tarjetaId, int mesFechaCompra, int anioFechaCompra, int nuevoDiaCierre)
+    {
+        var cuotas = await repo.GetCuotasByTarjetaYCompraAsync(tarjetaId, mesFechaCompra, anioFechaCompra);
+
+        // Agrupar por (FechaCompra, MontoTotal, TotalCuotas) → cada grupo es una compra
+        var grupos = cuotas.GroupBy(c => new { c.FechaCompra, c.MontoTotal, c.TotalCuotas });
+
+        foreach (var grupo in grupos)
+        {
+            var fechaCompra = grupo.Key.FechaCompra;
+
+            // Primer mes de cierre con el nuevo DiaCierre
+            bool cierraEsteMes  = fechaCompra.Day <= nuevoDiaCierre;
+            int  nuevoPrimerMes = cierraEsteMes
+                ? fechaCompra.Month
+                : (fechaCompra.Month == 12 ? 1 : fechaCompra.Month + 1);
+            int  nuevoPrimerAnio = cierraEsteMes
+                ? fechaCompra.Year
+                : (fechaCompra.Month == 12 ? fechaCompra.Year + 1 : fechaCompra.Year);
+
+            foreach (var cuota in grupo)
+            {
+                int mes  = nuevoPrimerMes  + cuota.CuotasPagadas;
+                int anio = nuevoPrimerAnio;
+                while (mes > 12) { mes -= 12; anio++; }
+
+                cuota.MesCierre  = mes;
+                cuota.AnioCierre = anio;
+                await repo.UpdateCuotaAsync(cuota);
+            }
+        }
     }
 
     public async Task AvanzarMesAsync(int tarjetaId, int mesActual, int anioActual)

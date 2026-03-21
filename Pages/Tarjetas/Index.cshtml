@@ -99,7 +99,11 @@
                 <span class="card-title">@tarjeta.Nombre</span>
                 <div class="btn-group">
                     <span style="font-size:.8rem;color:var(--text2)">
-                        Cierre: @tarjeta.DiaCierre · Vto: @tarjeta.DiaVencimiento
+                        Cierre: @vm.DiaCierreEfectivo(tarjeta) · Vto: @vm.DiaVencimientoEfectivo(tarjeta)
+                        @if (vm.FechasMensuales.ContainsKey(tarjeta.Id))
+                        {
+                            <span style="color:var(--accent2)" title="Fechas personalizadas para este mes"> ✦</span>
+                        }
                         @if (tarjeta.LimiteCredito.HasValue)
                         {
                             <span> · Límite: $ @Peso(tarjeta.LimiteCredito.Value)</span>
@@ -284,8 +288,14 @@
                             <td>
                                 <span class="badge badge-fijo" style="font-size:.75rem">@t.Red</span>
                             </td>
-                            <td class="text-center">@t.DiaCierre</td>
-                            <td class="text-center">@t.DiaVencimiento</td>
+                            <td class="text-center">
+                                @vm.DiaCierreEfectivo(t)
+                                @if (vm.FechasMensuales.ContainsKey(t.Id))
+                                {
+                                    <span style="color:var(--accent2);font-size:.7rem" title="Fecha personalizada para este mes"> ✦</span>
+                                }
+                            </td>
+                            <td class="text-center">@vm.DiaVencimientoEfectivo(t)</td>
                             <td class="text-right">
                                 @if (t.LimiteCredito.HasValue)
                                 { <span>$ @Peso(t.LimiteCredito.Value)</span> }
@@ -294,6 +304,14 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" style="justify-content:center">
+                                    <a asp-page="./EditFechaMensual"
+                                       asp-route-tarjetaId="@t.Id"
+                                       asp-route-mes="@vm.Mes"
+                                       asp-route-anio="@vm.Anio"
+                                       class="btn btn-ghost btn-sm"
+                                       title="Editar fechas de cierre/vencimiento para @MesNombre(vm.Mes) @vm.Anio">
+                                        📅 Fechas
+                                    </a>
                                     <a asp-page="./EditTarjeta" asp-route-id="@t.Id"
                                        class="btn btn-ghost btn-sm">✎ Editar</a>
                                     <form method="post" asp-page-handler="DeleteTarjeta" style="display:inline">

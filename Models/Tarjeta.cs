@@ -21,5 +21,6 @@ public class Tarjeta
 
     public decimal? LimiteCredito { get; set; }
 
-    public ICollection<TarjetaCuota> Cuotas { get; set; } = new List<TarjetaCuota>();
+    public ICollection<TarjetaCuota>        Cuotas          { get; set; } = new List<TarjetaCuota>();
+    public ICollection<TarjetaFechaMensual> FechasMensuales { get; set; } = new List<TarjetaFechaMensual>();
 }
