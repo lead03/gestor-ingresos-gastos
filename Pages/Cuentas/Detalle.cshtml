@@ -1,0 +1,102 @@
+@page "{id:int}"
+@model ControlGastos.Pages.Cuentas.DetalleModel
+@{
+    ViewData["Title"] = Model.VM.Cuenta.Nombre;
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">@vm.Cuenta.Nombre</div>
+        <div class="page-subtitle">@vm.Cuenta.Tipo</div>
+    </div>
+    <a asp-page="./Index" class="btn btn-ghost">← Cuentas</a>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" style="margin-bottom:24px">
+    <div class="kpi-card">
+        <div class="kpi-label">Saldo actual</div>
+        <div class="kpi-value @(vm.SaldoActual >= 0 ? "green" : "red")">$ @Peso(vm.SaldoActual)</div>
+        @if (vm.EnAlerta)
+        { <div class="kpi-delta" style="color:var(--red)">⚠ Por debajo del límite</div> }
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Saldo inicial</div>
+        <div class="kpi-value accent">$ @Peso(vm.Cuenta.SaldoInicial)</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total ingresos</div>
+        <div class="kpi-value green">
+            $ @Peso(vm.Movimientos.Where(m => m.Tipo == "Ingreso").Sum(m => m.Monto))
+        </div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Total gastos</div>
+        <div class="kpi-value red">
+            $ @Peso(vm.Movimientos.Where(m => m.Tipo == "Gasto").Sum(m => m.Monto))
+        </div>
+    </div>
+</div>
+
+<!-- Movimientos -->
+<div class="card">
+    <div class="card-header"><span class="card-title">Historial de movimientos</span></div>
+
+    @if (!vm.Movimientos.Any())
+    {
+        <div style="padding:32px;text-align:center;color:var(--text2)">
+            Sin movimientos registrados todavía.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th class="text-right">Monto</th>
+                        <th class="text-right">Impacto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @{
+                    decimal saldoAcumulado = vm.Cuenta.SaldoInicial;
+                    var movOrdenados = vm.Movimientos.OrderBy(m => m.Fecha).ToList();
+                }
+                @foreach (var m in vm.Movimientos)
+                {
+                    <tr>
+                        <td>@m.Fecha.ToString("dd/MM/yy")</td>
+                        <td>
+                            <span class="badge @(m.Tipo == "Ingreso" ? "badge-ok" : "badge-pend")">
+                                @m.Tipo
+                            </span>
+                        </td>
+                        <td>@m.Categoria</td>
+                        <td>@m.Descripcion</td>
+                        <td class="text-right amount">$ @Peso(m.Monto)</td>
+                        <td class="text-right amount @(m.Impacto >= 0 ? "pos" : "neg")">
+                            @(m.Impacto >= 0 ? "+" : "")$ @Peso(Math.Abs(m.Impacto))
+                        </td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">Saldo final</td>
+                        <td class="text-right @(vm.SaldoActual >= 0 ? "pos" : "neg")">
+                            $ @Peso(vm.SaldoActual)
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>

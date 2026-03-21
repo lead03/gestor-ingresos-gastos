@@ -1,3 +1,4 @@
+using ControlGastos.Models;
 using ControlGastos.Services;
 using ControlGastos.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -38,15 +39,15 @@ public class IndexModel(DeudaService svc) : PageModel
         {
             await svc.SaveAsync(new DeudaFormVM
             {
-                Id           = deuda.Id,
-                NombrePersona= deuda.NombrePersona,
-                PersonaId    = deuda.PersonaId,
-                Monto        = deuda.Monto,
-                Fecha        = deuda.Fecha,
-                Descripcion  = deuda.Descripcion,
-                Direccion    = deuda.Direccion,
-                Estado       = montoPagado >= deuda.Monto ? "Pagada" : "Parcial",
-                MontoPagado  = montoPagado
+                Id = deuda.Id,
+                NombrePersona = deuda.NombrePersona,
+                PersonaId = deuda.PersonaId,
+                Monto = deuda.Monto,
+                Fecha = deuda.Fecha,
+                Descripcion = deuda.Descripcion,
+                Direccion = deuda.Direccion,
+                Estado = montoPagado >= deuda.Monto ? EstadoDeuda.Pagada : EstadoDeuda.Parcial,
+                MontoPagado = montoPagado
             });
         }
         return RedirectToPage();

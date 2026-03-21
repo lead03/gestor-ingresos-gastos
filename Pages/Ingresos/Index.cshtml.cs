@@ -31,13 +31,15 @@ public class EditModel(IngresoService svc) : PageModel
     [BindProperty]
     public IngresoFormVM VM { get; set; } = new();
 
-    public void OnGet(int mes = 0, int anio = 0)
+    public async Task OnGetAsync(int mes = 0, int anio = 0)
     {
-        VM.Mes  = mes  == 0 ? DateTime.Today.Month : mes;
-        VM.Anio = anio == 0 ? DateTime.Today.Year  : anio;
+        var form = await svc.GetFormAsync();
+        VM = form;
+        VM.Mes = mes == 0 ? DateTime.Today.Month : mes;
+        VM.Anio = anio == 0 ? DateTime.Today.Year : anio;
         ViewData["Active"] = "ingresos";
-        ViewData["Mes"]    = VM.Mes;
-        ViewData["Anio"]   = VM.Anio;
+        ViewData["Mes"] = VM.Mes;
+        ViewData["Anio"] = VM.Anio;
     }
 
     public async Task<IActionResult> OnPostAsync()

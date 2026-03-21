@@ -14,9 +14,9 @@ public class DashboardService(
     {
         var gastos   = await gastoRepo.GetByMesAsync(mes, anio);
         var ingresos = await ingresoRepo.GetByMesAsync(mes, anio);
-        var cuentas  = await cuentaRepo.GetByMesAsync(mes, anio);
+        var cuentas  = await cuentaRepo.GetAllActivasAsync();
         var deudas   = (await deudaRepo.GetAllAsync())
-                           .Where(d => d.Estado == "Activa" && d.Direccion == "MeDeben")
+                           .Where(d => d.Estado == EstadoDeuda.Activa && d.Direccion == DireccionDeuda.MeDeben)
                            .ToList();
 
         decimal MontoEfectivo(GastoItem g) =>
@@ -30,7 +30,7 @@ public class DashboardService(
             TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo").Sum(MontoEfectivo),
             TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
             Cuentas      = cuentas,
-            TotalCuentas = cuentas.Sum(c => c.SaldoFinal),
+            TotalCuentas = cuentas.Sum(c => c.SaldoInicial),
             TotalMeDeben = deudas.Sum(d => d.Monto - (d.MontoPagado ?? 0)),
             DeudasActivas= deudas,
             GastosPorCategoria = gastos
@@ -39,8 +39,7 @@ public class DashboardService(
                 .OrderByDescending(x => x.Item2)
                 .ToList(),
             PorDia = Enumerable.Range(1, DateTime.DaysInMonth(anio, mes))
-                .Select(d => (
-                    d,
+                .Select(d => (d,
                     gastos.Where(g => g.Dia == d).Sum(MontoEfectivo),
                     ingresos.Where(i => i.Dia == d).Sum(i => i.Monto)
                 )).ToList()
@@ -53,14 +52,9 @@ public class DashboardService(
             if (m <= 0) { m += 12; a--; }
             var gM = await gastoRepo.GetByMesAsync(m, a);
             var iM = await ingresoRepo.GetByMesAsync(m, a);
-            historico.Add((
-                new DateTime(a, m, 1).ToString("MMM"),
-                gM.Sum(MontoEfectivo),
-                iM.Sum(i => i.Monto)
-            ));
+            historico.Add((new DateTime(a, m, 1).ToString("MMM"), gM.Sum(MontoEfectivo), iM.Sum(i => i.Monto)));
         }
         vm.Historico = historico;
-
         return vm;
     }
 }

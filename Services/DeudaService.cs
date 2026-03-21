@@ -1,3 +1,4 @@
+using ControlGastos.Common;
 using ControlGastos.Models;
 using ControlGastos.Repositories;
 using ControlGastos.ViewModels;
@@ -9,21 +10,21 @@ public class DeudaService(IDeudaRepository repo)
     public async Task<DeudaListVM> GetListAsync()
     {
         var deudas  = await repo.GetAllAsync();
-        var meDeben = deudas.Where(d => d.Direccion == "MeDeben").ToList();
-        var leDebo  = deudas.Where(d => d.Direccion == "LeDebo").ToList();
+        var meDeben = deudas.Where(d => d.Direccion == DireccionDeuda.MeDeben).ToList();
+        var leDebo  = deudas.Where(d => d.Direccion == DireccionDeuda.LeDebo).ToList();
 
         return new DeudaListVM
         {
             MeDeben      = meDeben,
             LeDebo       = leDebo,
-            TotalMeDeben = meDeben.Where(d => d.Estado != "Pagada")
+            TotalMeDeben = meDeben.Where(d => d.Estado != EstadoDeuda.Pagada)
                                   .Sum(d => d.Monto - (d.MontoPagado ?? 0)),
-            TotalLeDebo  = leDebo.Where(d => d.Estado != "Pagada")
+            TotalLeDebo  = leDebo.Where(d => d.Estado != EstadoDeuda.Pagada)
                                  .Sum(d => d.Monto - (d.MontoPagado ?? 0)),
         };
     }
 
-    public async Task SaveAsync(DeudaFormVM vm)
+    public async Task<Result> SaveAsync(DeudaFormVM vm)
     {
         if (vm.Id == 0)
         {
@@ -41,8 +42,8 @@ public class DeudaService(IDeudaRepository repo)
         }
         else
         {
-            var d = await repo.GetByIdAsync(vm.Id)
-                    ?? throw new KeyNotFoundException($"Deuda {vm.Id} no encontrada");
+            var d = await repo.GetByIdAsync(vm.Id);
+            if (d == null) return Result.Fail($"Deuda {vm.Id} no encontrada.");
 
             d.PersonaId     = vm.PersonaId;
             d.NombrePersona = vm.NombrePersona;
@@ -55,6 +56,7 @@ public class DeudaService(IDeudaRepository repo)
 
             await repo.UpdateAsync(d);
         }
+        return Result.Ok();
     }
 
     public Task DeleteAsync(int id) => repo.DeleteAsync(id);

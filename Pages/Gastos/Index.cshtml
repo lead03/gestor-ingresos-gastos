@@ -41,7 +41,7 @@
                     <th>Día</th>
                     <th>Categoría</th>
                     <th>Descripción</th>
-                    <th>Medio</th>
+                    <th>Medio de pago</th>
                     <th class="text-right">Monto</th>
                     <th class="text-right">Mi parte</th>
                     <th class="text-center">Tipo</th>
@@ -49,62 +49,65 @@
                 </tr>
             </thead>
             <tbody>
-                @if (!vm.Items.Any())
+            @if (!vm.Items.Any())
+            {
+                <tr><td colspan="8" class="text-center" style="padding:32px;color:var(--text2)">No hay gastos registrados para este mes.</td></tr>
+            }
+            @foreach (var grp in vm.PorDia.OrderBy(x => x.Key))
+            {
+                decimal totalDia = grp.Value.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
+                <tr class="day-row">
+                    <td colspan="4">Día @grp.Key</td>
+                    <td class="text-right" colspan="4">$ @Peso(totalDia)</td>
+                </tr>
+                foreach (var g in grp.Value)
                 {
-                    <tr><td colspan="8" class="text-center" style="padding:32px;color:var(--text2)">No hay gastos registrados para este mes.</td></tr>
-                }
-                @foreach (var grp in vm.PorDia.OrderBy(x => x.Key))
-                {
-                    decimal totalDia = grp.Value.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
-                    <tr class="day-row">
-                        <td colspan="5">Día @grp.Key</td>
-                        <td class="text-right" colspan="3">$ @Peso(totalDia)</td>
+                    decimal miParte = g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
+                    <tr>
+                        <td class="text-center">@g.Dia</td>
+                        <td>@g.Categoria.Nombre</td>
+                        <td>
+                            @g.Descripcion
+                            @if (g.SeDivide)
+                            {
+                                <span class="badge badge-var" title="Dividido entre @g.Participantes.Count persona(s)">÷@g.Participantes.Count</span>
+                            }
+                            @if (g.TarjetaCuotaId.HasValue)
+                            {
+                                <span class="badge badge-fijo">TC</span>
+                            }
+                        </td>
+                        <td>@g.MedioPagoNombre</td>
+                        <td class="text-right amount">$ @Peso(g.Monto)</td>
+                        <td class="text-right amount @(g.SeDivide?"amber":"")">$ @Peso(miParte)</td>
+                        <td class="text-center">
+                            <span class="badge @(g.Categoria.Tipo=="Fijo"?"badge-fijo":"badge-var")">@g.Categoria.Tipo</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group" style="justify-content:center">
+                                <a asp-page="./Edit" asp-route-id="@g.Id" class="btn btn-ghost btn-sm">✎</a>
+                                <form method="post" asp-page-handler="Delete" style="display:inline">
+                                    <input type="hidden" name="id"   value="@g.Id" />
+                                    <input type="hidden" name="mes"  value="@vm.Mes" />
+                                    <input type="hidden" name="anio" value="@vm.Anio" />
+                                    <button type="submit" class="btn btn-danger btn-sm"
+                                            onclick="return confirm('¿Eliminar este gasto?')">✕</button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
-                    foreach (var g in grp.Value)
-                    {
-                        decimal miParte = g.SeDivide ? g.MiParte ?? g.Monto : g.Monto;
-                        <tr>
-                            <td class="text-center">@g.Dia</td>
-                            <td>@g.Categoria.Nombre</td>
-                            <td>
-                                @g.Descripcion
-                                @if (g.SeDivide)
-                                {
-                                    <span class="badge badge-var" title="Dividido entre @g.Participantes.Count persona(s)">÷@g.Participantes.Count</span>
-                                }
-                                @if (g.TarjetaCuotaId.HasValue)
-                                {
-                                    <span class="badge badge-fijo">TC</span>
-                                }
-                            </td>
-                            <td>@g.MedioPago</td>
-                            <td class="text-right amount">$ @Peso(g.Monto)</td>
-                            <td class="text-right amount @(g.SeDivide ? "amber" : "")">$ @Peso(miParte)</td>
-                            <td class="text-center"><span class="badge @(g.Categoria.Tipo == "Fijo" ? "badge-fijo" : "badge-var")">@g.Categoria.Tipo</span></td>
-                            <td class="text-center">
-                                <div class="btn-group" style="justify-content:center">
-                                    <a asp-page="./Edit" asp-route-id="@g.Id" class="btn btn-ghost btn-sm">✎</a>
-                                    <form method="post" asp-page-handler="Delete" style="display:inline">
-                                        <input type="hidden" name="id" value="@g.Id" />
-                                        <input type="hidden" name="mes" value="@vm.Mes" />
-                                        <input type="hidden" name="anio" value="@vm.Anio" />
-                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar este gasto?')">✕</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    }
                 }
+            }
             </tbody>
             @if (vm.Items.Any())
             {
-                <tfoot>
-                    <tr>
-                        <td colspan="5">TOTAL</td>
-                        <td class="text-right">$ @Peso(vm.Total)</td>
-                        <td colspan="2"></td>
-                    </tr>
-                </tfoot>
+            <tfoot>
+                <tr>
+                    <td colspan="5">TOTAL</td>
+                    <td class="text-right">$ @Peso(vm.Total)</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
             }
         </table>
     </div>

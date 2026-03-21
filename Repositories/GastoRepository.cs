@@ -9,6 +9,8 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
     public Task<List<GastoItem>> GetByMesAsync(int mes, int anio) =>
         db.Gastos
           .Include(g => g.Categoria)
+          .Include(g => g.Cuenta)
+          .Include(g => g.Tarjeta)
           .Include(g => g.TarjetaCuota)
           .Include(g => g.Participantes).ThenInclude(p => p.Persona)
           .Where(g => g.Mes == mes && g.Anio == anio)

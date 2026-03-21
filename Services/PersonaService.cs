@@ -23,12 +23,12 @@ public class PersonaService(
 
             // Balance: suma de gastos compartidos + deudas directas
             decimal desdGastos = participaciones
-                .Where(par => par.Tipo == "Persona")
+                .Where(par => par.Tipo == TipoParticipante.Persona)
                 .Sum(par => par.Monto);
 
             decimal desdDeudas = deudas
-                .Where(d => d.Estado != "Pagada")
-                .Sum(d => d.Direccion == "MeDeben"
+                .Where(d => d.Estado != EstadoDeuda.Pagada)
+                .Sum(d => d.Direccion == DireccionDeuda.MeDeben
                     ? d.Monto - (d.MontoPagado ?? 0)
                     : -(d.Monto - (d.MontoPagado ?? 0)));
 
@@ -52,16 +52,16 @@ public class PersonaService(
 
         var participaciones = await participanteRepo.GetByPersonaAsync(id);
         var deudas = persona.Deudas
-                        .Where(d => d.Estado != "Pagada")
+                        .Where(d => d.Estado != EstadoDeuda.Pagada)
                         .ToList();
 
         // Balance total
         decimal desdGastos = participaciones
-            .Where(p => p.Tipo == "Persona")
+            .Where(p => p.Tipo == TipoParticipante.Persona)
             .Sum(p => p.Monto);
 
         decimal desdDeudas = deudas.Sum(d =>
-            d.Direccion == "MeDeben"
+            d.Direccion == DireccionDeuda.MeDeben
                 ? d.Monto - (d.MontoPagado ?? 0)
                 : -(d.Monto - (d.MontoPagado ?? 0)));
 

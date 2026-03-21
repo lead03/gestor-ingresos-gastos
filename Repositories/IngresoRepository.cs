@@ -8,6 +8,7 @@ public class IngresoRepository(AppDbContext db) : IIngresoRepository
 {
     public Task<List<Ingreso>> GetByMesAsync(int mes, int anio) =>
         db.Ingresos
+          .Include(i => i.Cuenta)
           .Where(i => i.Mes == mes && i.Anio == anio)
           .OrderBy(i => i.Dia)
           .ToListAsync();
@@ -30,10 +31,6 @@ public class IngresoRepository(AppDbContext db) : IIngresoRepository
     public async Task DeleteAsync(int id)
     {
         var i = await db.Ingresos.FindAsync(id);
-        if (i != null)
-        {
-            db.Ingresos.Remove(i);
-            await db.SaveChangesAsync();
-        }
+        if (i != null) { db.Ingresos.Remove(i); await db.SaveChangesAsync(); }
     }
 }

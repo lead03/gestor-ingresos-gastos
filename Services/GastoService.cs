@@ -1,3 +1,4 @@
+using ControlGastos.Common;
 using ControlGastos.Models;
 using ControlGastos.Repositories;
 using ControlGastos.ViewModels;
@@ -8,7 +9,8 @@ public class GastoService(
     IGastoRepository             gastoRepo,
     IGastoParticipanteRepository participanteRepo,
     ITarjetaRepository           tarjetaRepo,
-    IPersonaRepository           personaRepo)
+    IPersonaRepository           personaRepo,
+    ICuentaRepository            cuentaRepo)
 {
     public async Task<GastoListVM> GetListAsync(int mes, int anio)
     {
@@ -31,11 +33,15 @@ public class GastoService(
 
     public async Task<GastoFormVM> GetFormAsync(int? id = null)
     {
+        var cuentasConSaldo = await ObtenerCuentasConSaldoAsync();
+
         var vm = new GastoFormVM
         {
             Categorias = await gastoRepo.GetCategoriasAsync(),
             Cuotas     = await tarjetaRepo.GetCuotasActivasAsync(),
-            Personas   = await personaRepo.GetAllAsync()
+            Personas   = await personaRepo.GetAllAsync(),
+            Cuentas    = cuentasConSaldo,
+            Tarjetas   = await tarjetaRepo.GetAllAsync()
         };
 
         if (id.HasValue)
@@ -46,11 +52,12 @@ public class GastoService(
                 vm.Id = g.Id; vm.Mes = g.Mes; vm.Anio = g.Anio; vm.Dia = g.Dia;
                 vm.CategoriaId = g.CategoriaId; vm.Monto = g.Monto;
                 vm.SeDivide = g.SeDivide; vm.Descripcion = g.Descripcion;
-                vm.MedioPago = g.MedioPago; vm.TarjetaCuotaId = g.TarjetaCuotaId;
+                vm.CuentaId = g.CuentaId; vm.TarjetaId = g.TarjetaId;
+                vm.TarjetaCuotaId = g.TarjetaCuotaId;
                 vm.Participantes = g.Participantes.Select(p => new ParticipanteFormVM
                 {
                     Id          = p.Id,
-                    Tipo        = p.Tipo,
+                    Tipo        = p.Tipo.ToString(),
                     Descripcion = p.Descripcion,
                     Monto       = p.Monto,
                     PersonaId   = p.PersonaId
@@ -60,7 +67,7 @@ public class GastoService(
         return vm;
     }
 
-    public async Task SaveAsync(GastoFormVM vm)
+    public async Task<Result> SaveAsync(GastoFormVM vm)
     {
         decimal miParte = vm.SeDivide
             ? vm.Participantes.Where(p => p.Tipo == "Yo").Sum(p => p.Monto)
@@ -70,46 +77,83 @@ public class GastoService(
         {
             var gasto = new GastoItem
             {
-                Mes = vm.Mes,
-                Anio = vm.Anio,
-                Dia = vm.Dia,
-                CategoriaId = vm.CategoriaId,
-                Monto = vm.Monto,
-                SeDivide = vm.SeDivide,
-                MiParte = miParte,
+                Mes = vm.Mes, Anio = vm.Anio, Dia = vm.Dia,
+                CategoriaId = vm.CategoriaId, Monto = vm.Monto,
+                SeDivide = vm.SeDivide, MiParte = miParte,
                 Descripcion = vm.Descripcion,
-                MedioPago = vm.MedioPago,
+                CuentaId = vm.CuentaId, TarjetaId = vm.TarjetaId,
                 TarjetaCuotaId = vm.TarjetaCuotaId
             };
             await gastoRepo.AddAsync(gasto);
+
             if (vm.SeDivide && vm.Participantes.Any())
                 await GuardarParticipantesAsync(gasto.Id, vm.Participantes);
         }
         else
         {
-            var g = await gastoRepo.GetByIdAsync(vm.Id)
-                    ?? throw new KeyNotFoundException($"Gasto {vm.Id} no encontrado");
+            var g = await gastoRepo.GetByIdAsync(vm.Id);
+            if (g == null) return Result.Fail($"Gasto {vm.Id} no encontrado.");
+
             g.Mes = vm.Mes; g.Anio = vm.Anio; g.Dia = vm.Dia;
             g.CategoriaId = vm.CategoriaId; g.Monto = vm.Monto;
             g.SeDivide = vm.SeDivide; g.MiParte = miParte;
             g.Descripcion = vm.Descripcion;
-            g.MedioPago = vm.MedioPago; g.TarjetaCuotaId = vm.TarjetaCuotaId;
+            g.CuentaId = vm.CuentaId; g.TarjetaId = vm.TarjetaId;
+            g.TarjetaCuotaId = vm.TarjetaCuotaId;
+
             await gastoRepo.UpdateAsync(g);
             await participanteRepo.DeleteByGastoAsync(vm.Id);
+
             if (vm.SeDivide && vm.Participantes.Any())
                 await GuardarParticipantesAsync(vm.Id, vm.Participantes);
         }
+
+        return Result.Ok();
     }
 
     public Task DeleteAsync(int id) => gastoRepo.DeleteAsync(id);
 
-    private Task GuardarParticipantesAsync(int gastoId, List<ParticipanteFormVM> participantes) =>
-        participanteRepo.AddRangeAsync(participantes.Select(p => new GastoParticipante
+    private Task GuardarParticipantesAsync(int gastoId, List<ParticipanteFormVM> participantes)
+    {
+        var tipoMap = new Dictionary<string, TipoParticipante>
+        {
+            ["Yo"]      = TipoParticipante.Yo,
+            ["Persona"] = TipoParticipante.Persona,
+            ["Pagado"]  = TipoParticipante.Pagado
+        };
+
+        return participanteRepo.AddRangeAsync(participantes.Select(p => new GastoParticipante
         {
             GastoItemId = gastoId,
-            Tipo        = p.Tipo,
+            Tipo        = tipoMap.GetValueOrDefault(p.Tipo, TipoParticipante.Yo),
             Descripcion = p.Descripcion,
             Monto       = p.Monto,
             PersonaId   = p.Tipo == "Persona" ? p.PersonaId : null
         }));
+    }
+
+    private async Task<List<CuentaResumenVM>> ObtenerCuentasConSaldoAsync()
+    {
+        var cuentas = await cuentaRepo.GetAllActivasAsync();
+        var resultado = new List<CuentaResumenVM>();
+
+        foreach (var c in cuentas)
+        {
+            var gastos   = await cuentaRepo.GetGastosByCuentaAsync(c.Id);
+            var ingresos = await cuentaRepo.GetIngresosByCuentaAsync(c.Id);
+            var saldo    = c.SaldoInicial
+                         + ingresos.Sum(i => i.Monto)
+                         - gastos.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
+
+            resultado.Add(new CuentaResumenVM
+            {
+                Id          = c.Id,
+                Nombre      = c.Nombre,
+                Tipo        = c.Tipo,
+                SaldoActual = saldo,
+                AlertaSaldo = c.AlertaSaldo
+            });
+        }
+        return resultado;
+    }
 }

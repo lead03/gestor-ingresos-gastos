@@ -6,8 +6,49 @@ namespace ControlGastos.Repositories;
 
 public class CuentaRepository(AppDbContext db) : ICuentaRepository
 {
-    public Task<List<Cuenta>> GetByMesAsync(int mes, int anio) =>
+    public Task<List<Cuenta>> GetAllActivasAsync() =>
         db.Cuentas
-          .Where(c => c.Mes == mes && c.Anio == anio)
+          .Where(c => c.Activa)
+          .OrderBy(c => c.Tipo)
+          .ThenBy(c => c.Nombre)
+          .ToListAsync();
+
+    public Task<Cuenta?> GetByIdAsync(int id) =>
+        db.Cuentas.FindAsync(id).AsTask();
+
+    public async Task AddAsync(Cuenta cuenta)
+    {
+        db.Cuentas.Add(cuenta);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(Cuenta cuenta)
+    {
+        db.Cuentas.Update(cuenta);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var c = await db.Cuentas.FindAsync(id);
+        if (c != null)
+        {
+            // Soft delete — no borrar si tiene movimientos
+            c.Activa = false;
+            await db.SaveChangesAsync();
+        }
+    }
+
+    public Task<List<GastoItem>> GetGastosByCuentaAsync(int cuentaId) =>
+        db.Gastos
+          .Include(g => g.Categoria)
+          .Where(g => g.CuentaId == cuentaId)
+          .OrderByDescending(g => g.Anio).ThenByDescending(g => g.Mes).ThenByDescending(g => g.Dia)
+          .ToListAsync();
+
+    public Task<List<Ingreso>> GetIngresosByCuentaAsync(int cuentaId) =>
+        db.Ingresos
+          .Where(i => i.CuentaId == cuentaId)
+          .OrderByDescending(i => i.Anio).ThenByDescending(i => i.Mes).ThenByDescending(i => i.Dia)
           .ToListAsync();
 }

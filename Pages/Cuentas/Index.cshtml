@@ -1,0 +1,134 @@
+@page
+@model ControlGastos.Pages.Cuentas.IndexModel
+@using ControlGastos.Models
+@{
+    ViewData["Title"] = "Cuentas";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+    string Peso(decimal v) => v.ToString("N2");
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">Cuentas y medios de pago</div>
+        <div class="page-subtitle">@vm.Cuentas.Count cuenta(s) activa(s)</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Nueva cuenta</button>
+</div>
+
+<!-- Total general -->
+<div class="totals-strip" style="margin-bottom:24px">
+    <div class="total-item">
+        <span class="lbl">Total en cuentas</span>
+        <span class="val accent">$ @Peso(vm.TotalSaldos)</span>
+    </div>
+</div>
+
+@if (!vm.Cuentas.Any())
+{
+    <div class="card" style="text-align:center;padding:48px;color:var(--text2)">
+        No hay cuentas registradas todavía.
+        <br><br>
+        <button class="btn btn-primary" onclick="openModal()">+ Registrar primera cuenta</button>
+    </div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+        @foreach (var c in vm.Cuentas)
+        {
+            <div class="card" style="position:relative;border-left:3px solid @(c.EnAlerta ? "var(--red)" : "var(--accent)")">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                    <div>
+                        <div style="font-size:1rem;font-weight:700">@c.Nombre</div>
+                        <div style="font-size:.78rem;color:var(--text2);margin-top:2px">
+                            <span class="badge @(c.Tipo == TipoCuenta.Banco ? "badge-fijo" : c.Tipo == TipoCuenta.Billetera ? "badge-var" : "badge-ok")">
+                                @c.Tipo
+                            </span>
+                        </div>
+                    </div>
+                    <form method="post" asp-page-handler="Delete" style="display:inline">
+                        <input type="hidden" name="id" value="@c.Id" />
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                onclick="return confirm('¿Desactivar @c.Nombre?')">✕</button>
+                    </form>
+                </div>
+
+                <div style="margin-bottom:14px">
+                    <div style="font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Saldo actual</div>
+                    <div style="font-size:1.4rem;font-weight:700;color:@(c.SaldoActual >= 0 ? "var(--green)" : "var(--red)")">
+                        $ @Peso(c.SaldoActual)
+                    </div>
+                    @if (c.EnAlerta)
+                    {
+                        <div style="font-size:.78rem;color:var(--red);margin-top:4px">
+                            ⚠ Por debajo del límite ($ @Peso(c.AlertaSaldo!.Value))
+                        </div>
+                    }
+                    <div style="font-size:.78rem;color:var(--text2);margin-top:2px">
+                        Saldo inicial: $ @Peso(c.SaldoInicial)
+                    </div>
+                </div>
+
+                <a asp-page="./Detalle" asp-route-id="@c.Id"
+                   class="btn btn-ghost" style="width:100%;justify-content:center">
+                    Ver movimientos →
+                </a>
+            </div>
+        }
+    </div>
+}
+
+<!-- Modal nueva cuenta -->
+<div class="modal-bg" id="modal-cuenta">
+    <div class="modal">
+        <div class="modal-title">Nueva cuenta</div>
+        <form method="post" asp-page-handler="Save">
+            <div class="form-grid">
+
+                <div class="form-group full">
+                    <label>Nombre</label>
+                    <input asp-for="Form.Nombre" type="text" placeholder="Ej: Galicia, PersonalPay..." />
+                    <span asp-validation-for="Form.Nombre" style="color:var(--red);font-size:.8rem"></span>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo</label>
+                    <select asp-for="Form.Tipo">
+                        <option value="@TipoCuenta.Banco">Banco</option>
+                        <option value="@TipoCuenta.Billetera">Billetera digital</option>
+                        <option value="@TipoCuenta.Efectivo">Efectivo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Saldo inicial ($)</label>
+                    <input asp-for="Form.SaldoInicial" type="number" step="0.01" min="0" />
+                    <span asp-validation-for="Form.SaldoInicial" style="color:var(--red);font-size:.8rem"></span>
+                </div>
+
+                <div class="form-group full">
+                    <label>Alerta de saldo mínimo (opcional)</label>
+                    <input asp-for="Form.AlertaSaldo" type="number" step="0.01" min="0"
+                           placeholder="Ej: 5000 — avisa si baja de este monto" />
+                    <span asp-validation-for="Form.AlertaSaldo" style="color:var(--red);font-size:.8rem"></span>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openModal()  { document.getElementById('modal-cuenta').classList.add('open'); }
+function closeModal() { document.getElementById('modal-cuenta').classList.remove('open'); }
+document.getElementById('modal-cuenta').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+}

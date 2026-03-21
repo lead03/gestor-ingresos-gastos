@@ -26,12 +26,29 @@ public class AppDbContext : DbContext
             .WithMany(c => c.Gastos)
             .HasForeignKey(g => g.CategoriaId);
 
+        // GastoItem → Cuenta (medio de pago)
+        mb.Entity<GastoItem>()
+            .HasOne(g => g.Cuenta)
+            .WithMany()
+            .HasForeignKey(g => g.CuentaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // GastoItem → Tarjeta (medio de pago)
+        mb.Entity<GastoItem>()
+            .HasOne(g => g.Tarjeta)
+            .WithMany()
+            .HasForeignKey(g => g.TarjetaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // GastoItem → TarjetaCuota
         mb.Entity<GastoItem>()
             .HasOne(g => g.TarjetaCuota)
             .WithMany(tc => tc.GastosAsociados)
             .HasForeignKey(g => g.TarjetaCuotaId)
-            .IsRequired(false);
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // GastoParticipante → GastoItem
         mb.Entity<GastoParticipante>()
@@ -62,6 +79,35 @@ public class AppDbContext : DbContext
             .WithMany(t => t.Cuotas)
             .HasForeignKey(tc => tc.TarjetaId);
 
+        // Ingreso → Cuenta
+        mb.Entity<Ingreso>()
+            .HasOne(i => i.Cuenta)
+            .WithMany()
+            .HasForeignKey(i => i.CuentaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Enum conversions — stored as string for readability
+        mb.Entity<GastoParticipante>()
+            .Property(p => p.Tipo)
+            .HasConversion<string>();
+
+        mb.Entity<Deuda>()
+            .Property(d => d.Direccion)
+            .HasConversion<string>();
+
+        mb.Entity<Deuda>()
+            .Property(d => d.Estado)
+            .HasConversion<string>();
+
+        mb.Entity<Ingreso>()
+            .Property(i => i.Tipo)
+            .HasConversion<string>();
+
+        mb.Entity<Cuenta>()
+            .Property(c => c.Tipo)
+            .HasConversion<string>();
+
         // Precisiones
         mb.Entity<GastoItem>().Property(g => g.Monto).HasPrecision(18, 2);
         mb.Entity<GastoItem>().Property(g => g.MiParte).HasPrecision(18, 2);
@@ -69,8 +115,8 @@ public class AppDbContext : DbContext
         mb.Entity<Ingreso>().Property(i => i.Monto).HasPrecision(18, 2);
         mb.Entity<TarjetaCuota>().Property(tc => tc.MontoTotal).HasPrecision(18, 2);
         mb.Entity<TarjetaCuota>().Property(tc => tc.MontoCuota).HasPrecision(18, 2);
-        mb.Entity<Cuenta>().Property(c => c.SaldoInicio).HasPrecision(18, 2);
-        mb.Entity<Cuenta>().Property(c => c.SaldoFinal).HasPrecision(18, 2);
+        mb.Entity<Cuenta>().Property(c => c.SaldoInicial).HasPrecision(18, 2);
+        mb.Entity<Cuenta>().Property(c => c.AlertaSaldo).HasPrecision(18, 2);
         mb.Entity<Deuda>().Property(d => d.Monto).HasPrecision(18, 2);
         mb.Entity<Deuda>().Property(d => d.MontoPagado).HasPrecision(18, 2);
 

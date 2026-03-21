@@ -16,8 +16,6 @@
         ("FIMA",         "FIMA"),
         ("Resto",        "Resto / Varios"),
     };
-
-    var fuentes = new[] { "Galicia","PersonalPay","Binance","Santander","Brubank","MercadoPago","Efectivo","Otro" };
 }
 
 <div class="page-header">
@@ -62,11 +60,14 @@
             </div>
 
             <div class="form-group">
-                <label>Fuente / cuenta</label>
-                <select asp-for="VM.Fuente">
-                    <option value="">— Seleccionar —</option>
-                    @foreach (var f in fuentes)
-                    { <option value="@f">@f</option> }
+                <label>Cuenta de origen (opcional)</label>
+                <select asp-for="VM.CuentaId">
+                    <option value="">— Sin asignar —</option>
+                    @foreach (var c in Model.VM.Cuentas)
+                    {
+                        var selC = Model.VM.CuentaId == c.Id;
+                        <option value="@c.Id" selected="@selC">@c.Nombre</option>
+                    }
                 </select>
             </div>
 

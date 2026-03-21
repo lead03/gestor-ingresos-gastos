@@ -7,65 +7,66 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand">
-            <span class="nav-icon">$</span>
-            Control de Gastos
-        </div>
-        <div class="nav-links">
-            <a asp-page="/Dashboard/Index" class="nav-link @(ViewData["Active"]?.ToString() == "dashboard" ? "active" : "")">Dashboard</a>
-            <a asp-page="/Gastos/Index" class="nav-link @(ViewData["Active"]?.ToString() == "gastos" ? "active" : "")">Gastos</a>
-            <a asp-page="/Ingresos/Index" class="nav-link @(ViewData["Active"]?.ToString() == "ingresos" ? "active" : "")">Ingresos</a>
-            <a asp-page="/Tarjetas/Index" class="nav-link @(ViewData["Active"]?.ToString() == "tarjetas" ? "active" : "")">Tarjetas</a>
-            <a asp-page="/Personas/Index" class="nav-link @(ViewData["Active"]?.ToString() == "personas" ? "active" : "")">Personas</a>
-            <a asp-page="/MeDeben/Index" class="nav-link @(ViewData["Active"]?.ToString() == "medeben" ? "active" : "")">Deudas</a>
-        </div>
-        <div class="nav-period">
-            <form method="get" id="period-form" style="display:flex;gap:8px;align-items:center">
-                <select name="mes" onchange="document.getElementById('period-form').submit()" class="period-select">
-                    @for (int m = 1; m <= 12; m++)
-                    {
-                        var nombreMes = new DateTime(2000, m, 1).ToString("MMMM");
-                        var seleccionado = m == (int)(ViewData["Mes"] ?? DateTime.Today.Month);
-                        <option value="@m" selected="@seleccionado">@nombreMes</option>
-                    }
-                </select>
-                <input type="number" name="anio" value="@(ViewData["Anio"] ?? DateTime.Today.Year)"
-                       class="period-input" min="2020" max="2035"
-                       onchange="document.getElementById('period-form').submit()" />
-            </form>
-        </div>
-    </nav>
-
-    <main class="main-content">
-        @RenderBody()
-    </main>
-
-    <!-- Modal de error global -->
-    <div class="modal-bg" id="modal-error">
-        <div class="modal" style="max-width:400px;text-align:center">
-            <div style="font-size:1.5rem;margin-bottom:12px">⚠</div>
-            <div class="modal-title" id="modal-error-titulo" style="margin-bottom:8px"></div>
-            <p id="modal-error-texto" style="color:var(--text2);font-size:.9rem;margin-bottom:20px"></p>
-            <button class="btn btn-primary" onclick="cerrarError()" style="width:100%">Entendido</button>
-        </div>
+<nav class="navbar">
+    <div class="nav-brand">
+        <span class="nav-icon">$</span>
+        Control de Gastos
     </div>
+    <div class="nav-links">
+        <a asp-page="/Dashboard/Index" class="nav-link @(ViewData["Active"]?.ToString()=="dashboard"?"active":"")">Dashboard</a>
+        <a asp-page="/Gastos/Index"    class="nav-link @(ViewData["Active"]?.ToString()=="gastos"   ?"active":"")">Gastos</a>
+        <a asp-page="/Ingresos/Index"  class="nav-link @(ViewData["Active"]?.ToString()=="ingresos" ?"active":"")">Ingresos</a>
+        <a asp-page="/Tarjetas/Index"  class="nav-link @(ViewData["Active"]?.ToString()=="tarjetas" ?"active":"")">Tarjetas</a>
+        <a asp-page="/Cuentas/Index"   class="nav-link @(ViewData["Active"]?.ToString()=="cuentas"  ?"active":"")">Cuentas</a>
+        <a asp-page="/Personas/Index"  class="nav-link @(ViewData["Active"]?.ToString()=="personas" ?"active":"")">Personas</a>
+        <a asp-page="/MeDeben/Index"   class="nav-link @(ViewData["Active"]?.ToString()=="medeben"  ?"active":"")">Deudas</a>
+    </div>
+    <div class="nav-period">
+        <form method="get" id="period-form" style="display:flex;gap:8px;align-items:center">
+            <select name="mes" onchange="document.getElementById('period-form').submit()" class="period-select">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    var nombreMes = new DateTime(2000, m, 1).ToString("MMMM");
+                    var seleccionado = m == (int)(ViewData["Mes"] ?? DateTime.Today.Month);
+                    <option value="@m" selected="@seleccionado">@nombreMes</option>
+                }
+            </select>
+            <input type="number" name="anio" value="@(ViewData["Anio"] ?? DateTime.Today.Year)"
+                   class="period-input" min="2020" max="2035"
+                   onchange="document.getElementById('period-form').submit()" />
+        </form>
+    </div>
+</nav>
 
-    <script>
-        function mostrarError(titulo, texto) {
-            document.getElementById('modal-error-titulo').textContent = titulo;
-            document.getElementById('modal-error-texto').textContent  = texto;
-            document.getElementById('modal-error').classList.add('open');
-        }
-        function cerrarError() {
-            document.getElementById('modal-error').classList.remove('open');
-        }
-        document.getElementById('modal-error').addEventListener('click', function(e) {
-            if (e.target === this) cerrarError();
-        });
-    </script>
+<main class="main-content">
+    @RenderBody()
+</main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+<!-- Modal de error global -->
+<div class="modal-bg" id="modal-error">
+    <div class="modal" style="max-width:400px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:12px">⚠</div>
+        <div class="modal-title" id="modal-error-titulo" style="margin-bottom:8px"></div>
+        <p id="modal-error-texto" style="color:var(--text2);font-size:.9rem;margin-bottom:20px"></p>
+        <button class="btn btn-primary" onclick="cerrarError()" style="width:100%">Entendido</button>
+    </div>
+</div>
+
+<script>
+function mostrarError(titulo, texto) {
+    document.getElementById('modal-error-titulo').textContent = titulo;
+    document.getElementById('modal-error-texto').textContent  = texto;
+    document.getElementById('modal-error').classList.add('open');
+}
+function cerrarError() {
+    document.getElementById('modal-error').classList.remove('open');
+}
+document.getElementById('modal-error').addEventListener('click', function(e) {
+    if (e.target === this) cerrarError();
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

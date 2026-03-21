@@ -1,18 +1,28 @@
+using System.ComponentModel.DataAnnotations;
 using ControlGastos.Models;
 
 namespace ControlGastos.ViewModels;
 
 public class DeudaFormVM
 {
-    public int      Id            { get; set; }
-    public int?     PersonaId     { get; set; }
-    public string   NombrePersona { get; set; } = "";
-    public decimal  Monto         { get; set; }
-    public DateTime Fecha         { get; set; } = DateTime.Today;
-    public string?  Descripcion   { get; set; }
-    public string   Direccion     { get; set; } = "MeDeben";
-    public string   Estado        { get; set; } = "Activa";
-    public decimal? MontoPagado   { get; set; }
+    public int            Id            { get; set; }
+    public int?           PersonaId     { get; set; }
+
+    [Required(ErrorMessage = "El nombre de la persona es obligatorio.")]
+    [MaxLength(80)]
+    public string         NombrePersona { get; set; } = "";
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a $0.")]
+    public decimal        Monto         { get; set; }
+
+    public DateTime       Fecha         { get; set; } = DateTime.Today;
+
+    [MaxLength(200)]
+    public string?        Descripcion   { get; set; }
+
+    public DireccionDeuda Direccion     { get; set; } = DireccionDeuda.MeDeben;
+    public EstadoDeuda    Estado        { get; set; } = EstadoDeuda.Activa;
+    public decimal?       MontoPagado  { get; set; }
 }
 
 public class DeudaListVM
