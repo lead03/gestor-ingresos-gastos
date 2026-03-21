@@ -9,6 +9,9 @@ public class TarjetaRepository(AppDbContext db) : ITarjetaRepository
     public Task<List<Tarjeta>> GetAllAsync() =>
         db.Tarjetas.ToListAsync();
 
+    public Task<Tarjeta?> GetByIdAsync(int id) =>
+        db.Tarjetas.FindAsync(id).AsTask();
+
     public Task<List<TarjetaCuota>> GetCuotasByMesAsync(int mes, int anio) =>
         db.TarjetaCuotas
           .Include(tc => tc.Tarjeta)
@@ -51,4 +54,26 @@ public class TarjetaRepository(AppDbContext db) : ITarjetaRepository
             x.Comercio   == comercio  &&
             x.MesCierre  == mes       &&
             x.AnioCierre == anio);
+
+    // ── CRUD Tarjetas ─────────────────────────────────────────────────
+    public async Task AddTarjetaAsync(Tarjeta t)
+    {
+        db.Tarjetas.Add(t);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateTarjetaAsync(Tarjeta t)
+    {
+        db.Tarjetas.Update(t);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteTarjetaAsync(int id)
+    {
+        var t = await db.Tarjetas.FindAsync(id);
+        if (t != null) { db.Tarjetas.Remove(t); await db.SaveChangesAsync(); }
+    }
+
+    public Task<bool> TieneCuotasAsync(int tarjetaId) =>
+        db.TarjetaCuotas.AnyAsync(tc => tc.TarjetaId == tarjetaId);
 }

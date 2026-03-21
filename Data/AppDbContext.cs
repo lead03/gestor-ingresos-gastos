@@ -119,6 +119,7 @@ public class AppDbContext : DbContext
         mb.Entity<Cuenta>().Property(c => c.AlertaSaldo).HasPrecision(18, 2);
         mb.Entity<Deuda>().Property(d => d.Monto).HasPrecision(18, 2);
         mb.Entity<Deuda>().Property(d => d.MontoPagado).HasPrecision(18, 2);
+        mb.Entity<Tarjeta>().Property(t => t.LimiteCredito).HasPrecision(18, 2);
 
         // Seed categorías
         mb.Entity<CategoriaGasto>().HasData(

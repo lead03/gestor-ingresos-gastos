@@ -31,6 +31,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    // Migración manual: agregar columna LimiteCredito si no existe
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Tarjetas ADD COLUMN LimiteCredito REAL"); } catch { /* ya existe */ }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

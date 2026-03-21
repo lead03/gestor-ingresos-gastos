@@ -19,5 +19,7 @@ public class Tarjeta
     public int DiaCierre { get; set; }
     public int DiaVencimiento { get; set; }
 
+    public decimal? LimiteCredito { get; set; }
+
     public ICollection<TarjetaCuota> Cuotas { get; set; } = new List<TarjetaCuota>();
 }

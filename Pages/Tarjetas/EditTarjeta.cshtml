@@ -1,0 +1,68 @@
+@page "{id:int?}"
+@model ControlGastos.Pages.Tarjetas.EditTarjetaModel
+@{
+    ViewData["Title"] = Model.VM.Id == 0 ? "Nueva tarjeta" : "Editar tarjeta";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+    var vm = Model.VM;
+}
+
+<div class="page-header">
+    <div><div class="page-title">@(vm.Id == 0 ? "Nueva tarjeta de crédito" : "Editar tarjeta")</div></div>
+    <a asp-page="./Index" class="btn btn-ghost">← Volver</a>
+</div>
+
+<div class="card" style="max-width:620px">
+    <form method="post">
+        <input type="hidden" asp-for="VM.Id" />
+
+        <div class="form-grid">
+
+            <div class="form-group full">
+                <label>Nombre de la tarjeta</label>
+                <input asp-for="VM.Nombre" type="text" placeholder="Ej: Galicia - VISA" />
+                <span asp-validation-for="VM.Nombre" class="val-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label>Banco / Emisor</label>
+                <input asp-for="VM.Banco" type="text" placeholder="Ej: Galicia" />
+            </div>
+
+            <div class="form-group">
+                <label>Red</label>
+                <select asp-for="VM.Red">
+                    <option value="VISA">VISA</option>
+                    <option value="Mastercard">Mastercard</option>
+                    <option value="AMEX">AMEX</option>
+                    <option value="Naranja">Naranja</option>
+                    <option value="Cabal">Cabal</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Día de cierre</label>
+                <input asp-for="VM.DiaCierre" type="number" min="1" max="31" />
+                <span asp-validation-for="VM.DiaCierre" class="val-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label>Día de vencimiento</label>
+                <input asp-for="VM.DiaVencimiento" type="number" min="1" max="31" />
+                <span asp-validation-for="VM.DiaVencimiento" class="val-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label>Límite de crédito ($) <span style="color:var(--text2);font-weight:400">(opcional)</span></label>
+                <input asp-for="VM.LimiteCredito" type="number" step="0.01" min="0" placeholder="0.00" />
+            </div>
+
+        </div>
+
+        <div class="modal-footer" style="margin-top:24px">
+            <a asp-page="./Index" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                @(vm.Id == 0 ? "Crear tarjeta" : "Guardar cambios")
+            </button>
+        </div>
+    </form>
+</div>

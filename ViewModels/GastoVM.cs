@@ -22,9 +22,13 @@ public class GastoFormVM : IValidatableObject
     [MaxLength(200)]
     public string? Descripcion { get; set; }
 
-    // Medio de pago: cuenta o tarjeta
+    // Medio de pago
     public int? CuentaId  { get; set; }
     public int? TarjetaId { get; set; }
+
+    // Cuotas — solo aplica cuando TarjetaId tiene valor
+    [Range(1, 48, ErrorMessage = "Las cuotas deben ser entre 1 y 48.")]
+    public int CantidadCuotas { get; set; } = 1;
 
     public int? TarjetaCuotaId { get; set; }
 
@@ -43,6 +47,11 @@ public class GastoFormVM : IValidatableObject
             yield return new ValidationResult(
                 "No se puede seleccionar cuenta y tarjeta al mismo tiempo.",
                 new[] { nameof(CuentaId) });
+
+        if (TarjetaId.HasValue && CantidadCuotas < 1)
+            yield return new ValidationResult(
+                "La cantidad de cuotas debe ser al menos 1.",
+                new[] { nameof(CantidadCuotas) });
 
         if (SeDivide)
         {

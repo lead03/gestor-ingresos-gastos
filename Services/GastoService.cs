@@ -73,6 +73,15 @@ public class GastoService(
             ? vm.Participantes.Where(p => p.Tipo == "Yo").Sum(p => p.Monto)
             : vm.Monto;
 
+        // Si paga con tarjeta y tiene más de 1 cuota, crear TarjetaCuotas automáticamente
+        int? tarjetaCuotaId = vm.TarjetaCuotaId;
+        if (vm.TarjetaId.HasValue && vm.CantidadCuotas >= 1)
+        {
+            var cuotaResult = await CrearCuotasAutomaticasAsync(vm);
+            if (!cuotaResult.Success) return cuotaResult;
+            tarjetaCuotaId = cuotaResult.Value; // ID de la primera cuota
+        }
+
         if (vm.Id == 0)
         {
             var gasto = new GastoItem
@@ -82,7 +91,7 @@ public class GastoService(
                 SeDivide = vm.SeDivide, MiParte = miParte,
                 Descripcion = vm.Descripcion,
                 CuentaId = vm.CuentaId, TarjetaId = vm.TarjetaId,
-                TarjetaCuotaId = vm.TarjetaCuotaId
+                TarjetaCuotaId = tarjetaCuotaId
             };
             await gastoRepo.AddAsync(gasto);
 
@@ -99,7 +108,7 @@ public class GastoService(
             g.SeDivide = vm.SeDivide; g.MiParte = miParte;
             g.Descripcion = vm.Descripcion;
             g.CuentaId = vm.CuentaId; g.TarjetaId = vm.TarjetaId;
-            g.TarjetaCuotaId = vm.TarjetaCuotaId;
+            g.TarjetaCuotaId = tarjetaCuotaId;
 
             await gastoRepo.UpdateAsync(g);
             await participanteRepo.DeleteByGastoAsync(vm.Id);
@@ -113,6 +122,66 @@ public class GastoService(
 
     public Task DeleteAsync(int id) => gastoRepo.DeleteAsync(id);
 
+    // ── Creación automática de cuotas ─────────────────────────────────
+    private async Task<Result<int>> CrearCuotasAutomaticasAsync(GastoFormVM vm)
+    {
+        if (!vm.TarjetaId.HasValue)
+            return Result.Fail<int>("No hay tarjeta seleccionada.");
+
+        var tarjeta = await tarjetaRepo.GetByIdAsync(vm.TarjetaId.Value);
+        if (tarjeta == null)
+            return Result.Fail<int>("Tarjeta no encontrada.");
+
+        var fechaCompra = new DateTime(vm.Anio, vm.Mes, vm.Dia);
+        decimal montoCuota = Math.Round(vm.Monto / vm.CantidadCuotas, 2);
+
+        // Determinar mes de cierre de la primera cuota
+        // Si el día del gasto es ANTES o EN el día de cierre → cierra este mes
+        // Si es DESPUÉS del día de cierre → cierra el mes siguiente
+        int mesCierre  = fechaCompra.Day <= tarjeta.DiaCierre
+            ? fechaCompra.Month
+            : (fechaCompra.Month == 12 ? 1 : fechaCompra.Month + 1);
+        int anioCierre = fechaCompra.Day <= tarjeta.DiaCierre
+            ? fechaCompra.Year
+            : (fechaCompra.Month == 12 ? fechaCompra.Year + 1 : fechaCompra.Year);
+
+        int primeraCuotaId = 0;
+
+        for (int i = 0; i < vm.CantidadCuotas; i++)
+        {
+            // Calcular mes/año de cada cuota
+            int mesActual  = mesCierre  + i;
+            int anioActual = anioCierre;
+            while (mesActual > 12) { mesActual -= 12; anioActual++; }
+
+            // Ajustar monto de la última cuota para absorber diferencia de redondeo
+            decimal montoEstaCuota = i == vm.CantidadCuotas - 1
+                ? vm.Monto - (montoCuota * (vm.CantidadCuotas - 1))
+                : montoCuota;
+
+            var cuota = new TarjetaCuota
+            {
+                TarjetaId     = vm.TarjetaId.Value,
+                Comercio      = vm.Descripcion ?? "Sin descripción",
+                FechaCompra   = fechaCompra,
+                MontoTotal    = vm.Monto,
+                TotalCuotas   = vm.CantidadCuotas,
+                MontoCuota    = Math.Round(montoEstaCuota, 2),
+                MesCierre     = mesActual,
+                AnioCierre    = anioActual,
+                CuotasPagadas = i,
+                PagaParte     = "NO"
+            };
+
+            await tarjetaRepo.AddCuotaAsync(cuota);
+
+            if (i == 0) primeraCuotaId = cuota.Id;
+        }
+
+        return Result.Ok(primeraCuotaId);
+    }
+
+    // ── Participantes ─────────────────────────────────────────────────
     private Task GuardarParticipantesAsync(int gastoId, List<ParticipanteFormVM> participantes)
     {
         var tipoMap = new Dictionary<string, TipoParticipante>
@@ -134,7 +203,7 @@ public class GastoService(
 
     private async Task<List<CuentaResumenVM>> ObtenerCuentasConSaldoAsync()
     {
-        var cuentas = await cuentaRepo.GetAllActivasAsync();
+        var cuentas  = await cuentaRepo.GetAllActivasAsync();
         var resultado = new List<CuentaResumenVM>();
 
         foreach (var c in cuentas)

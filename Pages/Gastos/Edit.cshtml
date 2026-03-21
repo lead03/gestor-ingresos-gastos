@@ -7,6 +7,12 @@
     var vm = Model.VM;
     bool esEdicion = vm.Id != 0;
     var tiposGasto = vm.Categorias.GroupBy(c => c.Tipo).OrderBy(g => g.Key);
+    var tarjetasJson = System.Text.Json.JsonSerializer.Serialize(
+        vm.Tarjetas.Select(t => new { id = t.Id, nombre = t.Nombre, diaCierre = t.DiaCierre }));
+    var personasJson = System.Text.Json.JsonSerializer.Serialize(
+        vm.Personas.Select(p => new { id = p.Id, nombre = p.Nombre }));
+    var participantesJson = System.Text.Json.JsonSerializer.Serialize(
+        vm.Participantes.Select(p => new { tipo = p.Tipo, descripcion = p.Descripcion, monto = p.Monto, personaId = p.PersonaId }));
 }
 
 <div class="page-header">
@@ -59,8 +65,8 @@
                         <optgroup label="── Cuentas ──">
                             @foreach (var c in vm.Cuentas)
                             {
-                                var selCuenta = vm.CuentaId == c.Id;
-                                <option value="cuenta_@c.Id" selected="@selCuenta">
+                                var selC = vm.CuentaId == c.Id;
+                                <option value="cuenta_@c.Id" selected="@selC">
                                     @c.Nombre ($@c.SaldoActual.ToString("N2"))
                                 </option>
                             }
@@ -71,16 +77,26 @@
                         <optgroup label="── Tarjetas de crédito ──">
                             @foreach (var t in vm.Tarjetas)
                             {
-                                var selTarjeta = vm.TarjetaId == t.Id;
-                                <option value="tarjeta_@t.Id" selected="@selTarjeta">
-                                    @t.Nombre
-                                </option>
+                                var selT = vm.TarjetaId == t.Id;
+                                <option value="tarjeta_@t.Id" selected="@selT">@t.Nombre</option>
                             }
                         </optgroup>
                     }
                 </select>
                 <input type="hidden" asp-for="VM.CuentaId" id="h-cuenta" />
                 <input type="hidden" asp-for="VM.TarjetaId" id="h-tarjeta" />
+            </div>
+
+            <!-- Cuotas — solo visible cuando se selecciona tarjeta -->
+            <div class="form-group" id="seccion-cuotas" style="display:none">
+                <label>Cantidad de cuotas</label>
+                <input asp-for="VM.CantidadCuotas" type="number" min="1" max="48"
+                       id="cant-cuotas" oninput="calcMontoCuota()" />
+            </div>
+            <div class="form-group" id="seccion-monto-cuota" style="display:none">
+                <label>Monto por cuota</label>
+                <input type="number" step="0.01" id="monto-cuota" readonly style="opacity:.7" />
+                <div id="info-cierre" style="font-size:.78rem;color:var(--text2);margin-top:4px"></div>
             </div>
 
             <div class="form-group full">
@@ -115,21 +131,6 @@
 
         <div id="participantes-hidden"></div>
 
-        @if (vm.Cuotas.Any())
-        {
-            <div class="form-group full" style="margin-top:16px">
-                <label>Vincular a cuota de tarjeta (opcional)</label>
-                <select asp-for="VM.TarjetaCuotaId">
-                    <option value="">— Sin vincular —</option>
-                    @foreach (var c in vm.Cuotas)
-                    {
-                        var lbl = $"{c.Tarjeta.Nombre} — {c.Comercio} — Cuota {c.CuotasPagadas + 1}/{c.TotalCuotas} (${c.MontoCuota:N2})";
-                        <option value="@c.Id">@lbl</option>
-                    }
-                </select>
-            </div>
-        }
-
         <div class="modal-footer" style="margin-top:24px">
             <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Cancelar</a>
             <button type="submit" class="btn btn-primary" onclick="return prepararSubmit()">
@@ -139,36 +140,85 @@
     </form>
 </div>
 
-@{
-    var personasJson = System.Text.Json.JsonSerializer.Serialize(
-        vm.Personas.Select(p => new { id = p.Id, nombre = p.Nombre }));
-    var participantesJson = System.Text.Json.JsonSerializer.Serialize(
-        vm.Participantes.Select(p => new { tipo = p.Tipo, descripcion = p.Descripcion, monto = p.Monto, personaId = p.PersonaId }));
-}
-
-
 @section Scripts {
     <script>
+        const TARJETAS    = JSON.parse('@Html.Raw(tarjetasJson)');
         const PERSONAS    = JSON.parse('@Html.Raw(personasJson)');
         let participantes = JSON.parse('@Html.Raw(participantesJson)');
         let nextKey = 0;
+        let tarjetaSeleccionada = null;
 
+        // ── Fecha ─────────────────────────────────────────────────────────────
         document.getElementById('fecha-gasto').addEventListener('change', function() {
             const d = new Date(this.value + 'T00:00:00');
             document.getElementById('h-dia').value  = d.getDate();
             document.getElementById('h-mes').value  = d.getMonth() + 1;
             document.getElementById('h-anio').value = d.getFullYear();
+            calcMontoCuota();
         });
         document.getElementById('fecha-gasto').dispatchEvent(new Event('change'));
 
+        // ── Medio de pago ─────────────────────────────────────────────────────
         function onMedioChange(sel) {
             const val = sel.value;
             document.getElementById('h-cuenta').value  = '';
             document.getElementById('h-tarjeta').value = '';
-            if (val.startsWith('cuenta_'))        document.getElementById('h-cuenta').value  = val.replace('cuenta_', '');
-            else if (val.startsWith('tarjeta_'))  document.getElementById('h-tarjeta').value = val.replace('tarjeta_', '');
+            tarjetaSeleccionada = null;
+
+            if (val.startsWith('cuenta_')) {
+                document.getElementById('h-cuenta').value = val.replace('cuenta_', '');
+                mostrarCuotas(false);
+            } else if (val.startsWith('tarjeta_')) {
+                const tid = parseInt(val.replace('tarjeta_', ''));
+                document.getElementById('h-tarjeta').value = tid;
+                tarjetaSeleccionada = TARJETAS.find(t => t.id === tid);
+                mostrarCuotas(true);
+            } else {
+                mostrarCuotas(false);
+            }
+            calcMontoCuota();
         }
 
+        function mostrarCuotas(mostrar) {
+            document.getElementById('seccion-cuotas').style.display     = mostrar ? 'block' : 'none';
+            document.getElementById('seccion-monto-cuota').style.display= mostrar ? 'block' : 'none';
+            if (!mostrar) document.getElementById('cant-cuotas').value = 1;
+        }
+
+        function calcMontoCuota() {
+            if (!tarjetaSeleccionada) return;
+            const total  = parseFloat(document.getElementById('monto-total').value) || 0;
+            const cuotas = parseInt(document.getElementById('cant-cuotas').value) || 1;
+            const monto  = cuotas > 0 ? (total / cuotas).toFixed(2) : 0;
+            document.getElementById('monto-cuota').value = monto;
+
+            // Calcular mes de cierre
+            const fechaStr = document.getElementById('fecha-gasto').value;
+            if (fechaStr && tarjetaSeleccionada) {
+                const fecha = new Date(fechaStr + 'T00:00:00');
+                const dia   = fecha.getDate();
+                const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                               'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+                let mesCierre  = fecha.getMonth(); // 0-based
+                let anioCierre = fecha.getFullYear();
+                if (dia > tarjetaSeleccionada.diaCierre) {
+                    mesCierre++;
+                    if (mesCierre > 11) { mesCierre = 0; anioCierre++; }
+                }
+
+                let info = `1° cuota cierra: ${meses[mesCierre]} ${anioCierre}`;
+                if (cuotas > 1) {
+                    let mesUlt  = mesCierre + cuotas - 1;
+                    let anioUlt = anioCierre;
+                    while (mesUlt > 11) { mesUlt -= 12; anioUlt++; }
+                    info += ` · última: ${meses[mesUlt]} ${anioUlt}`;
+                }
+                document.getElementById('info-cierre').textContent = info;
+            }
+        }
+
+        // ── División ──────────────────────────────────────────────────────────
         function toggleDivision(chk) {
             document.getElementById('seccion-participantes').style.display = chk.checked ? 'block' : 'none';
             if (chk.checked && participantes.length === 0) agregarParticipante('Yo');
@@ -226,7 +276,7 @@
         }
         function onDescChange(idx,input)      { participantes[idx].descripcion = input.value; }
         function onMontoPartChange(idx,input) { participantes[idx].monto = parseFloat(input.value)||0; actualizarTotales(); }
-        function onMontoChange()              { actualizarTotales(); }
+        function onMontoChange()              { actualizarTotales(); calcMontoCuota(); }
         function eliminarParticipante(idx)    { participantes.splice(idx,1); renderParticipantes(); }
 
         function dividirIgual() {
@@ -245,8 +295,8 @@
             document.getElementById('lbl-total').textContent    = '$ '+total.toLocaleString('es-AR',{minimumFractionDigits:2});
             document.getElementById('lbl-asignado').textContent = '$ '+asignado.toLocaleString('es-AR',{minimumFractionDigits:2});
             const lr = document.getElementById('lbl-resta');
-            lr.textContent  = '$ '+Math.abs(resta).toLocaleString('es-AR',{minimumFractionDigits:2});
-            lr.style.color  = Math.abs(resta)<0.01 ? 'var(--green)' : 'var(--red)';
+            lr.textContent = '$ '+Math.abs(resta).toLocaleString('es-AR',{minimumFractionDigits:2});
+            lr.style.color = Math.abs(resta)<0.01 ? 'var(--green)' : 'var(--red)';
         }
 
         function prepararSubmit() {
@@ -278,6 +328,13 @@
                 if (participantes.length > 0) renderParticipantes(); else agregarParticipante('Yo');
             }
             actualizarTotales();
+
+            // Restaurar medio de pago al editar
+            const cuentaId  = '@(vm.CuentaId?.ToString() ?? "")';
+            const tarjetaId = '@(vm.TarjetaId?.ToString() ?? "")';
+            const sel = document.getElementById('sel-medio');
+            if (cuentaId) { sel.value = 'cuenta_' + cuentaId; onMedioChange(sel); }
+            else if (tarjetaId) { sel.value = 'tarjeta_' + tarjetaId; onMedioChange(sel); }
         });
     </script>
 }
