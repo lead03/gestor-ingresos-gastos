@@ -30,6 +30,9 @@ public class GastoFormVM : IValidatableObject
     [Range(1, 48, ErrorMessage = "Las cuotas deben ser entre 1 y 48.")]
     public int CantidadCuotas { get; set; } = 1;
 
+    [MaxLength(3)]
+    public string Moneda { get; set; } = "ARS";
+
     public int? TarjetaCuotaId { get; set; }
 
     public List<ParticipanteFormVM> Participantes { get; set; } = new();
@@ -84,8 +87,11 @@ public class GastoListVM
     public int  Mes  { get; set; }
     public int  Anio { get; set; }
     public List<GastoItem> Items          { get; set; } = new();
-    public decimal         TotalFijos     { get; set; }
-    public decimal         TotalVariables { get; set; }
-    public decimal         Total          => TotalFijos + TotalVariables;
+    public decimal         TotalFijos     { get; set; }   // ARS only
+    public decimal         TotalVariables { get; set; }   // ARS only
+    public decimal         TotalFijosUsd     { get; set; }
+    public decimal         TotalVariablesUsd { get; set; }
+    public decimal         Total             => TotalFijos + TotalVariables;
+    public decimal         TotalUsd          => TotalFijosUsd + TotalVariablesUsd;
     public Dictionary<int, List<GastoItem>> PorDia { get; set; } = new();
 }

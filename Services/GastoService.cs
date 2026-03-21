@@ -23,8 +23,10 @@ public class GastoService(
             Mes            = mes,
             Anio           = anio,
             Items          = items,
-            TotalFijos     = items.Where(g => g.Categoria.Tipo == "Fijo").Sum(MontoEfectivo),
-            TotalVariables = items.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
+            TotalFijos        = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda != "USD").Sum(MontoEfectivo),
+            TotalVariables    = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda != "USD").Sum(MontoEfectivo),
+            TotalFijosUsd     = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda == "USD").Sum(MontoEfectivo),
+            TotalVariablesUsd = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda == "USD").Sum(MontoEfectivo),
             PorDia         = items.GroupBy(g => g.Dia)
                                   .ToDictionary(grp => grp.Key, grp => grp.ToList())
         };
@@ -53,6 +55,7 @@ public class GastoService(
                 vm.SeDivide = g.SeDivide; vm.Descripcion = g.Descripcion;
                 vm.CuentaId = g.CuentaId; vm.TarjetaId = g.TarjetaId;
                 vm.TarjetaCuotaId = g.TarjetaCuotaId;
+                vm.Moneda = g.Moneda;
                 if (g.TarjetaCuota != null) vm.CantidadCuotas = g.TarjetaCuota.TotalCuotas;
                 vm.Participantes = g.Participantes.Select(p => new ParticipanteFormVM
                 {
@@ -108,7 +111,8 @@ public class GastoService(
                 SeDivide = vm.SeDivide, MiParte = miParte,
                 Descripcion = vm.Descripcion,
                 CuentaId = vm.CuentaId, TarjetaId = vm.TarjetaId,
-                TarjetaCuotaId = tarjetaCuotaId
+                TarjetaCuotaId = tarjetaCuotaId,
+                Moneda = vm.Moneda
             };
             await gastoRepo.AddAsync(gasto);
             gastoId = gasto.Id;
@@ -127,6 +131,7 @@ public class GastoService(
             g.Descripcion = vm.Descripcion;
             g.CuentaId = vm.CuentaId; g.TarjetaId = vm.TarjetaId;
             g.TarjetaCuotaId = tarjetaCuotaId;
+            g.Moneda = vm.Moneda;
 
             await gastoRepo.UpdateAsync(g);
             await participanteRepo.DeleteByGastoAsync(vm.Id);
@@ -201,7 +206,8 @@ public class GastoService(
                 MesCierre     = mesActual,
                 AnioCierre    = anioActual,
                 CuotasPagadas = i,
-                PagaParte     = "NO"
+                PagaParte     = "NO",
+                Moneda        = vm.Moneda
             };
 
             await tarjetaRepo.AddCuotaAsync(cuota);

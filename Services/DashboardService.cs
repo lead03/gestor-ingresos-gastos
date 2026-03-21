@@ -24,10 +24,11 @@ public class DashboardService(
         var vm = new DashboardVM
         {
             Mes   = mes, Anio = anio,
-            TotalGastos          = gastos.Sum(MontoEfectivo),
+            TotalGastos          = gastos.Where(g => g.Moneda != "USD").Sum(MontoEfectivo),
             TotalIngresos        = ingresos.Sum(i => i.Monto),
-            TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo").Sum(MontoEfectivo),
-            TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
+            TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo" && g.Moneda != "USD").Sum(MontoEfectivo),
+            TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda != "USD").Sum(MontoEfectivo),
+            TotalGastosUsd       = gastos.Where(g => g.Moneda == "USD").Sum(MontoEfectivo),
             Cuentas      = cuentas,
             TotalCuentas = cuentas.Sum(c => c.SaldoInicial),
             TotalMeDeben = deudas.Sum(d => d.Monto - (d.MontoPagado ?? 0)),
@@ -51,7 +52,7 @@ public class DashboardService(
             if (m <= 0) { m += 12; a--; }
             var gM = await gastoRepo.GetByMesAsync(m, a);
             var iM = await ingresoRepo.GetByMesAsync(m, a);
-            historico.Add((new DateTime(a, m, 1).ToString("MMM"), gM.Sum(MontoEfectivo), iM.Sum(i => i.Monto)));
+            historico.Add((new DateTime(a, m, 1).ToString("MMM"), gM.Where(g => g.Moneda != "USD").Sum(MontoEfectivo), iM.Sum(i => i.Monto)));
         }
         vm.Historico = historico;
         return vm;

@@ -51,9 +51,16 @@
             </div>
 
             <div class="form-group">
-                <label>Monto total ($)</label>
-                <input asp-for="VM.Monto" type="number" step="0.01" min="0"
-                       id="monto-total" oninput="onMontoChange()" />
+                <label>Monto total</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <select asp-for="VM.Moneda" id="sel-moneda" onchange="onMonedaChange()"
+                            style="width:88px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.88rem;flex-shrink:0">
+                        <option value="ARS">$ ARS</option>
+                        <option value="USD">U$D USD</option>
+                    </select>
+                    <input asp-for="VM.Monto" type="number" step="0.01" min="0"
+                           id="monto-total" oninput="onMontoChange()" style="flex:1" />
+                </div>
             </div>
 
             <div class="form-group">
@@ -277,6 +284,9 @@
         function onDescChange(idx,input)      { participantes[idx].descripcion = input.value; }
         function onMontoPartChange(idx,input) { participantes[idx].monto = parseFloat(input.value)||0; actualizarTotales(); }
         function onMontoChange()              { actualizarTotales(); calcMontoCuota(); }
+        function onMonedaChange() {
+            calcMontoCuota();
+        }
         function eliminarParticipante(idx)    { participantes.splice(idx,1); renderParticipantes(); }
 
         function dividirIgual() {

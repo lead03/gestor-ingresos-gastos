@@ -25,6 +25,10 @@
         <div class="kpi-label">Gastos</div>
         <div class="kpi-value red">$ @Peso(vm.TotalGastos)</div>
         <div class="kpi-delta">Fijos: $@Peso(vm.TotalGastosFijos) · Variables: $@Peso(vm.TotalGastosVariables)</div>
+        @if (vm.TotalGastosUsd > 0)
+        {
+            <div class="kpi-delta" style="color:#64b5f6;margin-top:4px">+ U$D @Peso(vm.TotalGastosUsd)</div>
+        }
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Balance</div>

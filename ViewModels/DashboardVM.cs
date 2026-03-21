@@ -11,6 +11,7 @@ public class DashboardVM
     public decimal Balance => TotalIngresos - TotalGastos;
     public decimal TotalGastosFijos { get; set; }
     public decimal TotalGastosVariables { get; set; }
+    public decimal TotalGastosUsd { get; set; }
 
     // Por categoría (para gráfico torta)
     public List<(string Cat, decimal Total)> GastosPorCategoria { get; set; } = new();

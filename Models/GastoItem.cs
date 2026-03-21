@@ -21,6 +21,9 @@ public class GastoItem
     [MaxLength(200)]
     public string? Descripcion { get; set; }
 
+    [MaxLength(3)]
+    public string Moneda { get; set; } = "ARS"; // "ARS" | "USD"
+
     // Medio de pago: cuenta o tarjeta (mutuamente excluyentes)
     public int? CuentaId  { get; set; }
     public Cuenta?  Cuenta    { get; set; }

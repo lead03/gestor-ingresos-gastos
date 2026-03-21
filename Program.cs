@@ -88,6 +88,8 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE CategoriasGasto ADD COLUMN Habilitada INTEGER NOT NULL DEFAULT 1"); } catch { /* ya existe */ }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Gastos ADD COLUMN Moneda TEXT NOT NULL DEFAULT 'ARS'"); } catch { }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas ADD COLUMN Moneda TEXT NOT NULL DEFAULT 'ARS'"); } catch { }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

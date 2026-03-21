@@ -22,14 +22,17 @@
     <div class="total-item">
         <span class="lbl">Gastos fijos</span>
         <span class="val red">$ @Peso(vm.TotalFijos)</span>
+        @if (vm.TotalFijosUsd > 0) { <span class="val" style="font-size:.78rem;color:#64b5f6">U$D @Peso(vm.TotalFijosUsd)</span> }
     </div>
     <div class="total-item">
         <span class="lbl">Gastos variables</span>
         <span class="val amber">$ @Peso(vm.TotalVariables)</span>
+        @if (vm.TotalVariablesUsd > 0) { <span class="val" style="font-size:.78rem;color:#64b5f6">U$D @Peso(vm.TotalVariablesUsd)</span> }
     </div>
     <div class="total-item">
         <span class="lbl">Total</span>
         <span class="val">$ @Peso(vm.Total)</span>
+        @if (vm.TotalUsd > 0) { <span class="val" style="font-size:.78rem;color:#64b5f6">+ U$D @Peso(vm.TotalUsd)</span> }
     </div>
 </div>
 
@@ -55,10 +58,14 @@
             }
             @foreach (var grp in vm.PorDia.OrderBy(x => x.Key))
             {
-                decimal totalDia = grp.Value.Sum(g => g.MiParteMes);
+                decimal totalDiaArs = grp.Value.Where(g => g.Moneda != "USD").Sum(g => g.MiParteMes);
+                decimal totalDiaUsd = grp.Value.Where(g => g.Moneda == "USD").Sum(g => g.MiParteMes);
                 <tr class="day-row">
                     <td colspan="4">Día @grp.Key</td>
-                    <td class="text-right" colspan="4">$ @Peso(totalDia)</td>
+                    <td class="text-right" colspan="4">
+                        $ @Peso(totalDiaArs)
+                        @if (totalDiaUsd > 0) { <span style="font-size:.78rem;color:#64b5f6;margin-left:8px">+ U$D @Peso(totalDiaUsd)</span> }
+                    </td>
                 </tr>
                 foreach (var g in grp.Value)
                 {
@@ -79,15 +86,22 @@
                         </td>
                         <td>@g.MedioPagoNombre</td>
                         <td class="text-right amount">
-                            $ @Peso(g.MontoMes)
+                            @if (g.Moneda == "USD")
+                            {
+                                <span style="font-size:.72rem;background:#1565c0;color:#90caf9;border-radius:4px;padding:1px 5px;margin-right:4px">USD</span>@:U$D @Peso(g.MontoMes)
+                            }
+                            else
+                            {
+                                @:$ @Peso(g.MontoMes)
+                            }
                             @if (g.TarjetaCuota != null && g.TarjetaCuota.TotalCuotas > 1)
                             {
                                 <div style="font-size:.72rem;color:var(--text2)">
-                                    @(g.TarjetaCuota.CuotasPagadas + 1)/@g.TarjetaCuota.TotalCuotas de $ @Peso(g.Monto)
+                                    @(g.TarjetaCuota.CuotasPagadas + 1)/@g.TarjetaCuota.TotalCuotas de @(g.Moneda == "USD" ? "U$D" : "$") @Peso(g.Monto)
                                 </div>
                             }
                         </td>
-                        <td class="text-right amount @(g.SeDivide?"amber":"")">$ @Peso(miParte)</td>
+                        <td class="text-right amount @(g.SeDivide?"amber":"")">@(g.Moneda == "USD" ? "U$D" : "$") @Peso(miParte)</td>
                         <td class="text-center">
                             <span class="badge @(g.Categoria.Tipo=="Fijo"?"badge-fijo":"badge-var")">@g.Categoria.Tipo</span>
                         </td>
@@ -112,7 +126,10 @@
             <tfoot>
                 <tr>
                     <td colspan="5">TOTAL</td>
-                    <td class="text-right">$ @Peso(vm.Total)</td>
+                    <td class="text-right">
+                        $ @Peso(vm.Total)
+                        @if (vm.TotalUsd > 0) { <div style="font-size:.78rem;color:#64b5f6">+ U$D @Peso(vm.TotalUsd)</div> }
+                    </td>
                     <td colspan="2"></td>
                 </tr>
             </tfoot>
