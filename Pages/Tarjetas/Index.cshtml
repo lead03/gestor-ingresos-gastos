@@ -40,7 +40,14 @@
             <option value="">— Todas las tarjetas —</option>
             @foreach (var t in vm.Tarjetas)
             {
-                <option value="@t.Id" @(vm.TarjetaIdFiltro == t.Id ? "selected" : "")>@t.Nombre</option>
+                if (vm.TarjetaIdFiltro == t.Id)
+                {
+                    <option value="@t.Id" selected="selected">@t.Nombre</option>
+                }
+                else
+                {
+                    <option value="@t.Id">@t.Nombre</option>
+                }
             }
         </select>
         @if (vm.TarjetaIdFiltro.HasValue)
