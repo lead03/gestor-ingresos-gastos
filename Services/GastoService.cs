@@ -98,6 +98,7 @@ public class GastoService(
             tarjetaCuotaId = cuotaResult.Value; // ID de la primera cuota
         }
 
+        int gastoId;
         if (vm.Id == 0)
         {
             var gasto = new GastoItem
@@ -110,6 +111,7 @@ public class GastoService(
                 TarjetaCuotaId = tarjetaCuotaId
             };
             await gastoRepo.AddAsync(gasto);
+            gastoId = gasto.Id;
 
             if (vm.SeDivide && vm.Participantes.Any())
                 await GuardarParticipantesAsync(gasto.Id, vm.Participantes);
@@ -128,9 +130,18 @@ public class GastoService(
 
             await gastoRepo.UpdateAsync(g);
             await participanteRepo.DeleteByGastoAsync(vm.Id);
+            gastoId = vm.Id;
 
             if (vm.SeDivide && vm.Participantes.Any())
                 await GuardarParticipantesAsync(vm.Id, vm.Participantes);
+        }
+
+        // Actualizar GastoItemId en todas las cuotas del grupo
+        if (vm.TarjetaId.HasValue && vm.CantidadCuotas >= 1)
+        {
+            var fechaCompra = new DateTime(vm.Anio, vm.Mes, vm.Dia);
+            await tarjetaRepo.ActualizarGastoIdCuotasAsync(
+                vm.TarjetaId.Value, fechaCompra, vm.Monto, vm.CantidadCuotas, gastoId);
         }
 
         return Result.Ok();

@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<Persona>           Personas           => Set<Persona>();
     public DbSet<EfectivoDesglose>    EfectivoDesgloses    => Set<EfectivoDesglose>();
     public DbSet<TarjetaFechaMensual> TarjetaFechasMensuales => Set<TarjetaFechaMensual>();
+    public DbSet<ConfigOpcion> ConfigOpciones => Set<ConfigOpcion>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -88,6 +89,10 @@ public class AppDbContext : DbContext
 
         mb.Entity<TarjetaFechaMensual>()
             .HasIndex(f => new { f.TarjetaId, f.Mes, f.Anio })
+            .IsUnique();
+
+        mb.Entity<ConfigOpcion>()
+            .HasIndex(c => new { c.Tipo, c.Valor })
             .IsUnique();
 
         // Ingreso → Cuenta

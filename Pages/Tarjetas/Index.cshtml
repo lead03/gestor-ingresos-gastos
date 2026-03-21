@@ -17,7 +17,7 @@
         <div class="page-subtitle">Resumen @MesNombre(vm.Mes) @vm.Anio</div>
     </div>
     <div class="btn-group">
-        <a asp-page="./EditCuota" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-primary">+ Nueva compra</a>
+        <a asp-page="/Gastos/Edit" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-primary">+ Nueva compra</a>
     </div>
 </div>
 
@@ -152,7 +152,15 @@
                                 <div style="font-size:.72rem;color:var(--text2);margin-top:2px">@c.CuotasRestantes restante(s)</div>
                             </td>
                             <td class="text-center">
-                                <a asp-page="./EditCuota" asp-route-id="@c.Id" class="btn btn-ghost btn-sm">✎</a>
+                                @if (c.GastoItemId.HasValue)
+                                {
+                                    <a asp-page="/Gastos/Edit" asp-route-id="@c.GastoItemId" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio"
+                                       class="btn btn-ghost btn-sm" title="Editar gasto">✎</a>
+                                }
+                                else
+                                {
+                                    <a asp-page="./EditCuota" asp-route-id="@c.Id" class="btn btn-ghost btn-sm" title="Editar cuota">✎</a>
+                                }
                             </td>
                         </tr>
                     }

@@ -28,4 +28,7 @@ public interface ITarjetaRepository
 
     // Cuotas de una tarjeta cuyos gastos se compraron en un mes/año dado (para recalcular)
     Task<List<TarjetaCuota>> GetCuotasByTarjetaYCompraAsync(int tarjetaId, int mesFechaCompra, int anioFechaCompra);
+
+    Task ActualizarGastoIdCuotasAsync(int tarjetaId, DateTime fechaCompra, decimal montoTotal, int totalCuotas, int gastoItemId);
+    Task<List<TarjetaCuota>> GetCuotasParaRecalcularAsync(int tarjetaId, int mesDesde, int anioDesde);
 }

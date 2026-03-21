@@ -123,4 +123,24 @@ public class TarjetaRepository(AppDbContext db) : ITarjetaRepository
                     && tc.FechaCompra.Month == mesFechaCompra
                     && tc.FechaCompra.Year  == anioFechaCompra)
           .ToListAsync();
+
+    public async Task ActualizarGastoIdCuotasAsync(int tarjetaId, DateTime fechaCompra, decimal montoTotal, int totalCuotas, int gastoItemId)
+    {
+        var cuotas = await db.TarjetaCuotas
+            .Where(tc => tc.TarjetaId   == tarjetaId
+                      && tc.FechaCompra == fechaCompra
+                      && tc.MontoTotal  == montoTotal
+                      && tc.TotalCuotas == totalCuotas)
+            .ToListAsync();
+        foreach (var c in cuotas)
+            c.GastoItemId = gastoItemId;
+        await db.SaveChangesAsync();
+    }
+
+    public Task<List<TarjetaCuota>> GetCuotasParaRecalcularAsync(int tarjetaId, int mesDesde, int anioDesde) =>
+        db.TarjetaCuotas
+          .Where(tc => tc.TarjetaId == tarjetaId
+                    && (tc.FechaCompra.Year > anioDesde
+                        || (tc.FechaCompra.Year == anioDesde && tc.FechaCompra.Month >= mesDesde)))
+          .ToListAsync();
 }

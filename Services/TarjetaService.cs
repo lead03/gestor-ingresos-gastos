@@ -122,6 +122,9 @@ public class TarjetaService(ITarjetaRepository repo)
         {
             var t = await repo.GetByIdAsync(vm.Id);
             if (t == null) return Result.Fail("Tarjeta no encontrada.");
+
+            bool cambioDiaCierre = t.DiaCierre != vm.DiaCierre;
+
             t.Nombre         = vm.Nombre;
             t.Banco          = vm.Banco;
             t.Red            = vm.Red;
@@ -129,8 +132,58 @@ public class TarjetaService(ITarjetaRepository repo)
             t.DiaVencimiento = vm.DiaVencimiento;
             t.LimiteCredito  = vm.LimiteCredito;
             await repo.UpdateTarjetaAsync(t);
+
+            // Si cambió el DiaCierre por defecto, recalcular cuotas del mes actual
+            // y meses futuros que NO tengan una fecha personalizada (TarjetaFechaMensual)
+            if (cambioDiaCierre)
+            {
+                var hoy = DateTime.Today;
+                await RecalcularCuotasSinFechaPersonalizadaAsync(vm.Id, vm.DiaCierre, hoy.Month, hoy.Year);
+            }
         }
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Recalcula MesCierre de cuotas cuyas fechas de compra son >= mesDesde/anioDesde
+    /// y cuyo mes de compra NO tiene una TarjetaFechaMensual personalizada.
+    /// </summary>
+    private async Task RecalcularCuotasSinFechaPersonalizadaAsync(int tarjetaId, int nuevoDiaCierre, int mesDesde, int anioDesde)
+    {
+        // Obtener todos los meses de compra >= mesDesde/anioDesde para esta tarjeta
+        var todasCuotas = await repo.GetCuotasParaRecalcularAsync(tarjetaId, mesDesde, anioDesde);
+
+        // Agrupar por mes/año de la FechaCompra
+        var gruposPorMesCompra = todasCuotas
+            .GroupBy(c => new { c.FechaCompra.Year, c.FechaCompra.Month })
+            .ToList();
+
+        foreach (var mesGrupo in gruposPorMesCompra)
+        {
+            // ¿Hay fecha personalizada para este mes de compra?
+            var fechaPersonalizada = await repo.GetFechaMensualAsync(tarjetaId, mesGrupo.Key.Month, mesGrupo.Key.Year);
+            if (fechaPersonalizada != null) continue; // tiene fecha propia, no tocar
+
+            // Agrupar por "compra" (mismo FechaCompra+Monto+Cuotas) y recalcular
+            var gruposCompra = mesGrupo.GroupBy(c => new { c.FechaCompra, c.MontoTotal, c.TotalCuotas });
+            foreach (var grupo in gruposCompra)
+            {
+                var fechaCompra = grupo.Key.FechaCompra;
+                bool cierraEsteMes = fechaCompra.Day <= nuevoDiaCierre;
+                int  primerMes  = cierraEsteMes ? fechaCompra.Month : (fechaCompra.Month == 12 ? 1 : fechaCompra.Month + 1);
+                int  primerAnio = cierraEsteMes ? fechaCompra.Year  : (fechaCompra.Month == 12 ? fechaCompra.Year + 1 : fechaCompra.Year);
+
+                foreach (var cuota in grupo)
+                {
+                    int mes  = primerMes  + cuota.CuotasPagadas;
+                    int anio = primerAnio;
+                    while (mes > 12) { mes -= 12; anio++; }
+                    cuota.MesCierre  = mes;
+                    cuota.AnioCierre = anio;
+                    await repo.UpdateCuotaAsync(cuota);
+                }
+            }
+        }
     }
 
     public async Task<Result> DeleteTarjetaAsync(int id)

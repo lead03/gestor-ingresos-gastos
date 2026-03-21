@@ -97,7 +97,7 @@ public class EditFechaMensualModel(TarjetaService svc) : PageModel
     }
 }
 
-public class EditTarjetaModel(TarjetaService svc) : PageModel
+public class EditTarjetaModel(TarjetaService svc, ConfiguracionService cfgSvc) : PageModel
 {
     [BindProperty]
     public TarjetaFormVM VM { get; set; } = new();
@@ -121,6 +121,8 @@ public class EditTarjetaModel(TarjetaService svc) : PageModel
                 };
             }
         }
+        VM.OpcionesRed   = (await cfgSvc.GetRedesAsync()).Select(c => c.Valor).ToList();
+        VM.OpcionesBanco = (await cfgSvc.GetBancosAsync()).Select(c => c.Valor).ToList();
         ViewData["Active"] = "tarjetas";
     }
 

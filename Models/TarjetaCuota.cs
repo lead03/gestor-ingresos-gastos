@@ -22,6 +22,9 @@ public class TarjetaCuota
 
     public int CuotasPagadas { get; set; }
 
+    // Enlace al GastoItem que originó esta cuota (para navegar desde el resumen de tarjeta)
+    public int? GastoItemId { get; set; }
+
     // Propiedad calculada — no se persiste en la DB
     public int CuotasRestantes => TotalCuotas - CuotasPagadas;
 

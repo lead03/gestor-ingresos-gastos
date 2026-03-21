@@ -20,6 +20,7 @@
         <a asp-page="/Cuentas/Index"   class="nav-link @(ViewData["Active"]?.ToString()=="cuentas"  ?"active":"")">Cuentas</a>
         <a asp-page="/Personas/Index"  class="nav-link @(ViewData["Active"]?.ToString()=="personas" ?"active":"")">Personas</a>
         <a asp-page="/MeDeben/Index"   class="nav-link @(ViewData["Active"]?.ToString()=="medeben"  ?"active":"")">Deudas</a>
+        <a asp-page="/Configuracion/Index" class="nav-link @(ViewData["Active"]?.ToString()=="configuracion"?"active":"")">⚙ Config.</a>
     </div>
     <div class="nav-period">
         <form method="get" id="period-form" style="display:flex;gap:8px;align-items:center">

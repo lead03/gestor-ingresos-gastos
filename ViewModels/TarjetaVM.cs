@@ -73,6 +73,10 @@ public class TarjetaFormVM
 
     [Range(0, double.MaxValue, ErrorMessage = "El límite no puede ser negativo.")]
     public decimal? LimiteCredito { get; set; }
+
+    // Para los desplegables dinámicos
+    public List<string> OpcionesRed   { get; set; } = new();
+    public List<string> OpcionesBanco { get; set; } = new();
 }
 
 // ── Form fechas mensuales de una tarjeta ─────────────────────────────────

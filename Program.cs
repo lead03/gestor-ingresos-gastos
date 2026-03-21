@@ -25,6 +25,8 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<DeudaService>();
 builder.Services.AddScoped<PersonaService>();
 builder.Services.AddScoped<CuentaService>();
+builder.Services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
+builder.Services.AddScoped<ConfiguracionService>();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -50,6 +52,41 @@ using (var scope = app.Services.CreateScope())
             )
             """);
     } catch { /* ya existe */ }
+
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas ADD COLUMN GastoItemId INTEGER"); } catch { /* ya existe */ }
+
+    // Migración manual: tabla de opciones configurables
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS ConfigOpciones (
+                Id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                Tipo   TEXT    NOT NULL,
+                Valor  TEXT    NOT NULL,
+                Orden  INTEGER NOT NULL DEFAULT 0,
+                UNIQUE (Tipo, Valor)
+            )
+            """);
+    } catch { /* ya existe */ }
+
+    // Seed de opciones por defecto (si la tabla está vacía)
+    var hayRedes  = db.ConfigOpciones.Any(c => c.Tipo == "Red");
+    var hayBancos = db.ConfigOpciones.Any(c => c.Tipo == "Banco");
+
+    if (!hayRedes)
+    {
+        string[] redes = ["VISA", "Mastercard", "AMEX", "Naranja", "Cabal"];
+        for (int i = 0; i < redes.Length; i++)
+            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Red", Valor = redes[i], Orden = i + 1 });
+        db.SaveChanges();
+    }
+    if (!hayBancos)
+    {
+        string[] bancos = ["Galicia", "Santander", "MercadoPago", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC", "Naranja X"];
+        for (int i = 0; i < bancos.Length; i++)
+            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Banco", Valor = bancos[i], Orden = i + 1 });
+        db.SaveChanges();
+    }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

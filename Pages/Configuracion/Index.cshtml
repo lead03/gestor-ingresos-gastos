@@ -1,0 +1,68 @@
+@page
+@model ControlGastos.Pages.Configuracion.IndexModel
+@{
+    ViewData["Title"] = "Configuración";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+}
+
+<div class="page-header">
+    <div><div class="page-title">Configuración</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+    <!-- Redes de tarjeta -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Redes de tarjeta</span>
+        </div>
+        <div style="padding:16px">
+            <form method="post" asp-page-handler="AgregarRed" style="display:flex;gap:8px;margin-bottom:16px">
+                <input name="NuevaRed" type="text" placeholder="Ej: VISA" class="form-control"
+                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" />
+                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+            </form>
+            <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+                @foreach (var r in Model.Redes)
+                {
+                    <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
+                        <span style="font-size:.9rem">@r.Valor</span>
+                        <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555;padding:2px 8px"
+                                    onclick="return confirm('¿Eliminar @r.Valor?')">✕</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <!-- Bancos / Emisores -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Bancos / Emisores</span>
+        </div>
+        <div style="padding:16px">
+            <form method="post" asp-page-handler="AgregarBanco" style="display:flex;gap:8px;margin-bottom:16px">
+                <input name="NuevoBanco" type="text" placeholder="Ej: Galicia" class="form-control"
+                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" />
+                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+            </form>
+            <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+                @foreach (var b in Model.Bancos)
+                {
+                    <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
+                        <span style="font-size:.9rem">@b.Valor</span>
+                        <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                            <input type="hidden" name="id" value="@b.Id" />
+                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555;padding:2px 8px"
+                                    onclick="return confirm('¿Eliminar @b.Valor?')">✕</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+</div>

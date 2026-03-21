@@ -25,30 +25,45 @@
 
             <div class="form-group">
                 <label>Banco / Emisor</label>
-                <input asp-for="VM.Banco" type="text" placeholder="Ej: Galicia" />
+                <select asp-for="VM.Banco">
+                    <option value="">— Seleccionar —</option>
+                    @foreach (var b in vm.OpcionesBanco)
+                    {
+                        <option value="@b">@b</option>
+                    }
+                </select>
             </div>
 
             <div class="form-group">
                 <label>Red</label>
                 <select asp-for="VM.Red">
-                    <option value="VISA">VISA</option>
-                    <option value="Mastercard">Mastercard</option>
-                    <option value="AMEX">AMEX</option>
-                    <option value="Naranja">Naranja</option>
-                    <option value="Cabal">Cabal</option>
+                    <option value="">— Seleccionar —</option>
+                    @foreach (var r in vm.OpcionesRed)
+                    {
+                        <option value="@r">@r</option>
+                    }
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>Día de cierre</label>
-                <input asp-for="VM.DiaCierre" type="number" min="1" max="31" />
-                <span asp-validation-for="VM.DiaCierre" class="val-error"></span>
-            </div>
-
-            <div class="form-group">
-                <label>Día de vencimiento</label>
-                <input asp-for="VM.DiaVencimiento" type="number" min="1" max="31" />
-                <span asp-validation-for="VM.DiaVencimiento" class="val-error"></span>
+            <div class="form-group full" style="background:var(--bg2);border-radius:8px;padding:12px 16px;border-left:3px solid var(--accent2)">
+                <span style="font-size:.82rem;color:var(--accent2);font-weight:600">📅 Fechas de cierre por defecto</span>
+                <p style="font-size:.78rem;color:var(--text2);margin:4px 0 12px">
+                    Estas fechas se usan cuando no hay una fecha personalizada para un mes específico.
+                    Al guardar, se recalculan las cuotas del mes actual y posteriores que no tengan fecha personalizada.
+                    Los meses anteriores no se modifican.
+                </p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div>
+                        <label style="font-size:.82rem">Día de cierre</label>
+                        <input asp-for="VM.DiaCierre" type="number" min="1" max="31" />
+                        <span asp-validation-for="VM.DiaCierre" class="val-error"></span>
+                    </div>
+                    <div>
+                        <label style="font-size:.82rem">Día de vencimiento</label>
+                        <input asp-for="VM.DiaVencimiento" type="number" min="1" max="31" />
+                        <span asp-validation-for="VM.DiaVencimiento" class="val-error"></span>
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
