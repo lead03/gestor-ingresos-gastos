@@ -232,6 +232,47 @@ public class GastoService(
         }));
     }
 
+    // ── Gestión de categorías ─────────────────────────────────────────
+    public Task<List<CategoriaGasto>> GetTodasCategoriasAsync() =>
+        gastoRepo.GetTodasCategoriasAsync();
+
+    public async Task AgregarCategoriaAsync(string nombre, string tipo)
+    {
+        await gastoRepo.AddCategoriaAsync(new CategoriaGasto
+        {
+            Nombre     = nombre.Trim(),
+            Tipo       = tipo,
+            Habilitada = true
+        });
+    }
+
+    public async Task EditarCategoriaAsync(int id, string nombre, string tipo)
+    {
+        var todas  = await gastoRepo.GetTodasCategoriasAsync();
+        var cat    = todas.FirstOrDefault(c => c.Id == id);
+        if (cat == null) return;
+        cat.Nombre = nombre.Trim();
+        cat.Tipo   = tipo;
+        await gastoRepo.UpdateCategoriaAsync(cat);
+    }
+
+    /// <summary>
+    /// Si tiene gastos → deshabilita (soft delete). Si no → elimina permanentemente.
+    /// </summary>
+    public async Task<string> DeshabilitarOEliminarAsync(int id)
+    {
+        if (await gastoRepo.CategoriaHasGastosAsync(id))
+        {
+            await gastoRepo.SetHabilitadaAsync(id, false);
+            return "deshabilitada";
+        }
+        await gastoRepo.DeleteCategoriaAsync(id);
+        return "eliminada";
+    }
+
+    public Task HabilitarCategoriaAsync(int id) =>
+        gastoRepo.SetHabilitadaAsync(id, true);
+
     private async Task<List<CuentaResumenVM>> ObtenerCuentasConSaldoAsync()
     {
         var cuentas  = await cuentaRepo.GetAllActivasAsync();

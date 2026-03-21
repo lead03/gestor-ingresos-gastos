@@ -28,6 +28,7 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
 
     public Task<List<CategoriaGasto>> GetCategoriasAsync() =>
         db.CategoriasGasto
+          .Where(c => c.Habilitada)
           .OrderBy(c => c.Tipo)
           .ThenBy(c => c.Nombre)
           .ToListAsync();
@@ -52,6 +53,39 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
             db.Gastos.Remove(g);
             await db.SaveChangesAsync();
         }
+    }
+
+    public Task<List<CategoriaGasto>> GetTodasCategoriasAsync() =>
+        db.CategoriasGasto
+          .OrderBy(c => c.Tipo)
+          .ThenBy(c => c.Nombre)
+          .ToListAsync();
+
+    public Task<bool> CategoriaHasGastosAsync(int id) =>
+        db.Gastos.AnyAsync(g => g.CategoriaId == id);
+
+    public async Task AddCategoriaAsync(CategoriaGasto cat)
+    {
+        db.CategoriasGasto.Add(cat);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateCategoriaAsync(CategoriaGasto cat)
+    {
+        db.CategoriasGasto.Update(cat);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task SetHabilitadaAsync(int id, bool habilitada)
+    {
+        var cat = await db.CategoriasGasto.FindAsync(id);
+        if (cat != null) { cat.Habilitada = habilitada; await db.SaveChangesAsync(); }
+    }
+
+    public async Task DeleteCategoriaAsync(int id)
+    {
+        var cat = await db.CategoriasGasto.FindAsync(id);
+        if (cat != null) { db.CategoriasGasto.Remove(cat); await db.SaveChangesAsync(); }
     }
 }
 

@@ -87,6 +87,7 @@ using (var scope = app.Services.CreateScope())
             db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Banco", Valor = bancos[i], Orden = i + 1 });
         db.SaveChanges();
     }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE CategoriasGasto ADD COLUMN Habilitada INTEGER NOT NULL DEFAULT 1"); } catch { /* ya existe */ }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

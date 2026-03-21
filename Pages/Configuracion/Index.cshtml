@@ -3,12 +3,145 @@
 @{
     ViewData["Title"] = "Configuración";
     Layout = "/Pages/Shared/_Layout.cshtml";
+
+    var catsFijas     = Model.Categorias.Where(c => c.Tipo == "Fijo"     && c.Habilitada).OrderBy(c => c.Nombre).ToList();
+    var catsVariables = Model.Categorias.Where(c => c.Tipo == "Variable" && c.Habilitada).OrderBy(c => c.Nombre).ToList();
+    var catsDeshabl   = Model.Categorias.Where(c => !c.Habilitada).OrderBy(c => c.Tipo).ThenBy(c => c.Nombre).ToList();
 }
 
 <div class="page-header">
     <div><div class="page-title">Configuración</div></div>
 </div>
 
+<!-- ── Categorías de gastos ─────────────────────────────────────────── -->
+<div class="card" style="margin-bottom:24px">
+    <div class="card-header">
+        <span class="card-title">Categorías de gastos</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px">
+
+        <!-- Gastos Fijos -->
+        <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+                Gastos Fijos
+            </div>
+            <ul style="list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px" id="lista-fijos">
+                @foreach (var c in catsFijas)
+                {
+                    <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
+                            <span style="font-size:.88rem">@c.Nombre</span>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-ghost btn-sm"
+                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', '@c.Tipo')">✎</button>
+                                <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                            onclick="return confirm('¿Deshabilitar @c.Nombre? Si tiene gastos asociados se deshabilitará; si no, se eliminará permanentemente.')">✕</button>
+                                </form>
+                            </div>
+                        </div>
+                        <!-- Fila de edición inline (oculta) -->
+                        <div id="edit-cat-@c.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
+                            <form method="post" asp-page-handler="EditarCat" style="display:flex;gap:8px;align-items:center">
+                                <input type="hidden" name="EditCatId" value="@c.Id" />
+                                <input type="text" name="EditCatNombre" value="@c.Nombre"
+                                       style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
+                                <select name="EditCatTipo"
+                                        style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem">
+                                    <option value="Fijo"     selected="@(c.Tipo=="Fijo")">Fijo</option>
+                                    <option value="Variable" selected="@(c.Tipo=="Variable")">Variable</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">✓</button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
+                            </form>
+                        </div>
+                    </li>
+                }
+            </ul>
+            <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px">
+                <input type="hidden" name="NuevaCatTipo" value="Fijo" />
+                <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría fija..."
+                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
+                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+            </form>
+        </div>
+
+        <!-- Gastos Variables -->
+        <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+                Gastos Variables
+            </div>
+            <ul style="list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px">
+                @foreach (var c in catsVariables)
+                {
+                    <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
+                            <span style="font-size:.88rem">@c.Nombre</span>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-ghost btn-sm"
+                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', '@c.Tipo')">✎</button>
+                                <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                            onclick="return confirm('¿Deshabilitar @c.Nombre? Si tiene gastos asociados se deshabilitará; si no, se eliminará permanentemente.')">✕</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div id="edit-cat-@c.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
+                            <form method="post" asp-page-handler="EditarCat" style="display:flex;gap:8px;align-items:center">
+                                <input type="hidden" name="EditCatId" value="@c.Id" />
+                                <input type="text" name="EditCatNombre" value="@c.Nombre"
+                                       style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
+                                <select name="EditCatTipo"
+                                        style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem">
+                                    <option value="Fijo"     selected="@(c.Tipo=="Fijo")">Fijo</option>
+                                    <option value="Variable" selected="@(c.Tipo=="Variable")">Variable</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">✓</button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
+                            </form>
+                        </div>
+                    </li>
+                }
+            </ul>
+            <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px">
+                <input type="hidden" name="NuevaCatTipo" value="Variable" />
+                <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría variable..."
+                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
+                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+            </form>
+        </div>
+    </div>
+
+    @if (catsDeshabl.Any())
+    {
+        <div style="padding:0 16px 16px">
+            <details id="section-deshabilitadas">
+                <summary style="cursor:pointer;font-size:.82rem;color:var(--text2);font-weight:600;padding:8px 0;user-select:none">
+                    ▸ Deshabilitadas (@catsDeshabl.Count)
+                </summary>
+                <ul style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px">
+                    @foreach (var c in catsDeshabl)
+                    {
+                        <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
+                            <span style="font-size:.85rem">
+                                @c.Nombre
+                                <span style="font-size:.72rem;color:var(--text2);margin-left:6px">(@c.Tipo)</span>
+                            </span>
+                            <form method="post" asp-page-handler="HabilitarCat" style="display:inline">
+                                <input type="hidden" name="id" value="@c.Id" />
+                                <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.75rem">↑ Habilitar</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            </details>
+        </div>
+    }
+</div>
+
+<!-- ── Redes y Bancos ────────────────────────────────────────────────── -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
 
     <!-- Redes de tarjeta -->
@@ -18,7 +151,7 @@
         </div>
         <div style="padding:16px">
             <form method="post" asp-page-handler="AgregarRed" style="display:flex;gap:8px;margin-bottom:16px">
-                <input name="NuevaRed" type="text" placeholder="Ej: VISA" class="form-control"
+                <input name="NuevaRed" type="text" placeholder="Ej: VISA"
                        style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" />
                 <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
             </form>
@@ -45,7 +178,7 @@
         </div>
         <div style="padding:16px">
             <form method="post" asp-page-handler="AgregarBanco" style="display:flex;gap:8px;margin-bottom:16px">
-                <input name="NuevoBanco" type="text" placeholder="Ej: Galicia" class="form-control"
+                <input name="NuevoBanco" type="text" placeholder="Ej: Galicia"
                        style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" />
                 <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
             </form>
@@ -64,5 +197,27 @@
             </ul>
         </div>
     </div>
-
 </div>
+
+@section Scripts {
+<script>
+function toggleEditCat(id, nombre, tipo) {
+    const row = document.getElementById('edit-cat-' + id);
+    const visible = row.style.display !== 'none';
+    // Cerrar todos los otros
+    document.querySelectorAll('[id^="edit-cat-"]').forEach(el => el.style.display = 'none');
+    if (!visible) {
+        row.style.display = 'block';
+        // Si hay anchor de deshabilitadas abierto, scrollear
+        const anchor = document.getElementById('section-deshabilitadas');
+        if (anchor) anchor.open = false;
+    }
+}
+
+// Abrir sección de deshabilitadas si la URL tiene #categorias
+if (window.location.hash === '#categorias') {
+    const d = document.getElementById('section-deshabilitadas');
+    if (d) d.open = true;
+}
+</script>
+}

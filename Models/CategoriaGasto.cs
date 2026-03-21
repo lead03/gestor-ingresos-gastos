@@ -11,6 +11,7 @@ public class CategoriaGasto
 
     // "Fijo" | "Variable"
     public string Tipo { get; set; } = "Variable";
+    public bool Habilitada { get; set; } = true;
 
     public ICollection<GastoItem> Gastos { get; set; } = new List<GastoItem>();
 }

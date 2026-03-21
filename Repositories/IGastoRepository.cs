@@ -8,6 +8,12 @@ public interface IGastoRepository
     Task<GastoItem?> GetByIdAsync(int id);
     Task<GastoItem?> GetByIdWithParticipantesAsync(int id);
     Task<List<CategoriaGasto>> GetCategoriasAsync();
+    Task<List<CategoriaGasto>> GetTodasCategoriasAsync();   // incluye deshabilitadas
+    Task<bool> CategoriaHasGastosAsync(int id);
+    Task AddCategoriaAsync(CategoriaGasto cat);
+    Task UpdateCategoriaAsync(CategoriaGasto cat);
+    Task SetHabilitadaAsync(int id, bool habilitada);
+    Task DeleteCategoriaAsync(int id);
     Task AddAsync(GastoItem gasto);
     Task UpdateAsync(GastoItem gasto);
     Task DeleteAsync(int id);
