@@ -52,7 +52,7 @@
 
             <div class="form-group full">
                 <label>Tipo de ingreso</label>
-                <select asp-for="VM.TipoIngresoId">
+                <select asp-for="VM.TipoIngresoId" id="tipo-ingreso-sel">
                     <option value="0">— Seleccionar tipo —</option>
                     @foreach (var t in vm.Tipos)
                     {
@@ -63,13 +63,13 @@
 
             <div class="form-group">
                 <label>Monto total ($)</label>
-                <input asp-for="VM.Monto" type="number" step="0.01" min="0"
-                       id="monto-total" oninput="actualizarTotales()" />
+                <input asp-for="VM.Monto" type="text" inputmode="decimal"
+                       id="monto-total" autocomplete="off" />
             </div>
 
             <div class="form-group">
                 <label>Descripción (opcional)</label>
-                <input asp-for="VM.Descripcion" type="text" maxlength="200"
+                <input asp-for="VM.Descripcion" type="text" maxlength="100"
                        placeholder="Ej: Sueldo mes, alquiler cobrado..." />
             </div>
 
@@ -108,7 +108,90 @@ const CUENTAS = JSON.parse('@Html.Raw(cuentasJson)');
 let distribuciones = JSON.parse('@Html.Raw(distribJson)');
 let nextKey = 0;
 
-// ── Fecha ────────────────────────────────────────────────────────
+const MAX_MONTO = 9_999_999_999.99;
+
+// ── Formateo de montos en tiempo real (es-AR) ─────────────────────
+function setupMoneyInput(el, onChangeCb) {
+    el.type = 'text';
+    el.setAttribute('inputmode', 'decimal');
+
+    el.addEventListener('keydown', function(e) {
+        const allowed = ['Backspace','Delete','Tab','Escape','Enter',
+                         'ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
+        if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+
+        if (/^\d$/.test(e.key)) {
+            // Bloquear 3er decimal
+            const commaIdx = el.value.indexOf(',');
+            if (commaIdx !== -1) {
+                const selStart = el.selectionStart;
+                const selEnd   = el.selectionEnd;
+                if (selStart > commaIdx) {
+                    const charsAfterComma = el.value.substring(commaIdx + 1, selStart);
+                    if (charsAfterComma.length >= 2 && selStart === selEnd) {
+                        e.preventDefault(); return;
+                    }
+                }
+            }
+            return;
+        }
+        if (e.key === ',') {
+            if (el.value.includes(',')) e.preventDefault();
+            return;
+        }
+        e.preventDefault();
+    });
+
+    el.addEventListener('input', function() {
+        const cursor   = el.selectionStart;
+        const oldVal   = el.value;
+        const dotsAntes = (oldVal.substring(0, cursor).match(/\./g) || []).length;
+
+        // Parse
+        const parts  = oldVal.replace(/\./g, '').split(',');
+        let intStr   = parts[0].replace(/\D/g, '');
+        const decStr = parts.length > 1 ? parts[1].substring(0, 2) : null;
+
+        // Max check on integer part
+        if (parseInt(intStr || '0', 10) > 9999999999) intStr = '9999999999';
+
+        const intFmt = intStr ? intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+        const newVal = decStr !== null ? `${intFmt},${decStr}` : intFmt;
+        el.value = newVal;
+
+        // Restaurar cursor compensando puntos agregados/quitados
+        const subNew    = newVal.substring(0, cursor);
+        const dotsDespues = (subNew.match(/\./g) || []).length;
+        const newCursor = Math.min(cursor + (dotsDespues - dotsAntes), newVal.length);
+        try { el.setSelectionRange(newCursor, newCursor); } catch(_) {}
+
+        if (onChangeCb) onChangeCb();
+    });
+
+    el.addEventListener('blur', function() {
+        const raw = getRawMoney(el);
+        if (raw > 0) {
+            el.value = raw.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        if (onChangeCb) onChangeCb();
+    });
+
+    // Valor inicial
+    const initVal = parseFloat(el.dataset.initValue || el.value) || 0;
+    if (initVal > 0) {
+        el.value = initVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+}
+
+function getRawMoney(el) {
+    return parseFloat((el.value || '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function restoreMoneyForSubmit(el) {
+    el.value = getRawMoney(el).toString();
+}
+
+// ── Fecha ─────────────────────────────────────────────────────────
 document.getElementById('fecha-ingreso').addEventListener('change', function() {
     const d = new Date(this.value + 'T00:00:00');
     document.getElementById('h-dia').value  = d.getDate();
@@ -117,54 +200,13 @@ document.getElementById('fecha-ingreso').addEventListener('change', function() {
 });
 document.getElementById('fecha-ingreso').dispatchEvent(new Event('change'));
 
-// ── Formateo de montos (es-AR) ────────────────────────────────────
-function initMoneyInput(el, onChangeCallback) {
-    el.type = 'number';
-    el.addEventListener('blur', function () {
-        const val = parseFloat(this.value);
-        if (!isNaN(val)) {
-            this._raw = val;
-            this.type = 'text';
-            this.value = val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-    });
-    el.addEventListener('focus', function () {
-        this.type = 'number';
-        if (this._raw !== undefined) this.value = this._raw;
-    });
-    el.addEventListener('input', function () {
-        if (onChangeCallback) onChangeCallback();
-    });
-    // Formatear valor inicial si existe
-    const initVal = parseFloat(el.value);
-    if (!isNaN(initVal) && initVal > 0) {
-        el._raw = initVal;
-        el.type = 'text';
-        el.value = initVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-}
-
-function getRawMoney(el) {
-    if (el._raw !== undefined && el.type === 'text') return el._raw;
-    return parseFloat(el.value) || 0;
-}
-
-function restoreMoneyForSubmit(el) {
-    el.type = 'number';
-    el.value = el._raw ?? (parseFloat(el.value) || 0);
-}
-
-// ── Distribuciones ───────────────────────────────────────────────
+// ── Distribuciones ────────────────────────────────────────────────
 function agregarCuenta(datos = {}) {
-    // Encontrar la primera cuenta que no esté ya asignada
     let cid = datos.cuentaId ?? null;
     if (cid === null) {
         const usadas = new Set(distribuciones.map(d => d.cuentaId));
-        const libre = CUENTAS.find(c => !usadas.has(c.id));
-        if (!libre) {
-            mostrarError('Todas las cuentas asignadas', 'Ya agregaste todas las cuentas disponibles.');
-            return;
-        }
+        const libre  = CUENTAS.find(c => !usadas.has(c.id));
+        if (!libre) { mostrarError('Todas las cuentas asignadas', 'Ya agregaste todas las cuentas disponibles.'); return; }
         cid = libre.id;
     }
     distribuciones.push({ _key: nextKey++, cuentaId: cid, monto: datos.monto ?? 0 });
@@ -182,15 +224,15 @@ function renderDistribuciones() {
             <select onchange="onCuentaChange(${idx}, this)" style="${s}">
                 ${CUENTAS.map(c => `<option value="${c.id}" ${d.cuentaId==c.id?'selected':''}>${c.nombre}</option>`).join('')}
             </select>
-            <input type="number" step="0.01" min="0" value="${d.monto}"
-                   data-idx="${idx}" class="distr-monto" style="${s}" placeholder="Monto" />
+            <input type="text" inputmode="decimal" value="${d.monto > 0 ? d.monto : ''}"
+                   data-idx="${idx}" data-init-value="${d.monto}" class="distr-monto"
+                   style="${s}" placeholder="0,00" />
             <button type="button" onclick="eliminarCuenta(${idx})" class="btn btn-danger btn-sm" style="padding:6px 10px">✕</button>`;
         lista.appendChild(row);
     });
-    // Inicializar formato en los inputs recién creados
     lista.querySelectorAll('.distr-monto').forEach(el => {
         const idx = parseInt(el.dataset.idx);
-        initMoneyInput(el, () => { distribuciones[idx].monto = getRawMoney(el); actualizarTotales(); });
+        setupMoneyInput(el, () => { distribuciones[idx].monto = getRawMoney(el); actualizarTotales(); });
     });
     actualizarTotales();
 }
@@ -198,50 +240,73 @@ function renderDistribuciones() {
 function onCuentaChange(idx, sel) {
     const cid = parseInt(sel.value);
     if (distribuciones.some((d, i) => i !== idx && d.cuentaId === cid)) {
-        mostrarError('Cuenta duplicada', 'Esa cuenta ya está asignada.');
+        mostrarError('Cuenta duplicada', 'Esa cuenta ya está asignada. Cada cuenta sólo puede aparecer una vez.');
         sel.value = distribuciones[idx].cuentaId;
         return;
     }
     distribuciones[idx].cuentaId = cid;
 }
-function onMontoDistrChange(idx, input) { distribuciones[idx].monto = getRawMoney(input); actualizarTotales(); }
+
 function eliminarCuenta(idx) { distribuciones.splice(idx, 1); renderDistribuciones(); }
 
 function dividirIgual() {
-    const total = getRawMoney(document.getElementById('monto-total'))||0;
+    const total = getRawMoney(document.getElementById('monto-total'));
     const n = distribuciones.length;
     if (!n || !total) return;
-    const parte = Math.floor((total/n)*100)/100;
-    distribuciones.forEach((d, i) => { d.monto = i > 0 ? parte : Math.round((total-(parte*(n-1)))*100)/100; });
+    const parte = Math.floor((total / n) * 100) / 100;
+    distribuciones.forEach((d, i) => {
+        d.monto = i > 0 ? parte : Math.round((total - (parte * (n - 1))) * 100) / 100;
+    });
     renderDistribuciones();
 }
 
 function actualizarTotales() {
     const total    = getRawMoney(document.getElementById('monto-total'));
-    const asignado = distribuciones.reduce((s,d)=>s+(d.monto||0), 0);
+    const asignado = distribuciones.reduce((s, d) => s + (d.monto || 0), 0);
     const resta    = total - asignado;
-    document.getElementById('lbl-total').textContent    = '$ '+total.toLocaleString('es-AR',{minimumFractionDigits:2});
-    document.getElementById('lbl-asignado').textContent = '$ '+asignado.toLocaleString('es-AR',{minimumFractionDigits:2});
+    document.getElementById('lbl-total').textContent    = '$ ' + total.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    document.getElementById('lbl-asignado').textContent = '$ ' + asignado.toLocaleString('es-AR', { minimumFractionDigits: 2 });
     const lr = document.getElementById('lbl-resta');
-    lr.textContent = '$ '+Math.abs(resta).toLocaleString('es-AR',{minimumFractionDigits:2});
-    lr.style.color = Math.abs(resta)<0.01 ? 'var(--green)' : 'var(--red)';
+    lr.textContent = '$ ' + Math.abs(resta).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    lr.style.color = Math.abs(resta) < 0.01 ? 'var(--green)' : 'var(--red)';
 }
 
 function prepararSubmit() {
-    // Restaurar inputs formateados a tipo number antes de validar
+    // 1. Restaurar inputs de dinero a número plano para el POST
     const montoEl = document.getElementById('monto-total');
     restoreMoneyForSubmit(montoEl);
     document.querySelectorAll('.distr-monto').forEach(restoreMoneyForSubmit);
 
-    const total = parseFloat(montoEl.value)||0;
+    // 2. Validaciones frontend
+    const tipoId = parseInt(document.getElementById('tipo-ingreso-sel')?.value || '0');
+    if (!tipoId || tipoId <= 0) {
+        mostrarError('Tipo requerido', 'Debe seleccionar un tipo de ingreso.'); return false;
+    }
+
+    const total = parseFloat(montoEl.value) || 0;
     if (total <= 0) { mostrarError('Monto inválido', 'El monto debe ser mayor a $0.'); return false; }
-    if (!distribuciones.length) { mostrarError('Sin cuentas', 'Debe asignar al menos una cuenta donde acreditar el ingreso.'); return false; }
-    const asignado = distribuciones.reduce((s,d)=>s+(d.monto||0), 0);
-    if (Math.abs(total-asignado)>0.01) {
-        mostrarError('Total incorrecto',
-            `El asignado ($ ${asignado.toLocaleString('es-AR',{minimumFractionDigits:2})}) no coincide con el total ($ ${total.toLocaleString('es-AR',{minimumFractionDigits:2})}).`);
+    if (total > MAX_MONTO) {
+        mostrarError('Monto demasiado alto', `El monto no puede superar $ ${MAX_MONTO.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`);
         return false;
     }
+
+    if (!distribuciones.length) {
+        mostrarError('Sin cuentas', 'Debe asignar al menos una cuenta donde acreditar el ingreso.');
+        return false;
+    }
+    if (distribuciones.some(d => d.monto <= 0)) {
+        mostrarError('Monto de cuenta inválido', 'Cada cuenta debe tener un monto mayor a $0.');
+        return false;
+    }
+
+    const asignado = distribuciones.reduce((s, d) => s + (d.monto || 0), 0);
+    if (Math.abs(total - asignado) > 0.01) {
+        mostrarError('Total incorrecto',
+            `El asignado ($ ${asignado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}) no coincide con el total ($ ${total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}).`);
+        return false;
+    }
+
+    // 3. Serializar distribuciones como campos hidden
     const container = document.getElementById('distribuciones-hidden');
     container.innerHTML = '';
     distribuciones.forEach((d, i) => {
@@ -257,8 +322,10 @@ function prepararSubmit() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar monto total con formato
-    initMoneyInput(document.getElementById('monto-total'), actualizarTotales);
+    // Monto total con live format
+    const montoEl = document.getElementById('monto-total');
+    montoEl.dataset.initValue = montoEl.value || '0';
+    setupMoneyInput(montoEl, actualizarTotales);
 
     if (distribuciones.length > 0) renderDistribuciones();
     else if (CUENTAS.length > 0) agregarCuenta({ cuentaId: CUENTAS[0].id, monto: 0 });

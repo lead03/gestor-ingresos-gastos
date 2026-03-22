@@ -54,6 +54,13 @@ public class IngresoService(IIngresoRepository repo, ICuentaRepository cuentaRep
 
     public async Task<Result> SaveAsync(IngresoFormVM vm)
     {
+        if (vm.TipoIngresoId <= 0)
+            return Result.Fail("Debe seleccionar un tipo de ingreso.");
+        if (vm.Monto <= 0 || vm.Monto > 9_999_999_999.99m)
+            return Result.Fail("El monto debe ser mayor a $0 y menor a $9.999.999.999,99.");
+        if (vm.Distribuciones.Any(d => d.Monto <= 0))
+            return Result.Fail("Cada cuenta debe tener un monto mayor a $0.");
+
         // Validar que distribuciones sumen al monto total
         if (!vm.Distribuciones.Any())
             return Result.Fail("Debe asignar al menos una cuenta donde acreditar el ingreso.");
