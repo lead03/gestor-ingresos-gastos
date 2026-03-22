@@ -58,8 +58,8 @@
                         <option value="ARS">$ ARS</option>
                         <option value="USD">U$D USD</option>
                     </select>
-                    <input asp-for="VM.Monto" type="number" step="0.01" min="0"
-                           id="monto-total" oninput="onMontoChange()" style="flex:1" />
+                    <input asp-for="VM.Monto" type="text" inputmode="decimal"
+                           id="monto-total" autocomplete="off" style="flex:1" />
                 </div>
             </div>
 
@@ -155,39 +155,83 @@
         let nextKey = 0;
         let tarjetaSeleccionada = null;
 
-        // ── Formateo de montos (es-AR) ────────────────────────────────────────
-        function initMoneyInput(el, onChangeCallback) {
-            el.type = 'number';
-            el.addEventListener('blur', function () {
-                const val = parseFloat(this.value);
-                if (!isNaN(val)) {
-                    this._raw = val;
-                    this.type = 'text';
-                    this.value = val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const MAX_MONTO = 9_999_999_999.99;
+
+        // ── Formateo de montos en tiempo real (es-AR) ─────────────────────────
+        function setupMoneyInput(el, onChangeCb) {
+            el.type = 'text';
+            el.setAttribute('inputmode', 'decimal');
+
+            el.addEventListener('keydown', function(e) {
+                const allowed = ['Backspace','Delete','Tab','Escape','Enter',
+                                 'ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
+                if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+
+                if (/^\d$/.test(e.key)) {
+                    // Bloquear 3er decimal
+                    const commaIdx = el.value.indexOf(',');
+                    if (commaIdx !== -1) {
+                        const selStart = el.selectionStart;
+                        const selEnd   = el.selectionEnd;
+                        if (selStart > commaIdx) {
+                            const charsAfterComma = el.value.substring(commaIdx + 1, selStart);
+                            if (charsAfterComma.length >= 2 && selStart === selEnd) {
+                                e.preventDefault(); return;
+                            }
+                        }
+                    }
+                    return;
                 }
+                if (e.key === ',') {
+                    if (el.value.includes(',')) e.preventDefault();
+                    return;
+                }
+                e.preventDefault();
             });
-            el.addEventListener('focus', function () {
-                this.type = 'number';
-                if (this._raw !== undefined) this.value = this._raw;
+
+            el.addEventListener('input', function() {
+                const cursor    = el.selectionStart;
+                const oldVal    = el.value;
+                const dotsAntes = (oldVal.substring(0, cursor).match(/\./g) || []).length;
+
+                const parts  = oldVal.replace(/\./g, '').split(',');
+                let intStr   = parts[0].replace(/\D/g, '');
+                const decStr = parts.length > 1 ? parts[1].substring(0, 2) : null;
+
+                if (parseInt(intStr || '0', 10) > 9999999999) intStr = '9999999999';
+
+                const intFmt = intStr ? intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+                const newVal = decStr !== null ? `${intFmt},${decStr}` : intFmt;
+                el.value = newVal;
+
+                const subNew     = newVal.substring(0, cursor);
+                const dotsDespues = (subNew.match(/\./g) || []).length;
+                const newCursor  = Math.min(cursor + (dotsDespues - dotsAntes), newVal.length);
+                try { el.setSelectionRange(newCursor, newCursor); } catch(_) {}
+
+                if (onChangeCb) onChangeCb();
             });
-            el.addEventListener('input', function () {
-                if (onChangeCallback) onChangeCallback();
+
+            el.addEventListener('blur', function() {
+                const raw = getRawMoney(el);
+                if (raw > 0) {
+                    el.value = raw.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                if (onChangeCb) onChangeCb();
             });
-            // Formatear valor inicial si existe
-            const initVal = parseFloat(el.value);
-            if (!isNaN(initVal) && initVal > 0) {
-                el._raw = initVal;
-                el.type = 'text';
+
+            // Valor inicial
+            const initVal = parseFloat(el.dataset.initValue || el.value) || 0;
+            if (initVal > 0) {
                 el.value = initVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         }
+
         function getRawMoney(el) {
-            if (el._raw !== undefined && el.type === 'text') return el._raw;
-            return parseFloat(el.value) || 0;
+            return parseFloat((el.value || '').replace(/\./g, '').replace(',', '.')) || 0;
         }
         function restoreMoneyForSubmit(el) {
-            el.type = 'number';
-            el.value = el._raw ?? (parseFloat(el.value) || 0);
+            el.value = getRawMoney(el).toString();
         }
 
         // ── Fecha ─────────────────────────────────────────────────────────────
@@ -299,15 +343,16 @@
                            </select>`
                         : `<input type="text" value="${p.descripcion}" placeholder="${p.tipo==='Yo'?'Yo':'Descripción'}" onchange="onDescChange(${idx},this)" style="${s}">`
                     }
-                    <input type="number" step="0.01" min="0" value="${p.monto}"
-                           data-idx="${idx}" class="part-monto" style="${s}" />
+                    <input type="text" inputmode="decimal" value="${p.monto > 0 ? p.monto : ''}"
+                           data-idx="${idx}" data-init-value="${p.monto}" class="part-monto"
+                           style="${s}" placeholder="0,00" />
                     <button type="button" onclick="eliminarParticipante(${idx})" class="btn btn-danger btn-sm" style="padding:6px 10px">✕</button>`;
                 lista.appendChild(row);
             });
             // Inicializar formato en inputs recién creados
             lista.querySelectorAll('.part-monto').forEach(el => {
                 const idx = parseInt(el.dataset.idx);
-                initMoneyInput(el, () => { participantes[idx].monto = getRawMoney(el); actualizarTotales(); });
+                setupMoneyInput(el, () => { participantes[idx].monto = getRawMoney(el); actualizarTotales(); });
             });
             actualizarTotales();
         }
@@ -351,16 +396,20 @@
         }
 
         function prepararSubmit() {
-            // Restaurar todos los inputs de dinero a tipo number antes de leer y enviar
-            restoreMoneyForSubmit(document.getElementById('monto-total'));
+            // Restaurar inputs de dinero a número plano para el POST
+            const montoEl = document.getElementById('monto-total');
+            restoreMoneyForSubmit(montoEl);
             document.querySelectorAll('.part-monto').forEach(restoreMoneyForSubmit);
 
             // Validar medio de pago obligatorio
             const medioVal = document.getElementById('sel-medio').value;
             if (!medioVal) { mostrarError('Medio de pago requerido', 'Debe seleccionar un medio de pago (cuenta o tarjeta).'); return false; }
-            const montoEl = document.getElementById('monto-total');
-            const total = parseFloat(montoEl.value)||0;
+            const total = parseFloat(montoEl.value) || 0;
             if (total <= 0) { mostrarError('Monto inválido','El monto debe ser mayor a $0.'); return false; }
+            if (total > MAX_MONTO) {
+                mostrarError('Monto demasiado alto', `El monto no puede superar $ ${MAX_MONTO.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`);
+                return false;
+            }
             const chk = document.getElementById('chk-divide');
             if (chk.checked) {
                 if (participantes.some(p=>p.tipo==='Persona'&&!p.personaId)) {
@@ -384,7 +433,9 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             // Inicializar formateo del monto principal
-            initMoneyInput(document.getElementById('monto-total'), () => { actualizarTotales(); calcMontoCuota(); });
+            const montoEl = document.getElementById('monto-total');
+            montoEl.dataset.initValue = montoEl.value || '0';
+            setupMoneyInput(montoEl, () => { actualizarTotales(); calcMontoCuota(); });
 
             const chk = document.getElementById('chk-divide');
             if (chk.checked) {
