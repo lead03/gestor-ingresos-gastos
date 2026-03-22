@@ -69,8 +69,8 @@
             }
             @foreach (var grp in vm.PorDia.OrderBy(x => x.Key))
             {
-                decimal totalDiaArs = grp.Value.Where(g => g.Moneda != "USD").Sum(g => g.MiParteMes);
-                decimal totalDiaUsd = grp.Value.Where(g => g.Moneda == "USD").Sum(g => g.MiParteMes);
+                decimal totalDiaArs = grp.Value.Where(g => g.Moneda != ControlGastos.Models.Moneda.USD).Sum(g => g.MiParteMes);
+                decimal totalDiaUsd = grp.Value.Where(g => g.Moneda == ControlGastos.Models.Moneda.USD).Sum(g => g.MiParteMes);
                 <tr class="day-row">
                     <td colspan="4">Día @grp.Key</td>
                     <td class="text-right" colspan="4">
@@ -97,7 +97,7 @@
                         </td>
                         <td>@g.MedioPagoNombre</td>
                         <td class="text-right amount">
-                            @if (g.Moneda == "USD")
+                            @if (g.Moneda == ControlGastos.Models.Moneda.USD)
                             {
                                 <span style="font-size:.72rem;background:#1565c0;color:#90caf9;border-radius:4px;padding:1px 5px;margin-right:4px">USD</span>@:U$D @Peso(g.MontoMes)
                             }
@@ -105,20 +105,20 @@
                             {
                                 @:$ @Peso(g.MontoMes)
                             }
-                            @if (g.Moneda == "USD" && vm.CotizacionDolar.HasValue)
+                            @if (g.Moneda == ControlGastos.Models.Moneda.USD && vm.CotizacionDolar.HasValue)
                             {
                                 <div style="font-size:.72rem;color:var(--text2)">≈ $ @((g.MontoMes * vm.CotizacionDolar.Value).ToString("N2"))</div>
                             }
                             @if (g.TarjetaCuota != null && g.TarjetaCuota.TotalCuotas > 1)
                             {
                                 <div style="font-size:.72rem;color:var(--text2)">
-                                    @(g.TarjetaCuota.CuotasPagadas + 1)/@g.TarjetaCuota.TotalCuotas de @(g.Moneda == "USD" ? "U$D" : "$") @Peso(g.Monto)
+                                    @(g.TarjetaCuota.CuotasPagadas + 1)/@g.TarjetaCuota.TotalCuotas de @(g.Moneda == ControlGastos.Models.Moneda.USD ? "U$D" : "$") @Peso(g.Monto)
                                 </div>
                             }
                         </td>
                         <td class="text-right amount @(g.SeDivide?"amber":"")">
-                            @(g.Moneda == "USD" ? "U$D" : "$") @Peso(miParte)
-                            @if (g.Moneda == "USD" && vm.CotizacionDolar.HasValue)
+                            @(g.Moneda == ControlGastos.Models.Moneda.USD ? "U$D" : "$") @Peso(miParte)
+                            @if (g.Moneda == ControlGastos.Models.Moneda.USD && vm.CotizacionDolar.HasValue)
                             {
                                 <div style="font-size:.72rem;color:var(--text2)">≈ $ @((miParte * vm.CotizacionDolar.Value).ToString("N2"))</div>
                             }

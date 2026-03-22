@@ -24,10 +24,10 @@ public class GastoService(
             Mes            = mes,
             Anio           = anio,
             Items          = items,
-            TotalFijos        = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda != "USD").Sum(MontoEfectivo),
-            TotalVariables    = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda != "USD").Sum(MontoEfectivo),
-            TotalFijosUsd     = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda == "USD").Sum(MontoEfectivo),
-            TotalVariablesUsd = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda == "USD").Sum(MontoEfectivo),
+            TotalFijos        = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
+            TotalVariables    = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
+            TotalFijosUsd     = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
+            TotalVariablesUsd = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
             PorDia         = items.GroupBy(g => g.Dia)
                                   .ToDictionary(grp => grp.Key, grp => grp.ToList())
         };

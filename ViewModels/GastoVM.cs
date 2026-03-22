@@ -33,8 +33,7 @@ public class GastoFormVM : IValidatableObject
     [Range(1, 48, ErrorMessage = "Las cuotas deben ser entre 1 y 48.")]
     public int CantidadCuotas { get; set; } = 1;
 
-    [MaxLength(3)]
-    public string Moneda { get; set; } = "ARS";
+    public Moneda Moneda { get; set; } = Moneda.ARS;
 
     public int? TarjetaCuotaId { get; set; }
 

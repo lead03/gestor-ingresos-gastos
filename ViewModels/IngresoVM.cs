@@ -25,6 +25,7 @@ public class IngresoFormVM : IValidatableObject
     [Range(1, 31, ErrorMessage = "Día inválido.")]
     public int Dia  { get; set; } = DateTime.Today.Day;
 
+    [Required(ErrorMessage = "Debe seleccionar un tipo de ingreso.")]
     [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar un tipo de ingreso.")]
     public int TipoIngresoId { get; set; }
 

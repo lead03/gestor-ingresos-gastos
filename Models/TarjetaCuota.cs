@@ -32,8 +32,7 @@ public class TarjetaCuota
     [MaxLength(10)]
     public string PagaParte { get; set; } = "NO";
 
-    [MaxLength(3)]
-    public string Moneda { get; set; } = "ARS"; // "ARS" | "USD"
+    public Moneda Moneda { get; set; } = Moneda.ARS;
 
     public decimal? MontoPagoOtro { get; set; }
 

@@ -26,7 +26,7 @@ public class DashboardService(
 
         // Convierte USD → ARS si hay cotización; si no, usa 0 (el gasto en USD no impacta)
         decimal MontoEfectivo(GastoItem g) =>
-            g.Moneda == "USD"
+            g.Moneda == Moneda.USD
                 ? g.MiParteMes * (cotizacion ?? 0m)
                 : g.MiParteMes;
 
@@ -37,7 +37,7 @@ public class DashboardService(
             TotalIngresos        = ingresos.Sum(i => i.Monto),
             TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo").Sum(MontoEfectivo),
             TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
-            TotalGastosUsd       = gastos.Where(g => g.Moneda == "USD").Sum(g => g.MiParteMes), // monto bruto en USD
+            TotalGastosUsd       = gastos.Where(g => g.Moneda == Moneda.USD).Sum(g => g.MiParteMes), // monto bruto en USD
             CotizacionDolar      = cotizacion,
             FuenteCotizacion     = cotizRes?.Fuente,
             FuenteCotizacionTipo = cotizRes?.FuenteTipo,

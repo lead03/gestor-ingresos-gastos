@@ -124,6 +124,14 @@ public class AppDbContext : DbContext
             .Property(p => p.Tipo)
             .HasConversion<string>();
 
+        mb.Entity<GastoItem>()
+            .Property(g => g.Moneda)
+            .HasConversion<string>();
+
+        mb.Entity<TarjetaCuota>()
+            .Property(tc => tc.Moneda)
+            .HasConversion<string>();
+
         mb.Entity<Deuda>()
             .Property(d => d.Direccion)
             .HasConversion<string>();
