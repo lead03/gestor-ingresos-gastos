@@ -117,11 +117,55 @@ document.getElementById('fecha-ingreso').addEventListener('change', function() {
 });
 document.getElementById('fecha-ingreso').dispatchEvent(new Event('change'));
 
+// ── Formateo de montos (es-AR) ────────────────────────────────────
+function initMoneyInput(el, onChangeCallback) {
+    el.type = 'number';
+    el.addEventListener('blur', function () {
+        const val = parseFloat(this.value);
+        if (!isNaN(val)) {
+            this._raw = val;
+            this.type = 'text';
+            this.value = val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    });
+    el.addEventListener('focus', function () {
+        this.type = 'number';
+        if (this._raw !== undefined) this.value = this._raw;
+    });
+    el.addEventListener('input', function () {
+        if (onChangeCallback) onChangeCallback();
+    });
+    // Formatear valor inicial si existe
+    const initVal = parseFloat(el.value);
+    if (!isNaN(initVal) && initVal > 0) {
+        el._raw = initVal;
+        el.type = 'text';
+        el.value = initVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+}
+
+function getRawMoney(el) {
+    if (el._raw !== undefined && el.type === 'text') return el._raw;
+    return parseFloat(el.value) || 0;
+}
+
+function restoreMoneyForSubmit(el) {
+    el.type = 'number';
+    el.value = el._raw ?? (parseFloat(el.value) || 0);
+}
+
 // ── Distribuciones ───────────────────────────────────────────────
 function agregarCuenta(datos = {}) {
-    const cid = datos.cuentaId ?? (CUENTAS[0]?.id ?? 0);
-    if (distribuciones.some(d => d.cuentaId === cid && !datos.cuentaId)) {
-        // Si ya existe esa cuenta, no la repetir en auto
+    // Encontrar la primera cuenta que no esté ya asignada
+    let cid = datos.cuentaId ?? null;
+    if (cid === null) {
+        const usadas = new Set(distribuciones.map(d => d.cuentaId));
+        const libre = CUENTAS.find(c => !usadas.has(c.id));
+        if (!libre) {
+            mostrarError('Todas las cuentas asignadas', 'Ya agregaste todas las cuentas disponibles.');
+            return;
+        }
+        cid = libre.id;
     }
     distribuciones.push({ _key: nextKey++, cuentaId: cid, monto: datos.monto ?? 0 });
     renderDistribuciones();
@@ -139,9 +183,14 @@ function renderDistribuciones() {
                 ${CUENTAS.map(c => `<option value="${c.id}" ${d.cuentaId==c.id?'selected':''}>${c.nombre}</option>`).join('')}
             </select>
             <input type="number" step="0.01" min="0" value="${d.monto}"
-                   oninput="onMontoDistrChange(${idx}, this)" style="${s}" placeholder="Monto" />
+                   data-idx="${idx}" class="distr-monto" style="${s}" placeholder="Monto" />
             <button type="button" onclick="eliminarCuenta(${idx})" class="btn btn-danger btn-sm" style="padding:6px 10px">✕</button>`;
         lista.appendChild(row);
+    });
+    // Inicializar formato en los inputs recién creados
+    lista.querySelectorAll('.distr-monto').forEach(el => {
+        const idx = parseInt(el.dataset.idx);
+        initMoneyInput(el, () => { distribuciones[idx].monto = getRawMoney(el); actualizarTotales(); });
     });
     actualizarTotales();
 }
@@ -155,11 +204,11 @@ function onCuentaChange(idx, sel) {
     }
     distribuciones[idx].cuentaId = cid;
 }
-function onMontoDistrChange(idx, input) { distribuciones[idx].monto = parseFloat(input.value)||0; actualizarTotales(); }
+function onMontoDistrChange(idx, input) { distribuciones[idx].monto = getRawMoney(input); actualizarTotales(); }
 function eliminarCuenta(idx) { distribuciones.splice(idx, 1); renderDistribuciones(); }
 
 function dividirIgual() {
-    const total = parseFloat(document.getElementById('monto-total').value)||0;
+    const total = getRawMoney(document.getElementById('monto-total'))||0;
     const n = distribuciones.length;
     if (!n || !total) return;
     const parte = Math.floor((total/n)*100)/100;
@@ -168,7 +217,7 @@ function dividirIgual() {
 }
 
 function actualizarTotales() {
-    const total    = parseFloat(document.getElementById('monto-total').value)||0;
+    const total    = getRawMoney(document.getElementById('monto-total'));
     const asignado = distribuciones.reduce((s,d)=>s+(d.monto||0), 0);
     const resta    = total - asignado;
     document.getElementById('lbl-total').textContent    = '$ '+total.toLocaleString('es-AR',{minimumFractionDigits:2});
@@ -179,12 +228,18 @@ function actualizarTotales() {
 }
 
 function prepararSubmit() {
-    const total = parseFloat(document.getElementById('monto-total').value)||0;
+    // Restaurar inputs formateados a tipo number antes de validar
+    const montoEl = document.getElementById('monto-total');
+    restoreMoneyForSubmit(montoEl);
+    document.querySelectorAll('.distr-monto').forEach(restoreMoneyForSubmit);
+
+    const total = parseFloat(montoEl.value)||0;
     if (total <= 0) { mostrarError('Monto inválido', 'El monto debe ser mayor a $0.'); return false; }
     if (!distribuciones.length) { mostrarError('Sin cuentas', 'Debe asignar al menos una cuenta donde acreditar el ingreso.'); return false; }
     const asignado = distribuciones.reduce((s,d)=>s+(d.monto||0), 0);
     if (Math.abs(total-asignado)>0.01) {
-        mostrarError('Total incorrecto', `El asignado ($${asignado.toFixed(2)}) no coincide con el monto ($${total.toFixed(2)}).`);
+        mostrarError('Total incorrecto',
+            `El asignado ($ ${asignado.toLocaleString('es-AR',{minimumFractionDigits:2})}) no coincide con el total ($ ${total.toLocaleString('es-AR',{minimumFractionDigits:2})}).`);
         return false;
     }
     const container = document.getElementById('distribuciones-hidden');
@@ -202,6 +257,9 @@ function prepararSubmit() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar monto total con formato
+    initMoneyInput(document.getElementById('monto-total'), actualizarTotales);
+
     if (distribuciones.length > 0) renderDistribuciones();
     else if (CUENTAS.length > 0) agregarCuenta({ cuentaId: CUENTAS[0].id, monto: 0 });
     actualizarTotales();

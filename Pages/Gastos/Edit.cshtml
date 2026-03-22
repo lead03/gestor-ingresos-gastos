@@ -155,6 +155,41 @@
         let nextKey = 0;
         let tarjetaSeleccionada = null;
 
+        // ── Formateo de montos (es-AR) ────────────────────────────────────────
+        function initMoneyInput(el, onChangeCallback) {
+            el.type = 'number';
+            el.addEventListener('blur', function () {
+                const val = parseFloat(this.value);
+                if (!isNaN(val)) {
+                    this._raw = val;
+                    this.type = 'text';
+                    this.value = val.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            });
+            el.addEventListener('focus', function () {
+                this.type = 'number';
+                if (this._raw !== undefined) this.value = this._raw;
+            });
+            el.addEventListener('input', function () {
+                if (onChangeCallback) onChangeCallback();
+            });
+            // Formatear valor inicial si existe
+            const initVal = parseFloat(el.value);
+            if (!isNaN(initVal) && initVal > 0) {
+                el._raw = initVal;
+                el.type = 'text';
+                el.value = initVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        }
+        function getRawMoney(el) {
+            if (el._raw !== undefined && el.type === 'text') return el._raw;
+            return parseFloat(el.value) || 0;
+        }
+        function restoreMoneyForSubmit(el) {
+            el.type = 'number';
+            el.value = el._raw ?? (parseFloat(el.value) || 0);
+        }
+
         // ── Fecha ─────────────────────────────────────────────────────────────
         document.getElementById('fecha-gasto').addEventListener('change', function() {
             const d = new Date(this.value + 'T00:00:00');
@@ -194,7 +229,7 @@
 
         function calcMontoCuota() {
             if (!tarjetaSeleccionada) return;
-            const total  = parseFloat(document.getElementById('monto-total').value) || 0;
+            const total  = getRawMoney(document.getElementById('monto-total'));
             const cuotas = parseInt(document.getElementById('cant-cuotas').value) || 1;
             const monto  = cuotas > 0 ? (total / cuotas).toFixed(2) : 0;
             document.getElementById('monto-cuota').value = monto;
@@ -264,9 +299,15 @@
                            </select>`
                         : `<input type="text" value="${p.descripcion}" placeholder="${p.tipo==='Yo'?'Yo':'Descripción'}" onchange="onDescChange(${idx},this)" style="${s}">`
                     }
-                    <input type="number" step="0.01" min="0" value="${p.monto}" oninput="onMontoPartChange(${idx},this)" style="${s}" />
+                    <input type="number" step="0.01" min="0" value="${p.monto}"
+                           data-idx="${idx}" class="part-monto" style="${s}" />
                     <button type="button" onclick="eliminarParticipante(${idx})" class="btn btn-danger btn-sm" style="padding:6px 10px">✕</button>`;
                 lista.appendChild(row);
+            });
+            // Inicializar formato en inputs recién creados
+            lista.querySelectorAll('.part-monto').forEach(el => {
+                const idx = parseInt(el.dataset.idx);
+                initMoneyInput(el, () => { participantes[idx].monto = getRawMoney(el); actualizarTotales(); });
             });
             actualizarTotales();
         }
@@ -282,7 +323,7 @@
             participantes[idx].descripcion = sel.options[sel.selectedIndex].text;
         }
         function onDescChange(idx,input)      { participantes[idx].descripcion = input.value; }
-        function onMontoPartChange(idx,input) { participantes[idx].monto = parseFloat(input.value)||0; actualizarTotales(); }
+        function onMontoPartChange(idx,input) { participantes[idx].monto = getRawMoney(input); actualizarTotales(); }
         function onMontoChange()              { actualizarTotales(); calcMontoCuota(); }
         function onMonedaChange() {
             calcMontoCuota();
@@ -290,7 +331,7 @@
         function eliminarParticipante(idx)    { participantes.splice(idx,1); renderParticipantes(); }
 
         function dividirIgual() {
-            const total = parseFloat(document.getElementById('monto-total').value)||0;
+            const total = getRawMoney(document.getElementById('monto-total'));
             const n = participantes.length;
             if (!n || !total) return;
             const parte = Math.floor((total/n)*100)/100;
@@ -299,7 +340,7 @@
         }
 
         function actualizarTotales() {
-            const total    = parseFloat(document.getElementById('monto-total').value)||0;
+            const total    = getRawMoney(document.getElementById('monto-total'));
             const asignado = participantes.reduce((s,p)=>s+(p.monto||0),0);
             const resta    = total - asignado;
             document.getElementById('lbl-total').textContent    = '$ '+total.toLocaleString('es-AR',{minimumFractionDigits:2});
@@ -310,10 +351,15 @@
         }
 
         function prepararSubmit() {
+            // Restaurar todos los inputs de dinero a tipo number antes de leer y enviar
+            restoreMoneyForSubmit(document.getElementById('monto-total'));
+            document.querySelectorAll('.part-monto').forEach(restoreMoneyForSubmit);
+
             // Validar medio de pago obligatorio
             const medioVal = document.getElementById('sel-medio').value;
             if (!medioVal) { mostrarError('Medio de pago requerido', 'Debe seleccionar un medio de pago (cuenta o tarjeta).'); return false; }
-            const total = parseFloat(document.getElementById('monto-total').value)||0;
+            const montoEl = document.getElementById('monto-total');
+            const total = parseFloat(montoEl.value)||0;
             if (total <= 0) { mostrarError('Monto inválido','El monto debe ser mayor a $0.'); return false; }
             const chk = document.getElementById('chk-divide');
             if (chk.checked) {
@@ -322,7 +368,9 @@
                 }
                 const asignado = participantes.reduce((s,p)=>s+(p.monto||0),0);
                 if (Math.abs(total-asignado)>0.01) {
-                    mostrarError('Total incorrecto',`El asignado ($${asignado.toFixed(2)}) no coincide con el monto ($${total.toFixed(2)}).`); return false;
+                    mostrarError('Total incorrecto',
+                        `El asignado ($ ${asignado.toLocaleString('es-AR',{minimumFractionDigits:2})}) no coincide con el monto ($ ${total.toLocaleString('es-AR',{minimumFractionDigits:2})}).`);
+                    return false;
                 }
             }
             const container = document.getElementById('participantes-hidden');
@@ -335,6 +383,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar formateo del monto principal
+            initMoneyInput(document.getElementById('monto-total'), () => { actualizarTotales(); calcMontoCuota(); });
+
             const chk = document.getElementById('chk-divide');
             if (chk.checked) {
                 document.getElementById('seccion-participantes').style.display = 'block';
