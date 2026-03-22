@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
+builder.Services.AddHttpClient("dolarapi");
+builder.Services.AddMemoryCache();
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlite("DataSource=gastos_prueba.db"));
 
@@ -27,6 +29,7 @@ builder.Services.AddScoped<PersonaService>();
 builder.Services.AddScoped<CuentaService>();
 builder.Services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
 builder.Services.AddScoped<ConfiguracionService>();
+builder.Services.AddScoped<CotizacionService>();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())

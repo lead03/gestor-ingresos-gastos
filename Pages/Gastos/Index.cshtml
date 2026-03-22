@@ -32,7 +32,14 @@
     <div class="total-item">
         <span class="lbl">Total</span>
         <span class="val">$ @Peso(vm.Total)</span>
-        @if (vm.TotalUsd > 0) { <span class="val" style="font-size:.78rem;color:#64b5f6">+ U$D @Peso(vm.TotalUsd)</span> }
+        @if (vm.TotalUsd > 0)
+        {
+            <span class="val" style="font-size:.78rem;color:#64b5f6">+ U$D @Peso(vm.TotalUsd)</span>
+            @if (vm.CotizacionDolar.HasValue)
+            {
+                <span class="val" style="font-size:.72rem;color:var(--text2)">≈ $ @((vm.TotalUsd * vm.CotizacionDolar.Value).ToString("N2"))</span>
+            }
+        }
     </div>
 </div>
 
@@ -94,6 +101,10 @@
                             {
                                 @:$ @Peso(g.MontoMes)
                             }
+                            @if (g.Moneda == "USD" && vm.CotizacionDolar.HasValue)
+                            {
+                                <div style="font-size:.72rem;color:var(--text2)">≈ $ @((g.MontoMes * vm.CotizacionDolar.Value).ToString("N2"))</div>
+                            }
                             @if (g.TarjetaCuota != null && g.TarjetaCuota.TotalCuotas > 1)
                             {
                                 <div style="font-size:.72rem;color:var(--text2)">
@@ -101,7 +112,13 @@
                                 </div>
                             }
                         </td>
-                        <td class="text-right amount @(g.SeDivide?"amber":"")">@(g.Moneda == "USD" ? "U$D" : "$") @Peso(miParte)</td>
+                        <td class="text-right amount @(g.SeDivide?"amber":"")">
+                            @(g.Moneda == "USD" ? "U$D" : "$") @Peso(miParte)
+                            @if (g.Moneda == "USD" && vm.CotizacionDolar.HasValue)
+                            {
+                                <div style="font-size:.72rem;color:var(--text2)">≈ $ @((miParte * vm.CotizacionDolar.Value).ToString("N2"))</div>
+                            }
+                        </td>
                         <td class="text-center">
                             <span class="badge @(g.Categoria.Tipo=="Fijo"?"badge-fijo":"badge-var")">@g.Categoria.Tipo</span>
                         </td>

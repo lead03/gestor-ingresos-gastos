@@ -8,7 +8,8 @@ public class DashboardService(
     IGastoRepository   gastoRepo,
     IIngresoRepository ingresoRepo,
     ICuentaRepository  cuentaRepo,
-    IDeudaRepository   deudaRepo)
+    IDeudaRepository   deudaRepo,
+    CotizacionService  cotizacionSvc)
 {
     public async Task<DashboardVM> GetDashboardAsync(int mes, int anio)
     {
@@ -44,6 +45,8 @@ public class DashboardService(
                     ingresos.Where(i => i.Dia == d).Sum(i => i.Monto)
                 )).ToList()
         };
+
+        vm.CotizacionDolar = await cotizacionSvc.GetCotizacionAsync();
 
         var historico = new List<(string, decimal, decimal)>();
         for (int offset = 5; offset >= 0; offset--)

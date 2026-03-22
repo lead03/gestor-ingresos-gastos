@@ -8,4 +8,6 @@ public interface IConfiguracionRepository
     Task<List<ConfigOpcion>> GetAllAsync();
     Task AddAsync(ConfigOpcion opcion);
     Task DeleteAsync(int id);
+    Task<ConfigOpcion?> GetSettingAsync(string key);
+    Task UpsertSettingAsync(string key, string valor);
 }

@@ -5,19 +5,25 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ControlGastos.Pages.Configuracion;
 
-public class IndexModel(ConfiguracionService svc, GastoService gastoSvc) : PageModel
+public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc) : PageModel
 {
     public List<ConfigOpcion>   Redes      { get; set; } = new();
     public List<ConfigOpcion>   Bancos     { get; set; } = new();
     public List<CategoriaGasto> Categorias { get; set; } = new();
 
-    [BindProperty] public string NuevaRed           { get; set; } = "";
-    [BindProperty] public string NuevoBanco         { get; set; } = "";
-    [BindProperty] public string NuevaCatNombre     { get; set; } = "";
-    [BindProperty] public string NuevaCatTipo       { get; set; } = "Variable";
-    [BindProperty] public int    EditCatId          { get; set; }
-    [BindProperty] public string EditCatNombre      { get; set; } = "";
-    [BindProperty] public string EditCatTipo        { get; set; } = "Variable";
+    public string   TipoDolarActual       { get; set; } = "blue";
+    public decimal? CotizacionActual      { get; set; }
+    public decimal? CotizacionManual      { get; set; }
+
+    [BindProperty] public string  NuevaRed              { get; set; } = "";
+    [BindProperty] public string  NuevoBanco            { get; set; } = "";
+    [BindProperty] public string  NuevaCatNombre        { get; set; } = "";
+    [BindProperty] public string  NuevaCatTipo          { get; set; } = "Variable";
+    [BindProperty] public int     EditCatId             { get; set; }
+    [BindProperty] public string  EditCatNombre         { get; set; } = "";
+    [BindProperty] public string  EditCatTipo           { get; set; } = "Variable";
+    [BindProperty] public string  NuevoTipoDolar        { get; set; } = "blue";
+    [BindProperty] public decimal CotizacionManualInput { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -70,11 +76,22 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc) : PageM
         return RedirectToPage(null, "categorias");
     }
 
+    public async Task<IActionResult> OnPostGuardarCotizacionAsync()
+    {
+        await cotizacionSvc.SaveTipoDolarAsync(NuevoTipoDolar);
+        if (CotizacionManualInput > 0)
+            await cotizacionSvc.SaveCotizacionManualAsync(CotizacionManualInput);
+        return RedirectToPage(null, "cotizacion");
+    }
+
     private async Task CargarAsync()
     {
         Redes      = await svc.GetRedesAsync();
         Bancos     = await svc.GetBancosAsync();
         Categorias = await gastoSvc.GetTodasCategoriasAsync();
+        TipoDolarActual  = await cotizacionSvc.GetTipoDolarAsync();
+        CotizacionActual = await cotizacionSvc.GetCotizacionAsync();
+        CotizacionManual = await cotizacionSvc.GetCotizacionManualAsync();
         ViewData["Active"] = "configuracion";
     }
 }

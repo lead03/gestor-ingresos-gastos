@@ -33,4 +33,23 @@ public class ConfiguracionRepository(AppDbContext db) : IConfiguracionRepository
         var op = await db.ConfigOpciones.FindAsync(id);
         if (op != null) { db.ConfigOpciones.Remove(op); await db.SaveChangesAsync(); }
     }
+
+    public Task<ConfigOpcion?> GetSettingAsync(string key) =>
+        db.ConfigOpciones.FirstOrDefaultAsync(c => c.Tipo == "Setting:" + key);
+
+    public async Task UpsertSettingAsync(string key, string valor)
+    {
+        var tipo = "Setting:" + key;
+        var existing = await db.ConfigOpciones.FirstOrDefaultAsync(c => c.Tipo == tipo);
+        if (existing != null)
+        {
+            existing.Valor = valor;
+            db.ConfigOpciones.Update(existing);
+        }
+        else
+        {
+            db.ConfigOpciones.Add(new ConfigOpcion { Tipo = tipo, Valor = valor });
+        }
+        await db.SaveChangesAsync();
+    }
 }

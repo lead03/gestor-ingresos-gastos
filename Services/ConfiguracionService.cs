@@ -12,4 +12,13 @@ public class ConfiguracionService(IConfiguracionRepository repo)
     public Task AddRedAsync(string valor)   => repo.AddAsync(new ConfigOpcion { Tipo = "Red",   Valor = valor.Trim() });
     public Task AddBancoAsync(string valor) => repo.AddAsync(new ConfigOpcion { Tipo = "Banco", Valor = valor.Trim() });
     public Task DeleteAsync(int id)         => repo.DeleteAsync(id);
+
+    public async Task<string?> GetSettingAsync(string key)
+    {
+        var opt = await repo.GetSettingAsync(key);
+        return opt?.Valor;
+    }
+
+    public Task UpsertSettingAsync(string key, string valor) =>
+        repo.UpsertSettingAsync(key, valor);
 }

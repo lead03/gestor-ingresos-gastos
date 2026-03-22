@@ -10,7 +10,8 @@ public class GastoService(
     IGastoParticipanteRepository participanteRepo,
     ITarjetaRepository           tarjetaRepo,
     IPersonaRepository           personaRepo,
-    ICuentaRepository            cuentaRepo)
+    ICuentaRepository            cuentaRepo,
+    CotizacionService            cotizacionSvc)
 {
     public async Task<GastoListVM> GetListAsync(int mes, int anio)
     {
@@ -18,7 +19,7 @@ public class GastoService(
 
         decimal MontoEfectivo(GastoItem g) => g.MiParteMes;
 
-        return new GastoListVM
+        var vm = new GastoListVM
         {
             Mes            = mes,
             Anio           = anio,
@@ -30,6 +31,8 @@ public class GastoService(
             PorDia         = items.GroupBy(g => g.Dia)
                                   .ToDictionary(grp => grp.Key, grp => grp.ToList())
         };
+        vm.CotizacionDolar = await cotizacionSvc.GetCotizacionAsync();
+        return vm;
     }
 
     public async Task<GastoFormVM> GetFormAsync(int? id = null)
