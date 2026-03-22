@@ -45,16 +45,28 @@
             <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
         </form>
 
-        <div style="margin-top:12px;font-size:.85rem;color:var(--text2)">
+        <div style="margin-top:12px;font-size:.85rem">
             @if (Model.CotizacionActual.HasValue)
             {
-                <span style="color:var(--green)">✓ Cotización actual:</span>
-                <strong style="color:var(--text)"> $ @Model.CotizacionActual.Value.ToString("N2")</strong>
-                <span style="margin-left:8px;font-size:.78rem">(U$D 1 = $ @Model.CotizacionActual.Value.ToString("N2"))</span>
+                var (color, icon) = Model.FuenteCotizacionTipo switch
+                {
+                    "api"      => ("var(--green)", "✓"),
+                    "ultima_api" => ("#e0a800",   "⚡"),
+                    _          => ("var(--text2)", "✎"),
+                };
+                <span style="color:@color">@icon Cotización actual:</span>
+                <strong style="color:var(--text);margin-left:4px"> $ @Model.CotizacionActual.Value.ToString("N2")</strong>
+                <span style="color:var(--text2);margin-left:8px;font-size:.78rem">· @Model.FuenteCotizacion</span>
+                @if (Model.FuenteCotizacionTipo == "ultima_api")
+                {
+                    <div style="margin-top:4px;font-size:.78rem;color:#e0a800">
+                        ⚠ Sin conexión a la API. Se está usando el último valor conocido. Ingrese un valor manual como respaldo.
+                    </div>
+                }
             }
             else
             {
-                <span style="color:#e0a800">⚠ Sin cotización disponible. Ingrese un valor manual de respaldo.</span>
+                <span style="color:#e05555">✕ Sin cotización disponible. Ingrese un valor manual.</span>
             }
         </div>
     </div>

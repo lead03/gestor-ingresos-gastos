@@ -94,5 +94,7 @@ public class GastoListVM
     public decimal         Total             => TotalFijos + TotalVariables;
     public decimal         TotalUsd          => TotalFijosUsd + TotalVariablesUsd;
     public decimal?        CotizacionDolar   { get; set; }
+    public string? FuenteCotizacion    { get; set; }
+    public string? FuenteCotizacionTipo { get; set; }
     public Dictionary<int, List<GastoItem>> PorDia { get; set; } = new();
 }

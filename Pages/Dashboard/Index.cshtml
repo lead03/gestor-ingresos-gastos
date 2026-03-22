@@ -53,8 +53,14 @@
 
 @if (vm.TotalGastosUsd > 0 && vm.CotizacionDolar.HasValue)
 {
-    <div style="font-size:.78rem;color:var(--text2);margin-bottom:12px;margin-top:-8px">
-        Cotización USD: $ @vm.CotizacionDolar.Value.ToString("N2") por dólar
+    var fuenteColor = vm.FuenteCotizacionTipo switch
+    {
+        "api"       => "var(--text2)",
+        "ultima_api" => "#e0a800",
+        _           => "var(--text2)"
+    };
+    <div style="font-size:.78rem;color:@fuenteColor;margin-bottom:12px;margin-top:-8px">
+        Cotización USD: $ @vm.CotizacionDolar.Value.ToString("N2") · @vm.FuenteCotizacion
     </div>
 }
 

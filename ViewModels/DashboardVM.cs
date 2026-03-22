@@ -32,4 +32,6 @@ public class DashboardVM
     public List<Deuda> DeudasActivas { get; set; } = new();
 
     public decimal? CotizacionDolar { get; set; }
+    public string? FuenteCotizacion   { get; set; }  // texto para mostrar
+    public string? FuenteCotizacionTipo { get; set; } // "api" | "ultima_api" | "manual"
 }

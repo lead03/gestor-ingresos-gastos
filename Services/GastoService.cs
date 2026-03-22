@@ -31,7 +31,10 @@ public class GastoService(
             PorDia         = items.GroupBy(g => g.Dia)
                                   .ToDictionary(grp => grp.Key, grp => grp.ToList())
         };
-        vm.CotizacionDolar = await cotizacionSvc.GetCotizacionAsync();
+        var cotizRes = await cotizacionSvc.GetCotizacionConFuenteAsync();
+        vm.CotizacionDolar       = cotizRes?.Valor;
+        vm.FuenteCotizacion      = cotizRes?.Fuente;
+        vm.FuenteCotizacionTipo  = cotizRes?.FuenteTipo;
         return vm;
     }
 

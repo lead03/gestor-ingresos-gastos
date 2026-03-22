@@ -21,7 +21,8 @@ public class DashboardService(
                            .ToList();
 
         // Obtener cotización primero para usarla en todos los cálculos
-        var cotizacion = await cotizacionSvc.GetCotizacionAsync();
+        var cotizRes   = await cotizacionSvc.GetCotizacionConFuenteAsync();
+        var cotizacion = cotizRes?.Valor;
 
         // Convierte USD → ARS si hay cotización; si no, usa 0 (el gasto en USD no impacta)
         decimal MontoEfectivo(GastoItem g) =>
@@ -38,6 +39,8 @@ public class DashboardService(
             TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
             TotalGastosUsd       = gastos.Where(g => g.Moneda == "USD").Sum(g => g.MiParteMes), // monto bruto en USD
             CotizacionDolar      = cotizacion,
+            FuenteCotizacion     = cotizRes?.Fuente,
+            FuenteCotizacionTipo = cotizRes?.FuenteTipo,
             Cuentas      = cuentas,
             TotalCuentas = cuentas.Sum(c => c.SaldoInicial),
             TotalMeDeben = deudas.Sum(d => d.Monto - (d.MontoPagado ?? 0)),

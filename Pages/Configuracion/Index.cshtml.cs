@@ -14,6 +14,8 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     public string   TipoDolarActual       { get; set; } = "blue";
     public decimal? CotizacionActual      { get; set; }
     public decimal? CotizacionManual      { get; set; }
+    public string? FuenteCotizacion    { get; set; }
+    public string? FuenteCotizacionTipo { get; set; }
 
     [BindProperty] public string  NuevaRed              { get; set; } = "";
     [BindProperty] public string  NuevoBanco            { get; set; } = "";
@@ -90,7 +92,10 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         Bancos     = await svc.GetBancosAsync();
         Categorias = await gastoSvc.GetTodasCategoriasAsync();
         TipoDolarActual  = await cotizacionSvc.GetTipoDolarAsync();
-        CotizacionActual = await cotizacionSvc.GetCotizacionAsync();
+        var cotizRes         = await cotizacionSvc.GetCotizacionConFuenteAsync();
+        CotizacionActual     = cotizRes?.Valor;
+        FuenteCotizacion     = cotizRes?.Fuente;
+        FuenteCotizacionTipo = cotizRes?.FuenteTipo;
         CotizacionManual = await cotizacionSvc.GetCotizacionManualAsync();
         ViewData["Active"] = "configuracion";
     }

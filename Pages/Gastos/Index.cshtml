@@ -38,6 +38,10 @@
             @if (vm.CotizacionDolar.HasValue)
             {
                 <span class="val" style="font-size:.72rem;color:var(--text2)">≈ $ @((vm.TotalUsd * vm.CotizacionDolar.Value).ToString("N2"))</span>
+                @if (vm.FuenteCotizacionTipo == "ultima_api")
+                {
+                    <span style="font-size:.7rem;color:#e0a800;margin-left:4px" title="@vm.FuenteCotizacion">⚡</span>
+                }
             }
         }
     </div>
