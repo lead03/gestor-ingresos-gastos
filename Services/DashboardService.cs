@@ -20,16 +20,24 @@ public class DashboardService(
                            .Where(d => d.Estado == EstadoDeuda.Activa && d.Direccion == DireccionDeuda.MeDeben)
                            .ToList();
 
-        decimal MontoEfectivo(GastoItem g) => g.MiParteMes;
+        // Obtener cotización primero para usarla en todos los cálculos
+        var cotizacion = await cotizacionSvc.GetCotizacionAsync();
+
+        // Convierte USD → ARS si hay cotización; si no, usa 0 (el gasto en USD no impacta)
+        decimal MontoEfectivo(GastoItem g) =>
+            g.Moneda == "USD"
+                ? g.MiParteMes * (cotizacion ?? 0m)
+                : g.MiParteMes;
 
         var vm = new DashboardVM
         {
             Mes   = mes, Anio = anio,
-            TotalGastos          = gastos.Where(g => g.Moneda != "USD").Sum(MontoEfectivo),
+            TotalGastos          = gastos.Sum(MontoEfectivo),
             TotalIngresos        = ingresos.Sum(i => i.Monto),
-            TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo" && g.Moneda != "USD").Sum(MontoEfectivo),
-            TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda != "USD").Sum(MontoEfectivo),
-            TotalGastosUsd       = gastos.Where(g => g.Moneda == "USD").Sum(MontoEfectivo),
+            TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo").Sum(MontoEfectivo),
+            TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
+            TotalGastosUsd       = gastos.Where(g => g.Moneda == "USD").Sum(g => g.MiParteMes), // monto bruto en USD
+            CotizacionDolar      = cotizacion,
             Cuentas      = cuentas,
             TotalCuentas = cuentas.Sum(c => c.SaldoInicial),
             TotalMeDeben = deudas.Sum(d => d.Monto - (d.MontoPagado ?? 0)),
@@ -46,8 +54,6 @@ public class DashboardService(
                 )).ToList()
         };
 
-        vm.CotizacionDolar = await cotizacionSvc.GetCotizacionAsync();
-
         var historico = new List<(string, decimal, decimal)>();
         for (int offset = 5; offset >= 0; offset--)
         {
@@ -55,7 +61,8 @@ public class DashboardService(
             if (m <= 0) { m += 12; a--; }
             var gM = await gastoRepo.GetByMesAsync(m, a);
             var iM = await ingresoRepo.GetByMesAsync(m, a);
-            historico.Add((new DateTime(a, m, 1).ToString("MMM"), gM.Where(g => g.Moneda != "USD").Sum(MontoEfectivo), iM.Sum(i => i.Monto)));
+            // En el histórico también convertimos USD → ARS para que el gráfico sea homogéneo
+            historico.Add((new DateTime(a, m, 1).ToString("MMM"), gM.Sum(MontoEfectivo), iM.Sum(i => i.Monto)));
         }
         vm.Historico = historico;
         return vm;
