@@ -3,6 +3,12 @@ using ControlGastos.Models;
 
 namespace ControlGastos.ViewModels;
 
+public class DistribucionFormVM
+{
+    public int     CuentaId { get; set; }
+    public decimal Monto    { get; set; }
+}
+
 public class IngresoFormVM
 {
     public int Id   { get; set; }
@@ -10,7 +16,8 @@ public class IngresoFormVM
     public int Anio { get; set; } = DateTime.Today.Year;
     public int Dia  { get; set; } = DateTime.Today.Day;
 
-    public TipoIngreso Tipo { get; set; } = TipoIngreso.Propio;
+    [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar un tipo de ingreso.")]
+    public int TipoIngresoId { get; set; }
 
     [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a $0.")]
     public decimal Monto { get; set; }
@@ -18,9 +25,14 @@ public class IngresoFormVM
     [MaxLength(200)]
     public string? Descripcion { get; set; }
 
-    public int? CuentaId { get; set; }
+    public List<DistribucionFormVM> Distribuciones { get; set; } = new();
 
+    // Listas para selects
+    public List<TipoIngreso>     Tipos   { get; set; } = new();
     public List<CuentaResumenVM> Cuentas { get; set; } = new();
+
+    // ¿Hay cuentas declaradas?
+    public bool HayCuentas => Cuentas.Any();
 }
 
 public class IngresoListVM
@@ -28,15 +40,6 @@ public class IngresoListVM
     public int  Mes  { get; set; }
     public int  Anio { get; set; }
     public List<Ingreso> Items { get; set; } = new();
-
-    public decimal TotalPropio        { get; set; }
-    public decimal TotalDistribuido   { get; set; }
-    public decimal TotalCuentaPropia  { get; set; }
-    public decimal TotalAhorro        { get; set; }
-    public decimal TotalDpto          { get; set; }
-    public decimal TotalUSS           { get; set; }
-    public decimal TotalFIMA          { get; set; }
-    public decimal TotalResto         { get; set; }
-    public decimal Total => TotalPropio + TotalDistribuido + TotalCuentaPropia
-                          + TotalAhorro + TotalDpto + TotalUSS + TotalFIMA + TotalResto;
+    public List<(string NombreTipo, decimal Total)> TotalesPorTipo { get; set; } = new();
+    public decimal Total => TotalesPorTipo.Sum(x => x.Total);
 }

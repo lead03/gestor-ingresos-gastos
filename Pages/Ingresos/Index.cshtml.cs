@@ -25,26 +25,3 @@ public class IndexModel(IngresoService svc) : PageModel
         return RedirectToPage(new { mes, anio });
     }
 }
-
-public class EditModel(IngresoService svc) : PageModel
-{
-    [BindProperty]
-    public IngresoFormVM VM { get; set; } = new();
-
-    public async Task OnGetAsync(int mes = 0, int anio = 0)
-    {
-        var form = await svc.GetFormAsync();
-        VM = form;
-        VM.Mes = mes == 0 ? DateTime.Today.Month : mes;
-        VM.Anio = anio == 0 ? DateTime.Today.Year : anio;
-        ViewData["Active"] = "ingresos";
-        ViewData["Mes"] = VM.Mes;
-        ViewData["Anio"] = VM.Anio;
-    }
-
-    public async Task<IActionResult> OnPostAsync()
-    {
-        await svc.SaveAsync(VM);
-        return RedirectToPage("./Index", new { mes = VM.Mes, anio = VM.Anio });
-    }
-}

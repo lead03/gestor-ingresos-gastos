@@ -93,6 +93,61 @@ using (var scope = app.Services.CreateScope())
     try { db.Database.ExecuteSqlRaw("ALTER TABLE CategoriasGasto ADD COLUMN Habilitada INTEGER NOT NULL DEFAULT 1"); } catch { /* ya existe */ }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Gastos ADD COLUMN Moneda TEXT NOT NULL DEFAULT 'ARS'"); } catch { }
     try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas ADD COLUMN Moneda TEXT NOT NULL DEFAULT 'ARS'"); } catch { }
+
+    // Tabla TiposIngreso
+    try { db.Database.ExecuteSqlRaw(@"
+        CREATE TABLE IF NOT EXISTS TiposIngreso (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Nombre TEXT NOT NULL,
+            Habilitada INTEGER NOT NULL DEFAULT 1
+        )"); } catch { }
+
+    // Seed TiposIngreso si está vacía
+    try {
+        db.Database.ExecuteSqlRaw(@"
+            INSERT OR IGNORE INTO TiposIngreso (Id, Nombre, Habilitada) VALUES
+            (1, 'Sueldo / Salario', 1),
+            (2, 'Freelance', 1),
+            (3, 'Alquiler cobrado', 1),
+            (4, 'Ahorros', 1),
+            (5, 'Dólares', 1),
+            (6, 'Inversiones', 1),
+            (7, 'Otros', 1)
+        ");
+    } catch { }
+
+    // Tabla IngresoDistribuciones
+    try { db.Database.ExecuteSqlRaw(@"
+        CREATE TABLE IF NOT EXISTS IngresoDistribuciones (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            IngresoId INTEGER NOT NULL,
+            CuentaId INTEGER NOT NULL,
+            Monto TEXT NOT NULL DEFAULT '0',
+            FOREIGN KEY (IngresoId) REFERENCES Ingresos(Id) ON DELETE CASCADE,
+            FOREIGN KEY (CuentaId) REFERENCES Cuentas(Id)
+        )"); } catch { }
+
+    // Columna TipoIngresoId en Ingresos (DEFAULT 7 = Otros)
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Ingresos ADD COLUMN TipoIngresoId INTEGER NOT NULL DEFAULT 7"); } catch { }
+
+    // Migrar datos existentes: CuentaId → IngresoDistribuciones
+    try {
+        db.Database.ExecuteSqlRaw(@"
+            INSERT OR IGNORE INTO IngresoDistribuciones (IngresoId, CuentaId, Monto)
+            SELECT Id, CuentaId, Monto FROM Ingresos
+            WHERE CuentaId IS NOT NULL
+              AND Id NOT IN (SELECT DISTINCT IngresoId FROM IngresoDistribuciones)
+        ");
+    } catch { }
+
+    // Crear cuenta Efectivo por defecto si no hay ninguna
+    try {
+        db.Database.ExecuteSqlRaw(@"
+            INSERT OR IGNORE INTO Cuentas (Nombre, Tipo, SaldoInicial, Activa)
+            SELECT 'Efectivo', 'Efectivo', 0, 1
+            WHERE NOT EXISTS (SELECT 1 FROM Cuentas WHERE Activa = 1)
+        ");
+    } catch { }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

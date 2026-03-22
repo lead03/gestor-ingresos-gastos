@@ -200,6 +200,72 @@
     }
 </div>
 
+<!-- ── Tipos de ingreso ──────────────────────────────────────────────── -->
+@{
+    var tiposHab   = Model.TiposIngreso.Where(t => t.Habilitada).OrderBy(t => t.Nombre).ToList();
+    var tiposDeshabl = Model.TiposIngreso.Where(t => !t.Habilitada).OrderBy(t => t.Nombre).ToList();
+}
+<div class="card" style="margin-bottom:24px" id="tipos-ingreso">
+    <div class="card-header">
+        <span class="card-title">Tipos de ingreso</span>
+    </div>
+    <div style="padding:16px">
+        <ul style="list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px">
+            @foreach (var t in tiposHab)
+            {
+                <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
+                        <span style="font-size:.88rem">@t.Nombre</span>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-ghost btn-sm"
+                                    onclick="toggleEditTipo(@t.Id, '@t.Nombre.Replace("'","\\'")')">✎</button>
+                            <form method="post" asp-page-handler="DeshabilitarTipoIngreso" style="display:inline">
+                                <input type="hidden" name="id" value="@t.Id" />
+                                <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                        onclick="return confirm('¿Deshabilitar @t.Nombre?')">✕</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="edit-tipo-@t.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
+                        <form method="post" asp-page-handler="EditarTipoIngreso" style="display:flex;gap:8px;align-items:center">
+                            <input type="hidden" name="EditTipoId" value="@t.Id" />
+                            <input type="text" name="EditTipoNombre" value="@t.Nombre"
+                                   style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
+                            <button type="submit" class="btn btn-primary btn-sm">✓</button>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditTipo(@t.Id)">✕</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+        <form method="post" asp-page-handler="AgregarTipoIngreso" style="display:flex;gap:8px">
+            <input name="NuevoTipoNombre" type="text" placeholder="Nuevo tipo de ingreso..."
+                   style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
+            <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+        </form>
+        @if (tiposDeshabl.Any())
+        {
+            <details style="margin-top:12px">
+                <summary style="cursor:pointer;font-size:.82rem;color:var(--text2);font-weight:600;padding:4px 0;user-select:none">
+                    ▸ Deshabilitados (@tiposDeshabl.Count)
+                </summary>
+                <ul style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px">
+                    @foreach (var t in tiposDeshabl)
+                    {
+                        <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
+                            <span style="font-size:.85rem">@t.Nombre</span>
+                            <form method="post" asp-page-handler="HabilitarTipoIngreso" style="display:inline">
+                                <input type="hidden" name="id" value="@t.Id" />
+                                <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.75rem">↑ Habilitar</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            </details>
+        }
+    </div>
+</div>
+
 <!-- ── Redes y Bancos ────────────────────────────────────────────────── -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
 
@@ -277,6 +343,13 @@ function toggleEditCat(id, nombre, tipo) {
 if (window.location.hash === '#categorias') {
     const d = document.getElementById('section-deshabilitadas');
     if (d) d.open = true;
+}
+
+function toggleEditTipo(id, nombre) {
+    const row = document.getElementById('edit-tipo-' + id);
+    const visible = row.style.display !== 'none';
+    document.querySelectorAll('[id^="edit-tipo-"]').forEach(el => el.style.display = 'none');
+    if (!visible) row.style.display = 'block';
 }
 </script>
 }

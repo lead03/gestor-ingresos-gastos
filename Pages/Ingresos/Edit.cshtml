@@ -1,85 +1,210 @@
-@page
+@page "{id:int?}"
 @model ControlGastos.Pages.Ingresos.EditModel
+@using ControlGastos.Models
 @{
-    ViewData["Title"] = "Nuevo ingreso";
+    ViewData["Title"] = Model.VM.Id == 0 ? "Nuevo ingreso" : "Editar ingreso";
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
+    bool esEdicion = vm.Id != 0;
+    var cuentasJson = System.Text.Json.JsonSerializer.Serialize(
+        vm.Cuentas.Select(c => new { id = c.Id, nombre = c.Nombre }));
+    var distribJson = System.Text.Json.JsonSerializer.Serialize(
+        vm.Distribuciones.Select(d => new { cuentaId = d.CuentaId, monto = d.Monto }));
+}
 
-    var tipos = new[]
-    {
-        ("Propio",       "Ing. Dist. - Propio"),
-        ("Distribuido",  "C.C. Propias / Distribuido"),
-        ("CuentaPropia", "Cuenta propia"),
-        ("Ahorro",       "Ahorros"),
-        ("Dpto",         "Departamento"),
-        ("USS",          "U$S / Dólares"),
-        ("FIMA",         "FIMA"),
-        ("Resto",        "Resto / Varios"),
-    };
+@if (!vm.HayCuentas)
+{
+    <!-- Modal: sin cuentas -->
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center">
+        <div class="card" style="max-width:440px;padding:32px;text-align:center">
+            <div style="font-size:2rem;margin-bottom:12px">🏦</div>
+            <div class="page-title" style="margin-bottom:8px">Sin cuentas declaradas</div>
+            <p style="color:var(--text2);font-size:.9rem;margin-bottom:20px">
+                Para registrar un ingreso primero debés declarar al menos una cuenta donde acreditarlo.<br>
+                El sistema puede usar <strong>Efectivo</strong> si lo necesitás.
+            </p>
+            <div class="btn-group" style="justify-content:center">
+                <a asp-page="/Cuentas/Index" class="btn btn-primary">→ Ir a Cuentas</a>
+                <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Volver</a>
+            </div>
+        </div>
+    </div>
 }
 
 <div class="page-header">
-    <div><div class="page-title">Nuevo ingreso</div></div>
+    <div><div class="page-title">@(esEdicion ? "Editar ingreso" : "Nuevo ingreso")</div></div>
     <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">← Volver</a>
 </div>
 
-<div class="card" style="max-width:560px">
+<div class="card" style="max-width:720px">
     <form method="post">
+        <input type="hidden" asp-for="VM.Id" />
         <div class="form-grid">
 
-            <div class="form-group">
-                <label>Año</label>
-                <input asp-for="VM.Anio" type="number" min="2020" max="2035" />
-            </div>
-            <div class="form-group">
-                <label>Mes</label>
-                <select asp-for="VM.Mes">
-                    @for (int m = 1; m <= 12; m++)
-                    {
-                        var nombreMes = new DateTime(2000, m, 1).ToString("MMMM");
-                        <option value="@m">@nombreMes</option>
-                    }
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Día</label>
-                <input asp-for="VM.Dia" type="number" min="1" max="31" />
+            <div class="form-group full">
+                <label>Fecha</label>
+                <input type="date" id="fecha-ingreso"
+                       value="@(new DateTime(vm.Anio, vm.Mes, vm.Dia).ToString("yyyy-MM-dd"))" />
+                <input type="hidden" asp-for="VM.Dia"  id="h-dia" />
+                <input type="hidden" asp-for="VM.Mes"  id="h-mes" />
+                <input type="hidden" asp-for="VM.Anio" id="h-anio" />
             </div>
 
             <div class="form-group full">
                 <label>Tipo de ingreso</label>
-                <select asp-for="VM.Tipo">
-                    @foreach (var (val, label) in tipos)
-                    { <option value="@val">@label</option> }
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Monto ($)</label>
-                <input asp-for="VM.Monto" type="number" step="0.01" min="0" />
-            </div>
-
-            <div class="form-group">
-                <label>Cuenta de origen (opcional)</label>
-                <select asp-for="VM.CuentaId">
-                    <option value="">— Sin asignar —</option>
-                    @foreach (var c in Model.VM.Cuentas)
+                <select asp-for="VM.TipoIngresoId">
+                    <option value="0">— Seleccionar tipo —</option>
+                    @foreach (var t in vm.Tipos)
                     {
-                        var selC = Model.VM.CuentaId == c.Id;
-                        <option value="@c.Id" selected="@selC">@c.Nombre</option>
+                        <option value="@t.Id" selected="@(vm.TipoIngresoId == t.Id)">@t.Nombre</option>
                     }
                 </select>
             </div>
 
-            <div class="form-group full">
+            <div class="form-group">
+                <label>Monto total ($)</label>
+                <input asp-for="VM.Monto" type="number" step="0.01" min="0"
+                       id="monto-total" oninput="actualizarTotales()" />
+            </div>
+
+            <div class="form-group">
                 <label>Descripción (opcional)</label>
-                <input asp-for="VM.Descripcion" type="text" placeholder="Ej: Sueldo, alquiler cobrado..." />
+                <input asp-for="VM.Descripcion" type="text" maxlength="200"
+                       placeholder="Ej: Sueldo mes, alquiler cobrado..." />
+            </div>
+
+        </div>
+
+        <!-- Cuentas a acreditar -->
+        <div style="margin-top:20px">
+            <div class="totals-strip" style="margin-bottom:16px">
+                <div class="total-item"><span class="lbl">Total</span><span class="val" id="lbl-total">$ 0,00</span></div>
+                <div class="total-item"><span class="lbl">Asignado</span><span class="val accent" id="lbl-asignado">$ 0,00</span></div>
+                <div class="total-item"><span class="lbl">Resta</span><span class="val" id="lbl-resta">$ 0,00</span></div>
+                <div style="margin-left:auto">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="dividirIgual()">÷ Dividir en partes iguales</button>
+                </div>
+            </div>
+            <div id="lista-distribuciones"></div>
+            <div class="btn-group" style="margin-top:12px">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="agregarCuenta()">+ Agregar cuenta</button>
             </div>
         </div>
 
+        <div id="distribuciones-hidden"></div>
+
         <div class="modal-footer" style="margin-top:24px">
             <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Cancelar</a>
-            <button type="submit" class="btn btn-primary">Registrar ingreso</button>
+            <button type="submit" class="btn btn-primary" onclick="return prepararSubmit()">
+                @(esEdicion ? "Guardar cambios" : "Registrar ingreso")
+            </button>
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+const CUENTAS = JSON.parse('@Html.Raw(cuentasJson)');
+let distribuciones = JSON.parse('@Html.Raw(distribJson)');
+let nextKey = 0;
+
+// ── Fecha ────────────────────────────────────────────────────────
+document.getElementById('fecha-ingreso').addEventListener('change', function() {
+    const d = new Date(this.value + 'T00:00:00');
+    document.getElementById('h-dia').value  = d.getDate();
+    document.getElementById('h-mes').value  = d.getMonth() + 1;
+    document.getElementById('h-anio').value = d.getFullYear();
+});
+document.getElementById('fecha-ingreso').dispatchEvent(new Event('change'));
+
+// ── Distribuciones ───────────────────────────────────────────────
+function agregarCuenta(datos = {}) {
+    const cid = datos.cuentaId ?? (CUENTAS[0]?.id ?? 0);
+    if (distribuciones.some(d => d.cuentaId === cid && !datos.cuentaId)) {
+        // Si ya existe esa cuenta, no la repetir en auto
+    }
+    distribuciones.push({ _key: nextKey++, cuentaId: cid, monto: datos.monto ?? 0 });
+    renderDistribuciones();
+}
+
+function renderDistribuciones() {
+    const lista = document.getElementById('lista-distribuciones');
+    lista.innerHTML = '';
+    const s = 'background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:7px;font-size:.88rem';
+    distribuciones.forEach((d, idx) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:grid;grid-template-columns:1fr 200px 36px;gap:8px;align-items:center;margin-bottom:8px';
+        row.innerHTML = `
+            <select onchange="onCuentaChange(${idx}, this)" style="${s}">
+                ${CUENTAS.map(c => `<option value="${c.id}" ${d.cuentaId==c.id?'selected':''}>${c.nombre}</option>`).join('')}
+            </select>
+            <input type="number" step="0.01" min="0" value="${d.monto}"
+                   oninput="onMontoDistrChange(${idx}, this)" style="${s}" placeholder="Monto" />
+            <button type="button" onclick="eliminarCuenta(${idx})" class="btn btn-danger btn-sm" style="padding:6px 10px">✕</button>`;
+        lista.appendChild(row);
+    });
+    actualizarTotales();
+}
+
+function onCuentaChange(idx, sel) {
+    const cid = parseInt(sel.value);
+    if (distribuciones.some((d, i) => i !== idx && d.cuentaId === cid)) {
+        mostrarError('Cuenta duplicada', 'Esa cuenta ya está asignada.');
+        sel.value = distribuciones[idx].cuentaId;
+        return;
+    }
+    distribuciones[idx].cuentaId = cid;
+}
+function onMontoDistrChange(idx, input) { distribuciones[idx].monto = parseFloat(input.value)||0; actualizarTotales(); }
+function eliminarCuenta(idx) { distribuciones.splice(idx, 1); renderDistribuciones(); }
+
+function dividirIgual() {
+    const total = parseFloat(document.getElementById('monto-total').value)||0;
+    const n = distribuciones.length;
+    if (!n || !total) return;
+    const parte = Math.floor((total/n)*100)/100;
+    distribuciones.forEach((d, i) => { d.monto = i > 0 ? parte : Math.round((total-(parte*(n-1)))*100)/100; });
+    renderDistribuciones();
+}
+
+function actualizarTotales() {
+    const total    = parseFloat(document.getElementById('monto-total').value)||0;
+    const asignado = distribuciones.reduce((s,d)=>s+(d.monto||0), 0);
+    const resta    = total - asignado;
+    document.getElementById('lbl-total').textContent    = '$ '+total.toLocaleString('es-AR',{minimumFractionDigits:2});
+    document.getElementById('lbl-asignado').textContent = '$ '+asignado.toLocaleString('es-AR',{minimumFractionDigits:2});
+    const lr = document.getElementById('lbl-resta');
+    lr.textContent = '$ '+Math.abs(resta).toLocaleString('es-AR',{minimumFractionDigits:2});
+    lr.style.color = Math.abs(resta)<0.01 ? 'var(--green)' : 'var(--red)';
+}
+
+function prepararSubmit() {
+    const total = parseFloat(document.getElementById('monto-total').value)||0;
+    if (total <= 0) { mostrarError('Monto inválido', 'El monto debe ser mayor a $0.'); return false; }
+    if (!distribuciones.length) { mostrarError('Sin cuentas', 'Debe asignar al menos una cuenta donde acreditar el ingreso.'); return false; }
+    const asignado = distribuciones.reduce((s,d)=>s+(d.monto||0), 0);
+    if (Math.abs(total-asignado)>0.01) {
+        mostrarError('Total incorrecto', `El asignado ($${asignado.toFixed(2)}) no coincide con el monto ($${total.toFixed(2)}).`);
+        return false;
+    }
+    const container = document.getElementById('distribuciones-hidden');
+    container.innerHTML = '';
+    distribuciones.forEach((d, i) => {
+        const add = (name, val) => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = `VM.Distribuciones[${i}].${name}`; inp.value = val ?? '';
+            container.appendChild(inp);
+        };
+        add('CuentaId', d.cuentaId);
+        add('Monto', d.monto);
+    });
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (distribuciones.length > 0) renderDistribuciones();
+    else if (CUENTAS.length > 0) agregarCuenta({ cuentaId: CUENTAS[0].id, monto: 0 });
+    actualizarTotales();
+});
+</script>
+}

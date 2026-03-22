@@ -9,7 +9,9 @@ public class Ingreso
     public int Anio { get; set; }
     public int Dia  { get; set; }
 
-    public TipoIngreso Tipo { get; set; } = TipoIngreso.Propio;
+    // Tipo por FK (reemplaza el enum)
+    public int TipoIngresoId { get; set; }
+    public TipoIngreso TipoIngreso { get; set; } = null!;
 
     [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a $0.")]
     public decimal Monto { get; set; }
@@ -17,7 +19,6 @@ public class Ingreso
     [MaxLength(200)]
     public string? Descripcion { get; set; }
 
-    // Cuenta de origen (opcional)
-    public int?    CuentaId { get; set; }
-    public Cuenta? Cuenta   { get; set; }
+    // Distribución por cuentas (reemplaza single CuentaId)
+    public ICollection<IngresoDistribucion> Distribuciones { get; set; } = new List<IngresoDistribucion>();
 }

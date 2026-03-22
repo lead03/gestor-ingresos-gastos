@@ -108,7 +108,7 @@
 
             <div class="form-group full">
                 <label>Descripción (opcional)</label>
-                <input asp-for="VM.Descripcion" type="text" placeholder="Ej: Supermercado, pizzeada..." />
+                <input asp-for="VM.Descripcion" type="text" maxlength="100" placeholder="Ej: Supermercado, farmacia..." />
             </div>
 
             <div class="form-group full">
@@ -310,6 +310,9 @@
         }
 
         function prepararSubmit() {
+            // Validar medio de pago obligatorio
+            const medioVal = document.getElementById('sel-medio').value;
+            if (!medioVal) { mostrarError('Medio de pago requerido', 'Debe seleccionar un medio de pago (cuenta o tarjeta).'); return false; }
             const total = parseFloat(document.getElementById('monto-total').value)||0;
             if (total <= 0) { mostrarError('Monto inválido','El monto debe ser mayor a $0.'); return false; }
             const chk = document.getElementById('chk-divide');

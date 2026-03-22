@@ -19,12 +19,15 @@ public class GastoFormVM : IValidatableObject
 
     public bool    SeDivide   { get; set; }
 
-    [MaxLength(200)]
+    [MaxLength(100, ErrorMessage = "La descripción no puede superar los 100 caracteres.")]
     public string? Descripcion { get; set; }
 
     // Medio de pago
     public int? CuentaId  { get; set; }
     public int? TarjetaId { get; set; }
+
+    // Validación: al menos uno debe tener valor
+    public bool TieneMedioPago => CuentaId.HasValue || TarjetaId.HasValue;
 
     // Cuotas — solo aplica cuando TarjetaId tiene valor
     [Range(1, 48, ErrorMessage = "Las cuotas deben ser entre 1 y 48.")]

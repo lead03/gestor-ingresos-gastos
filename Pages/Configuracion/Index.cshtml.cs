@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ControlGastos.Pages.Configuracion;
 
-public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc) : PageModel
+public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc, IngresoService ingresoSvc) : PageModel
 {
     public List<ConfigOpcion>   Redes      { get; set; } = new();
     public List<ConfigOpcion>   Bancos     { get; set; } = new();
     public List<CategoriaGasto> Categorias { get; set; } = new();
+    public List<TipoIngreso>    TiposIngreso { get; set; } = new();
 
     public string   TipoDolarActual       { get; set; } = "blue";
     public decimal? CotizacionActual      { get; set; }
@@ -26,6 +27,9 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     [BindProperty] public string  EditCatTipo           { get; set; } = "Variable";
     [BindProperty] public string  NuevoTipoDolar        { get; set; } = "blue";
     [BindProperty] public decimal CotizacionManualInput { get; set; }
+    [BindProperty] public string  NuevoTipoNombre       { get; set; } = "";
+    [BindProperty] public int     EditTipoId            { get; set; }
+    [BindProperty] public string  EditTipoNombre        { get; set; } = "";
 
     public async Task OnGetAsync()
     {
@@ -86,11 +90,39 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         return RedirectToPage(null, "cotizacion");
     }
 
+    // ── Tipos de ingreso ──────────────────────────────────────────
+    public async Task<IActionResult> OnPostAgregarTipoIngresoAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(NuevoTipoNombre))
+            await ingresoSvc.AgregarTipoAsync(NuevoTipoNombre);
+        return RedirectToPage(null, "tipos-ingreso");
+    }
+
+    public async Task<IActionResult> OnPostEditarTipoIngresoAsync()
+    {
+        if (EditTipoId > 0 && !string.IsNullOrWhiteSpace(EditTipoNombre))
+            await ingresoSvc.EditarTipoAsync(EditTipoId, EditTipoNombre);
+        return RedirectToPage(null, "tipos-ingreso");
+    }
+
+    public async Task<IActionResult> OnPostDeshabilitarTipoIngresoAsync(int id)
+    {
+        await ingresoSvc.DeshabilitarOEliminarTipoAsync(id);
+        return RedirectToPage(null, "tipos-ingreso");
+    }
+
+    public async Task<IActionResult> OnPostHabilitarTipoIngresoAsync(int id)
+    {
+        await ingresoSvc.HabilitarTipoAsync(id);
+        return RedirectToPage(null, "tipos-ingreso");
+    }
+
     private async Task CargarAsync()
     {
         Redes      = await svc.GetRedesAsync();
         Bancos     = await svc.GetBancosAsync();
         Categorias = await gastoSvc.GetTodasCategoriasAsync();
+        TiposIngreso = await ingresoSvc.GetTodosTiposAsync();
         TipoDolarActual  = await cotizacionSvc.GetTipoDolarAsync();
         var cotizRes         = await cotizacionSvc.GetCotizacionConFuenteAsync();
         CotizacionActual     = cotizRes?.Valor;

@@ -27,14 +27,3 @@ public enum EstadoDeuda
     Parcial
 }
 
-public enum TipoIngreso
-{
-    Propio,
-    Distribuido,
-    CuentaPropia,
-    Ahorro,
-    Dpto,
-    USS,
-    FIMA,
-    Resto
-}

@@ -51,8 +51,8 @@ public class CuentaService(ICuentaRepository repo)
         movimientos.AddRange(ingresos.Select(i => new MovimientoCuentaVM
         {
             Fecha       = new DateTime(i.Anio, i.Mes, i.Dia),
-            Descripcion = i.Descripcion ?? i.Tipo.ToString(),
-            Categoria   = i.Tipo.ToString(),
+            Descripcion = i.Descripcion ?? i.TipoIngreso?.Nombre ?? "Ingreso",
+            Categoria   = i.TipoIngreso?.Nombre ?? "Ingreso",
             Tipo        = "Ingreso",
             Monto       = i.Monto
         }));

@@ -18,6 +18,8 @@ public class AppDbContext : DbContext
     public DbSet<Persona>           Personas           => Set<Persona>();
     public DbSet<EfectivoDesglose>    EfectivoDesgloses    => Set<EfectivoDesglose>();
     public DbSet<TarjetaFechaMensual> TarjetaFechasMensuales => Set<TarjetaFechaMensual>();
+    public DbSet<TipoIngreso>         TiposIngreso           => Set<TipoIngreso>();
+    public DbSet<IngresoDistribucion> IngresoDistribuciones  => Set<IngresoDistribucion>();
     public DbSet<ConfigOpcion> ConfigOpciones => Set<ConfigOpcion>();
 
     protected override void OnModelCreating(ModelBuilder mb)
@@ -95,13 +97,27 @@ public class AppDbContext : DbContext
             .HasIndex(c => new { c.Tipo, c.Valor })
             .IsUnique();
 
-        // Ingreso → Cuenta
+        // Ingreso → TipoIngreso
         mb.Entity<Ingreso>()
-            .HasOne(i => i.Cuenta)
+            .HasOne(i => i.TipoIngreso)
+            .WithMany(t => t.Ingresos)
+            .HasForeignKey(i => i.TipoIngresoId);
+
+        // IngresoDistribucion → Ingreso
+        mb.Entity<IngresoDistribucion>()
+            .HasOne(d => d.Ingreso)
+            .WithMany(i => i.Distribuciones)
+            .HasForeignKey(d => d.IngresoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // IngresoDistribucion → Cuenta
+        mb.Entity<IngresoDistribucion>()
+            .HasOne(d => d.Cuenta)
             .WithMany()
-            .HasForeignKey(i => i.CuentaId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(d => d.CuentaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        mb.Entity<IngresoDistribucion>().Property(d => d.Monto).HasPrecision(18, 2);
 
         // Enum conversions — stored as string for readability
         mb.Entity<GastoParticipante>()
@@ -114,10 +130,6 @@ public class AppDbContext : DbContext
 
         mb.Entity<Deuda>()
             .Property(d => d.Estado)
-            .HasConversion<string>();
-
-        mb.Entity<Ingreso>()
-            .Property(i => i.Tipo)
             .HasConversion<string>();
 
         mb.Entity<Cuenta>()

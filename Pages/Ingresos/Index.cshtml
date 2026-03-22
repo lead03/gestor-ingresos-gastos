@@ -6,18 +6,6 @@
     var vm = Model.VM;
     string Peso(decimal v) => v.ToString("N2");
     string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
-
-    var tiposConTotal = new[]
-    {
-        ("Propio",        "Ing. Dist. - Propio", vm.TotalPropio),
-        ("Distribuido",   "C.C. Propias",        vm.TotalDistribuido),
-        ("CuentaPropia",  "Cuenta propia",       vm.TotalCuentaPropia),
-        ("Ahorro",        "Ahorros",             vm.TotalAhorro),
-        ("Dpto",          "Dpto",                vm.TotalDpto),
-        ("USS",           "U$S",                 vm.TotalUSS),
-        ("FIMA",          "FIMA",                vm.TotalFIMA),
-        ("Resto",         "Resto",               vm.TotalResto),
-    };
 }
 
 <div class="page-header">
@@ -30,10 +18,10 @@
 
 <!-- Totales por tipo -->
 <div class="totals-strip">
-    @foreach (var (_, label, total) in tiposConTotal.Where(x => x.Item3 > 0))
+    @foreach (var (nombre, total) in vm.TotalesPorTipo)
     {
         <div class="total-item">
-            <span class="lbl">@label</span>
+            <span class="lbl">@nombre</span>
             <span class="val green">$ @Peso(total)</span>
         </div>
     }
@@ -50,7 +38,7 @@
                 <tr>
                     <th>Día</th>
                     <th>Tipo</th>
-                    <th>Cuenta</th>
+                    <th>Cuentas</th>
                     <th>Descripción</th>
                     <th class="text-right">Monto</th>
                     <th class="text-center">Acciones</th>
@@ -65,11 +53,18 @@
             {
                 <tr>
                     <td class="text-center">@i.Dia</td>
-                    <td><span class="badge badge-ok">@i.Tipo</span></td>
-                    <td>@(i.Cuenta?.Nombre ?? "—")</td>
+                    <td><span class="badge badge-ok">@(i.TipoIngreso?.Nombre ?? "—")</span></td>
+                    <td style="font-size:.82rem">
+                        @if (i.Distribuciones.Any())
+                        {
+                            @string.Join(", ", i.Distribuciones.Select(d => $"{d.Cuenta?.Nombre} (${d.Monto:N0})"))
+                        }
+                        else { <span style="color:var(--text2)">—</span> }
+                    </td>
                     <td>@i.Descripcion</td>
                     <td class="text-right amount pos">$ @Peso(i.Monto)</td>
                     <td class="text-center">
+                        <a asp-page="./Edit" asp-route-id="@i.Id" class="btn btn-ghost btn-sm">✎</a>
                         <form method="post" asp-page-handler="Delete" style="display:inline">
                             <input type="hidden" name="id"   value="@i.Id" />
                             <input type="hidden" name="mes"  value="@vm.Mes" />

@@ -48,7 +48,9 @@ public class CuentaRepository(AppDbContext db) : ICuentaRepository
 
     public Task<List<Ingreso>> GetIngresosByCuentaAsync(int cuentaId) =>
         db.Ingresos
-          .Where(i => i.CuentaId == cuentaId)
+          .Include(i => i.TipoIngreso)
+          .Include(i => i.Distribuciones).ThenInclude(d => d.Cuenta)
+          .Where(i => i.Distribuciones.Any(d => d.CuentaId == cuentaId))
           .OrderByDescending(i => i.Anio).ThenByDescending(i => i.Mes).ThenByDescending(i => i.Dia)
           .ToListAsync();
 }
