@@ -184,11 +184,23 @@
                     }
                     return;
                 }
-                if (e.key === ',') {
-                    if (el.value.includes(',')) e.preventDefault();
+                if (e.key === ',' || e.key === '.') {
+                    const textBefore = el.value.substring(0, el.selectionStart);
+                    const textAfter  = el.value.substring(el.selectionEnd);
+                    if ((textBefore + textAfter).includes(',')) { e.preventDefault(); return; }
+                    if (e.key === '.') {
+                        e.preventDefault();
+                        el.value = textBefore + ',' + textAfter;
+                        el.setSelectionRange(textBefore.length + 1, textBefore.length + 1);
+                        el.dispatchEvent(new Event('input'));
+                    }
                     return;
                 }
                 e.preventDefault();
+            });
+
+            el.addEventListener('focus', function() {
+                if (getRawMoney(el) === 0) setTimeout(() => el.select(), 0);
             });
 
             el.addEventListener('input', function() {
