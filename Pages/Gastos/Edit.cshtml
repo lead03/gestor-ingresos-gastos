@@ -60,8 +60,9 @@
                             <option value="@m">@(m == ControlGastos.Models.Moneda.ARS ? "$ ARS" : "U$D USD")</option>
                         }
                     </select>
-                    <input asp-for="VM.Monto" type="text" inputmode="decimal"
+                    <input name="VM.Monto" type="text" inputmode="decimal"
                            id="monto-total" autocomplete="off" style="flex:1"
+                           value="@(vm.Monto > 0 ? vm.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
                            placeholder="@(esEdicion ? "" : "Ingresa el total del gasto")" />
                 </div>
             </div>

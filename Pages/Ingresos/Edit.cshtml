@@ -63,8 +63,9 @@
 
             <div class="form-group">
                 <label>Monto total ($)</label>
-                <input asp-for="VM.Monto" type="text" inputmode="decimal"
+                <input name="VM.Monto" type="text" inputmode="decimal"
                        id="monto-total" autocomplete="off"
+                       value="@(vm.Monto > 0 ? vm.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
                        placeholder="@(esEdicion ? "" : "Ingresa el total del ingreso")" />
             </div>
 

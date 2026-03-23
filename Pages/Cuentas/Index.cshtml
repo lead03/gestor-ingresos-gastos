@@ -131,7 +131,7 @@ else
                 <div class="form-group">
                     <label>Saldo inicial ($)</label>
                     <input id="f-saldo-inicial" type="text" inputmode="decimal"
-                           autocomplete="off" placeholder="Ej: 10.000" />
+                           autocomplete="off" placeholder="Ingresa el saldo inicial" />
                     <input type="hidden" asp-for="Form.SaldoInicial" id="h-saldo-inicial" />
                     <span asp-validation-for="Form.SaldoInicial" class="field-error"></span>
                 </div>
@@ -139,7 +139,7 @@ else
                 <div class="form-group">
                     <label>Intereses del mes ($) <span style="font-weight:400;color:var(--text2)">(opcional)</span></label>
                     <input id="f-intereses" type="text" inputmode="decimal"
-                           autocomplete="off" placeholder="Ej: 1.250,50" />
+                           autocomplete="off" placeholder="Ingresa los intereses del mes" />
                     <input type="hidden" asp-for="Form.InteresesMensuales" id="h-intereses" />
                     <span asp-validation-for="Form.InteresesMensuales" class="field-error"></span>
                 </div>
