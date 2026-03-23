@@ -7,7 +7,7 @@
     var vm = Model.VM;
     bool esEdicion = vm.Id != 0;
     var cuentasJson = System.Text.Json.JsonSerializer.Serialize(
-        vm.Cuentas.Select(c => new { id = c.Id, nombre = c.Nombre }));
+        vm.Cuentas.Select(c => new { id = c.Id, nombre = c.Nombre, moneda = c.Moneda.ToString() }));
     var distribJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Distribuciones.Select(d => new { cuentaId = d.CuentaId, monto = d.Monto }));
 }
@@ -62,7 +62,17 @@
             </div>
 
             <div class="form-group">
-                <label>Monto total ($)</label>
+                <label>Moneda</label>
+                <select asp-for="VM.Moneda" id="sel-moneda-ingreso" onchange="onMonedaIngresoChange()">
+                    @foreach (var m in Enum.GetValues<ControlGastos.Models.Moneda>())
+                    {
+                        <option value="@m">@(m == ControlGastos.Models.Moneda.ARS ? "$ Peso (ARS)" : "U$D Dólar (USD)")</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Monto total</label>
                 <input name="VM.Monto" type="text" inputmode="decimal"
                        id="monto-total" autocomplete="off"
                        value="@(vm.Monto > 0 ? vm.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
@@ -110,6 +120,20 @@
 const CUENTAS = JSON.parse('@Html.Raw(cuentasJson)');
 let distribuciones = JSON.parse('@Html.Raw(distribJson)');
 let nextKey = 0;
+let monedaIngreso = document.getElementById('sel-moneda-ingreso')?.value || 'ARS';
+
+function cuentasFiltradas() {
+    return CUENTAS.filter(c => c.moneda === monedaIngreso);
+}
+
+function onMonedaIngresoChange() {
+    monedaIngreso = document.getElementById('sel-moneda-ingreso').value;
+    // Limpiar distribuciones que usaban cuentas de la moneda anterior
+    distribuciones = [];
+    const libre = cuentasFiltradas()[0];
+    if (libre) distribuciones.push({ _key: nextKey++, cuentaId: libre.id, monto: 0 });
+    renderDistribuciones();
+}
 
 const MAX_MONTO = 9_999_999_999.99;
 
@@ -127,8 +151,8 @@ function agregarCuenta(datos = {}) {
     let cid = datos.cuentaId ?? null;
     if (cid === null) {
         const usadas = new Set(distribuciones.map(d => d.cuentaId));
-        const libre  = CUENTAS.find(c => !usadas.has(c.id));
-        if (!libre) { mostrarError('Todas las cuentas asignadas', 'Ya agregaste todas las cuentas disponibles.'); return; }
+        const libre  = cuentasFiltradas().find(c => !usadas.has(c.id));
+        if (!libre) { mostrarError('Todas las cuentas asignadas', 'Ya agregaste todas las cuentas en ' + monedaIngreso + '.'); return; }
         cid = libre.id;
     }
     distribuciones.push({ _key: nextKey++, cuentaId: cid, monto: datos.monto ?? 0 });
@@ -144,7 +168,7 @@ function renderDistribuciones() {
         row.style.cssText = 'display:grid;grid-template-columns:1fr 200px 36px;gap:8px;align-items:center;margin-bottom:8px';
         row.innerHTML = `
             <select onchange="onCuentaChange(${idx}, this)" style="${s}">
-                ${CUENTAS.map(c => `<option value="${c.id}" ${d.cuentaId==c.id?'selected':''}>${c.nombre}</option>`).join('')}
+                ${cuentasFiltradas().map(c => `<option value="${c.id}" ${d.cuentaId==c.id?'selected':''}>${c.nombre}</option>`).join('')}
             </select>
             <input type="text" inputmode="decimal" value="${d.monto > 0 ? d.monto : ''}"
                    data-idx="${idx}" data-init-value="${d.monto}" class="distr-monto"
@@ -250,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupMoneyInput(montoEl, actualizarTotales);
 
     if (distribuciones.length > 0) renderDistribuciones();
-    else if (CUENTAS.length > 0) agregarCuenta({ cuentaId: CUENTAS[0].id, monto: 0 });
+    else if (cuentasFiltradas().length > 0) agregarCuenta({ cuentaId: cuentasFiltradas()[0].id, monto: 0 });
     actualizarTotales();
 });
 </script>

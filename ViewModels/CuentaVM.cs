@@ -17,6 +17,7 @@ public class CuentaResumenVM
     public decimal    SaldoInicial       { get; set; }
     public decimal    SaldoActual  { get; set; }
     public decimal?   AlertaSaldo  { get; set; }
+    public Moneda     Moneda       { get; set; } = Moneda.ARS;
     public bool       EnAlerta     => AlertaSaldo.HasValue && SaldoActual < AlertaSaldo.Value;
 }
 
@@ -58,6 +59,7 @@ public class CuentaFormVM : IValidatableObject
     public decimal SaldoInicial { get; set; }
 
     public decimal? AlertaSaldo { get; set; }
+    public Moneda   Moneda      { get; set; } = Moneda.ARS;
     public bool     Activa      { get; set; } = true;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)

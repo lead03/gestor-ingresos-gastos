@@ -58,6 +58,31 @@ using (var scope = app.Services.CreateScope())
 
     try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas ADD COLUMN GastoItemId INTEGER"); } catch { /* ya existe */ }
 
+    // Tabla Monedas (lookup) + seed
+    try
+    {
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS Monedas (
+                Id      INTEGER PRIMARY KEY,
+                Codigo  TEXT NOT NULL,
+                Nombre  TEXT NOT NULL,
+                Simbolo TEXT NOT NULL
+            )
+            """);
+    } catch { }
+    try { db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO Monedas (Id, Codigo, Nombre, Simbolo) VALUES (1,'ARS','Peso Argentino','$')");   } catch { }
+    try { db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO Monedas (Id, Codigo, Nombre, Simbolo) VALUES (2,'USD','Dólar','U$D')"); } catch { }
+
+    // MonedaId en GastoItems (migra desde columna Moneda TEXT)
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE GastoItems     ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
+    try { db.Database.ExecuteSqlRaw("UPDATE GastoItems     SET MonedaId = CASE WHEN Moneda = 'USD' THEN 2 ELSE 1 END WHERE MonedaId = 1"); } catch { }
+    // MonedaId en TarjetaCuotas (migra desde columna Moneda TEXT)
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas  ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
+    try { db.Database.ExecuteSqlRaw("UPDATE TarjetaCuotas  SET MonedaId = CASE WHEN Moneda = 'USD' THEN 2 ELSE 1 END WHERE MonedaId = 1"); } catch { }
+    // MonedaId en Cuentas e Ingresos (columnas nuevas)
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Cuentas        ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Ingresos       ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
+
     // Migración manual: tabla de opciones configurables
     try
     {

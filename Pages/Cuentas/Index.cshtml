@@ -13,6 +13,7 @@
             id           = c.Id,
             nombre       = c.Nombre,
             tipo         = c.Tipo.ToString(),
+            moneda       = c.Moneda.ToString(),
             saldoInicial = c.SaldoInicial,
             alertaSaldo  = c.AlertaSaldo,
         }));
@@ -51,9 +52,13 @@ else
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
                     <div>
                         <div style="font-size:1rem;font-weight:700">@c.Nombre</div>
-                        <div style="font-size:.78rem;color:var(--text2);margin-top:2px">
+                        <div style="font-size:.78rem;color:var(--text2);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap">
                             <span class="badge @(c.Tipo == TipoCuenta.Banco ? "badge-fijo" : c.Tipo == TipoCuenta.Billetera ? "badge-var" : "badge-ok")">
                                 @c.Tipo
+                            </span>
+                            <span class="badge @(c.Moneda == ControlGastos.Models.Moneda.USD ? "badge-usd" : "badge-ok")"
+                                  style="font-size:.72rem">
+                                @c.Moneda
                             </span>
                         </div>
                     </div>
@@ -122,6 +127,16 @@ else
                 </div>
 
                 <div class="form-group">
+                    <label>Moneda</label>
+                    <select asp-for="Form.Moneda" id="f-moneda">
+                        @foreach (var m in Enum.GetValues<ControlGastos.Models.Moneda>())
+                        {
+                            <option value="@m">@(m == ControlGastos.Models.Moneda.ARS ? "$ Peso (ARS)" : "U$D Dólar (USD)")</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Saldo inicial ($)</label>
                     <input id="f-saldo-inicial" type="text" inputmode="decimal"
                            autocomplete="off" placeholder="Ingresa el saldo inicial" />
@@ -165,6 +180,7 @@ function openModal() {
     document.getElementById('f-id').value       = '0';
     document.getElementById('f-nombre').value   = '';
     document.getElementById('f-tipo').value     = 'Billetera';
+    document.getElementById('f-moneda').value   = 'ARS';
     elSaldo.value  = '';
     elAlerta.value = '';
     ocultarError();
@@ -177,9 +193,10 @@ function openModalEditar(id) {
     if (!c) return;
 
     document.getElementById('modal-titulo').textContent = 'Editar cuenta';
-    document.getElementById('f-id').value     = c.id;
-    document.getElementById('f-nombre').value = c.nombre;
-    document.getElementById('f-tipo').value   = c.tipo;
+    document.getElementById('f-id').value      = c.id;
+    document.getElementById('f-nombre').value  = c.nombre;
+    document.getElementById('f-tipo').value    = c.tipo;
+    document.getElementById('f-moneda').value  = c.moneda;
 
     setMoneyField(elSaldo,  c.saldoInicial);
     setMoneyField(elAlerta, c.alertaSaldo);

@@ -77,8 +77,8 @@
                             @foreach (var c in vm.Cuentas)
                             {
                                 var selC = vm.CuentaId == c.Id;
-                                <option value="cuenta_@c.Id" selected="@selC">
-                                    @c.Nombre ($@c.SaldoActual.ToString("N2"))
+                                <option value="cuenta_@c.Id" data-moneda="@c.Moneda" selected="@selC">
+                                    @c.Nombre (@(c.Moneda == ControlGastos.Models.Moneda.USD ? "U$D" : "$")@c.SaldoActual.ToString("N2"))
                                 </option>
                             }
                         </optgroup>
@@ -299,6 +299,21 @@
         function onMontoPartChange(idx,input) { participantes[idx].monto = getRawMoney(input); actualizarTotales(); }
         function onMontoChange()              { actualizarTotales(); calcMontoCuota(); }
         function onMonedaChange() {
+            const moneda = document.getElementById('sel-moneda').value; // 'ARS' | 'USD'
+            const selMedio = document.getElementById('sel-medio');
+
+            // Mostrar solo las cuentas que coincidan con la moneda seleccionada
+            selMedio.querySelectorAll('option[data-moneda]').forEach(opt => {
+                opt.hidden = opt.dataset.moneda !== moneda;
+            });
+
+            // Si la opción actual quedó oculta, resetear
+            const selOpt = selMedio.options[selMedio.selectedIndex];
+            if (selOpt && selOpt.hidden) {
+                selMedio.value = '';
+                onMedioChange(selMedio);
+            }
+
             calcMontoCuota();
         }
         function eliminarParticipante(idx)    { participantes.splice(idx,1); renderParticipantes(); }
@@ -360,6 +375,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Filtrar cuentas según moneda inicial
+            onMonedaChange();
+
             // Inicializar formateo del monto principal
             const montoEl = document.getElementById('monto-total');
             montoEl.dataset.initValue = montoEl.value || '0';

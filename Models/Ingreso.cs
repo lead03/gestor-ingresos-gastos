@@ -13,6 +13,8 @@ public class Ingreso
     public int TipoIngresoId { get; set; }
     public TipoIngreso TipoIngreso { get; set; } = null!;
 
+    public Moneda Moneda { get; set; } = Moneda.ARS;
+
     [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a $0.")]
     public decimal Monto { get; set; }
 

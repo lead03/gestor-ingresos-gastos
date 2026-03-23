@@ -23,6 +23,7 @@ public class CuentaService(ICuentaRepository repo)
                 SaldoInicial       = c.SaldoInicial,
                 SaldoActual  = saldo,
                 AlertaSaldo  = c.AlertaSaldo,
+                Moneda       = c.Moneda,
             });
         }
 
@@ -88,6 +89,7 @@ public class CuentaService(ICuentaRepository repo)
                 Tipo               = c.Tipo,
                 SaldoActual  = saldo,
                 AlertaSaldo  = c.AlertaSaldo,
+                Moneda       = c.Moneda,
             });
         }
         return resultado;
@@ -101,6 +103,7 @@ public class CuentaService(ICuentaRepository repo)
             {
                 Nombre       = vm.Nombre,
                 Tipo         = vm.Tipo,
+                Moneda       = vm.Moneda,
                 SaldoInicial = vm.SaldoInicial,
                 AlertaSaldo  = vm.AlertaSaldo,
                 Activa       = true
@@ -113,6 +116,7 @@ public class CuentaService(ICuentaRepository repo)
 
             c.Nombre       = vm.Nombre;
             c.Tipo         = vm.Tipo;
+            c.Moneda       = vm.Moneda;
             c.SaldoInicial = vm.SaldoInicial;
             c.AlertaSaldo  = vm.AlertaSaldo;
             c.Activa       = vm.Activa;

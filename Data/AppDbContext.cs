@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<TipoIngreso>         TiposIngreso           => Set<TipoIngreso>();
     public DbSet<IngresoDistribucion> IngresoDistribuciones  => Set<IngresoDistribucion>();
     public DbSet<ConfigOpcion> ConfigOpciones => Set<ConfigOpcion>();
+    public DbSet<MonedaItem>   Monedas        => Set<MonedaItem>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -124,13 +125,32 @@ public class AppDbContext : DbContext
             .Property(p => p.Tipo)
             .HasConversion<string>();
 
+        // Moneda: el enum se guarda como int (MonedaId) para mantener FK con la tabla Monedas
         mb.Entity<GastoItem>()
             .Property(g => g.Moneda)
-            .HasConversion<string>();
+            .HasColumnName("MonedaId")
+            .HasConversion<int>();
 
         mb.Entity<TarjetaCuota>()
             .Property(tc => tc.Moneda)
-            .HasConversion<string>();
+            .HasColumnName("MonedaId")
+            .HasConversion<int>();
+
+        mb.Entity<Ingreso>()
+            .Property(i => i.Moneda)
+            .HasColumnName("MonedaId")
+            .HasConversion<int>();
+
+        mb.Entity<Cuenta>()
+            .Property(c => c.Moneda)
+            .HasColumnName("MonedaId")
+            .HasConversion<int>();
+
+        // Tabla Monedas: seed con datos iniciales
+        mb.Entity<MonedaItem>().HasData(
+            new MonedaItem { Id = (int)Moneda.ARS, Codigo = "ARS", Nombre = "Peso Argentino", Simbolo = "$"  },
+            new MonedaItem { Id = (int)Moneda.USD, Codigo = "USD", Nombre = "Dólar",          Simbolo = "U$D" }
+        );
 
         mb.Entity<Deuda>()
             .Property(d => d.Direccion)

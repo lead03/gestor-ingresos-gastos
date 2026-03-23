@@ -28,7 +28,7 @@ public class IngresoService(IIngresoRepository repo, ICuentaRepository cuentaRep
         var vm = new IngresoFormVM
         {
             Tipos   = tipos,
-            Cuentas = cuentas.Select(c => new CuentaResumenVM { Id = c.Id, Nombre = c.Nombre, Tipo = c.Tipo }).ToList()
+            Cuentas = cuentas.Select(c => new CuentaResumenVM { Id = c.Id, Nombre = c.Nombre, Tipo = c.Tipo, Moneda = c.Moneda }).ToList()
         };
 
         if (id.HasValue)
@@ -41,6 +41,7 @@ public class IngresoService(IIngresoRepository repo, ICuentaRepository cuentaRep
                 vm.Anio         = ingreso.Anio;
                 vm.Dia          = ingreso.Dia;
                 vm.TipoIngresoId = ingreso.TipoIngresoId;
+                vm.Moneda       = ingreso.Moneda;
                 vm.Monto        = ingreso.Monto;
                 vm.Descripcion  = ingreso.Descripcion;
                 vm.Distribuciones = ingreso.Distribuciones
@@ -81,6 +82,7 @@ public class IngresoService(IIngresoRepository repo, ICuentaRepository cuentaRep
             {
                 Mes = vm.Mes, Anio = vm.Anio, Dia = vm.Dia,
                 TipoIngresoId = vm.TipoIngresoId,
+                Moneda        = vm.Moneda,
                 Monto         = vm.Monto,
                 Descripcion   = vm.Descripcion
             };
@@ -93,6 +95,7 @@ public class IngresoService(IIngresoRepository repo, ICuentaRepository cuentaRep
             if (ingreso == null) return Result.Fail($"Ingreso {vm.Id} no encontrado.");
             ingreso.Mes = vm.Mes; ingreso.Anio = vm.Anio; ingreso.Dia = vm.Dia;
             ingreso.TipoIngresoId = vm.TipoIngresoId;
+            ingreso.Moneda        = vm.Moneda;
             ingreso.Monto         = vm.Monto;
             ingreso.Descripcion   = vm.Descripcion;
             await repo.UpdateAsync(ingreso);

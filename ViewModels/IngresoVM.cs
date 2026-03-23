@@ -29,6 +29,8 @@ public class IngresoFormVM : IValidatableObject
     [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar un tipo de ingreso.")]
     public int TipoIngresoId { get; set; }
 
+    public Moneda Moneda { get; set; } = Moneda.ARS;
+
     [Range(0.01, 9999999999.99,
         ErrorMessage = "El monto debe ser mayor a $0 y menor a $9.999.999.999,99.")]
     public decimal Monto { get; set; }
