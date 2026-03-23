@@ -9,6 +9,13 @@
     var tiposGasto = vm.Categorias.GroupBy(c => c.Tipo).OrderBy(g => g.Key);
     var tarjetasJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Tarjetas.Select(t => new { id = t.Id, nombre = t.Nombre, diaCierre = t.DiaCierre }));
+    var cuentasJson = System.Text.Json.JsonSerializer.Serialize(
+        vm.Cuentas.Select(c => new {
+            id     = c.Id,
+            nombre = c.Nombre,
+            moneda = c.Moneda.ToString(),
+            saldo  = c.SaldoActual
+        }));
     var personasJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Personas.Select(p => new { id = p.Id, nombre = p.Nombre }));
     var participantesJson = System.Text.Json.JsonSerializer.Serialize(
@@ -56,15 +63,7 @@
                     <option value="">— Sin asignar —</option>
                     @if (vm.Cuentas.Any())
                     {
-                        <optgroup label="── Cuentas ──">
-                            @foreach (var c in vm.Cuentas)
-                            {
-                                var selC = vm.CuentaId == c.Id;
-                                <option value="cuenta_@c.Id" data-moneda="@c.Moneda" selected="@selC">
-                                    @c.Nombre (@(c.Moneda == ControlGastos.Models.Moneda.USD ? "U$D" : "$")@c.SaldoActual.ToString("N2"))
-                                </option>
-                            }
-                        </optgroup>
+                        <optgroup label="── Cuentas ──" data-tipo="cuentas"></optgroup>
                     }
                     @if (vm.Tarjetas.Any())
                     {
@@ -155,7 +154,8 @@
 @section Scripts {
     <script src="~/js/money-input.js"></script>
     <script>
-        const TARJETAS    = JSON.parse('@Html.Raw(tarjetasJson)');
+        const TARJETAS      = JSON.parse('@Html.Raw(tarjetasJson)');
+        const CUENTAS_GASTO = JSON.parse('@Html.Raw(cuentasJson)');
         const PERSONAS    = JSON.parse('@Html.Raw(personasJson)');
         let participantes = JSON.parse('@Html.Raw(participantesJson)');
         let nextKey = 0;
@@ -300,17 +300,29 @@
         function onMontoPartChange(idx,input) { participantes[idx].monto = getRawMoney(input); actualizarTotales(); }
         function onMontoChange()              { actualizarTotales(); calcMontoCuota(); }
         function onMonedaChange() {
-            const moneda = document.getElementById('sel-moneda').value; // 'ARS' | 'USD'
+            const moneda   = document.getElementById('sel-moneda').value; // 'ARS' | 'USD'
             const selMedio = document.getElementById('sel-medio');
+            const prevVal  = selMedio.value;
 
-            // Mostrar solo las cuentas que coincidan con la moneda seleccionada
-            selMedio.querySelectorAll('option[data-moneda]').forEach(opt => {
-                opt.hidden = opt.dataset.moneda !== moneda;
-            });
+            // Reconstruir optgroup de cuentas con solo las de la moneda activa
+            const grp = selMedio.querySelector('optgroup[data-tipo="cuentas"]');
+            if (grp) {
+                grp.innerHTML = '';
+                CUENTAS_GASTO
+                    .filter(c => c.moneda === moneda)
+                    .forEach(c => {
+                        const opt    = document.createElement('option');
+                        opt.value    = 'cuenta_' + c.id;
+                        const simbolo = c.moneda === 'USD' ? 'U$D' : '$';
+                        const saldo   = parseFloat(c.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                        opt.textContent = c.nombre + ' (' + simbolo + saldo + ')';
+                        grp.appendChild(opt);
+                    });
+            }
 
-            // Si la opción actual quedó oculta, resetear
-            const selOpt = selMedio.options[selMedio.selectedIndex];
-            if (selOpt && selOpt.hidden) {
+            // Si la selección anterior ya no existe, resetear
+            const stillExists = Array.from(selMedio.options).some(o => o.value === prevVal);
+            if (!stillExists) {
                 selMedio.value = '';
                 onMedioChange(selMedio);
             }
