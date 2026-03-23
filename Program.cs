@@ -129,6 +129,8 @@ using (var scope = app.Services.CreateScope())
 
     // Columna TipoIngresoId en Ingresos (DEFAULT 7 = Otros)
     try { db.Database.ExecuteSqlRaw("ALTER TABLE Ingresos ADD COLUMN TipoIngresoId INTEGER NOT NULL DEFAULT 7"); } catch { }
+    // Columna InteresesMensuales en Cuentas
+    try { db.Database.ExecuteSqlRaw("ALTER TABLE Cuentas ADD COLUMN InteresesMensuales REAL"); } catch { }
 
     // Migrar datos existentes: CuentaId → IngresoDistribuciones
     try {

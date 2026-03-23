@@ -64,7 +64,8 @@
             <div class="form-group">
                 <label>Monto total ($)</label>
                 <input asp-for="VM.Monto" type="text" inputmode="decimal"
-                       id="monto-total" autocomplete="off" />
+                       id="monto-total" autocomplete="off"
+                       placeholder="@(esEdicion ? "" : "Ingresa el total del ingreso")" />
             </div>
 
             <div class="form-group">
@@ -103,105 +104,13 @@
 </div>
 
 @section Scripts {
+<script src="~/js/money-input.js"></script>
 <script>
 const CUENTAS = JSON.parse('@Html.Raw(cuentasJson)');
 let distribuciones = JSON.parse('@Html.Raw(distribJson)');
 let nextKey = 0;
 
 const MAX_MONTO = 9_999_999_999.99;
-
-// ── Formateo de montos en tiempo real (es-AR) ─────────────────────
-function setupMoneyInput(el, onChangeCb) {
-    el.type = 'text';
-    el.setAttribute('inputmode', 'decimal');
-
-    el.addEventListener('keydown', function(e) {
-        const allowed = ['Backspace','Delete','Tab','Escape','Enter',
-                         'ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
-        if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
-
-        if (/^\d$/.test(e.key)) {
-            // Bloquear 3er decimal
-            const commaIdx = el.value.indexOf(',');
-            if (commaIdx !== -1) {
-                const selStart = el.selectionStart;
-                const selEnd   = el.selectionEnd;
-                if (selStart > commaIdx) {
-                    const charsAfterComma = el.value.substring(commaIdx + 1, selStart);
-                    if (charsAfterComma.length >= 2 && selStart === selEnd) {
-                        e.preventDefault(); return;
-                    }
-                }
-            }
-            return;
-        }
-        if (e.key === ',' || e.key === '.') {
-            const textBefore = el.value.substring(0, el.selectionStart);
-            const textAfter  = el.value.substring(el.selectionEnd);
-            if ((textBefore + textAfter).includes(',')) { e.preventDefault(); return; }
-            if (e.key === '.') {
-                e.preventDefault();
-                el.value = textBefore + ',' + textAfter;
-                el.setSelectionRange(textBefore.length + 1, textBefore.length + 1);
-                el.dispatchEvent(new Event('input'));
-            }
-            return;
-        }
-        e.preventDefault();
-    });
-
-    el.addEventListener('focus', function() {
-        if (getRawMoney(el) === 0) setTimeout(() => el.select(), 0);
-    });
-
-    el.addEventListener('input', function() {
-        const cursor   = el.selectionStart;
-        const oldVal   = el.value;
-        const dotsAntes = (oldVal.substring(0, cursor).match(/\./g) || []).length;
-
-        // Parse
-        const parts  = oldVal.replace(/\./g, '').split(',');
-        let intStr   = parts[0].replace(/\D/g, '');
-        const decStr = parts.length > 1 ? parts[1].substring(0, 2) : null;
-
-        // Max check on integer part
-        if (parseInt(intStr || '0', 10) > 9999999999) intStr = '9999999999';
-
-        const intFmt = intStr ? intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
-        const newVal = decStr !== null ? `${intFmt},${decStr}` : intFmt;
-        el.value = newVal;
-
-        // Restaurar cursor compensando puntos agregados/quitados
-        const subNew    = newVal.substring(0, cursor);
-        const dotsDespues = (subNew.match(/\./g) || []).length;
-        const newCursor = Math.min(cursor + (dotsDespues - dotsAntes), newVal.length);
-        try { el.setSelectionRange(newCursor, newCursor); } catch(_) {}
-
-        if (onChangeCb) onChangeCb();
-    });
-
-    el.addEventListener('blur', function() {
-        const raw = getRawMoney(el);
-        if (raw > 0) {
-            el.value = raw.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-        if (onChangeCb) onChangeCb();
-    });
-
-    // Valor inicial
-    const initVal = parseFloat(el.dataset.initValue || el.value) || 0;
-    if (initVal > 0) {
-        el.value = initVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-}
-
-function getRawMoney(el) {
-    return parseFloat((el.value || '').replace(/\./g, '').replace(',', '.')) || 0;
-}
-
-function restoreMoneyForSubmit(el) {
-    el.value = getRawMoney(el).toString();
-}
 
 // ── Fecha ─────────────────────────────────────────────────────────
 document.getElementById('fecha-ingreso').addEventListener('change', function() {

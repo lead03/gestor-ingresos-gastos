@@ -18,6 +18,9 @@ public class Cuenta
     // Alerta cuando el saldo cae por debajo de este valor
     public decimal? AlertaSaldo { get; set; }
 
+    // Intereses/rendimiento acumulado del mes — el usuario lo actualiza cuando quiere
+    public decimal? InteresesMensuales { get; set; }
+
     public bool Activa { get; set; } = true;
 
     // Saldo calculado (no persistido) — se calcula en el servicio

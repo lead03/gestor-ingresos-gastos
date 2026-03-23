@@ -11,13 +11,14 @@ public class CuentaListVM
 
 public class CuentaResumenVM
 {
-    public int        Id           { get; set; }
-    public string     Nombre       { get; set; } = "";
-    public TipoCuenta Tipo         { get; set; }
-    public decimal    SaldoInicial { get; set; }
-    public decimal    SaldoActual  { get; set; }
-    public decimal?   AlertaSaldo  { get; set; }
-    public bool       EnAlerta     => AlertaSaldo.HasValue && SaldoActual < AlertaSaldo.Value;
+    public int        Id                 { get; set; }
+    public string     Nombre             { get; set; } = "";
+    public TipoCuenta Tipo               { get; set; }
+    public decimal    SaldoInicial       { get; set; }
+    public decimal    SaldoActual        { get; set; }
+    public decimal?   AlertaSaldo        { get; set; }
+    public decimal?   InteresesMensuales { get; set; }
+    public bool       EnAlerta           => AlertaSaldo.HasValue && SaldoActual < AlertaSaldo.Value;
 }
 
 public class CuentaDetalleVM
@@ -54,16 +55,35 @@ public class CuentaFormVM : IValidatableObject
 
     public TipoCuenta Tipo { get; set; } = TipoCuenta.Billetera;
 
-    [Range(0, double.MaxValue, ErrorMessage = "El saldo inicial no puede ser negativo.")]
+    [Range(0, 9999999999.99, ErrorMessage = "El saldo inicial no puede ser negativo ni superar $ 9.999.999.999,99.")]
     public decimal SaldoInicial { get; set; }
 
-    public decimal? AlertaSaldo { get; set; }
-    public bool     Activa      { get; set; } = true;
+    public decimal? AlertaSaldo        { get; set; }
+    public decimal? InteresesMensuales { get; set; }
+    public bool     Activa             { get; set; } = true;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
-        if (AlertaSaldo.HasValue && AlertaSaldo.Value < 0)
-            yield return new ValidationResult("El monto de alerta no puede ser negativo.",
-                new[] { nameof(AlertaSaldo) });
+        const decimal max = 9_999_999_999.99m;
+
+        if (AlertaSaldo.HasValue)
+        {
+            if (AlertaSaldo.Value < 0)
+                yield return new ValidationResult(
+                    "El monto de alerta no puede ser negativo.", new[] { nameof(AlertaSaldo) });
+            if (AlertaSaldo.Value > max)
+                yield return new ValidationResult(
+                    "El monto de alerta no puede superar $ 9.999.999.999,99.", new[] { nameof(AlertaSaldo) });
+        }
+
+        if (InteresesMensuales.HasValue)
+        {
+            if (InteresesMensuales.Value < 0)
+                yield return new ValidationResult(
+                    "Los intereses no pueden ser negativos.", new[] { nameof(InteresesMensuales) });
+            if (InteresesMensuales.Value > max)
+                yield return new ValidationResult(
+                    "Los intereses no pueden superar $ 9.999.999.999,99.", new[] { nameof(InteresesMensuales) });
+        }
     }
 }
