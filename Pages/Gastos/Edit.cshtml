@@ -50,24 +50,7 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>Monto total</label>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <select asp-for="VM.Moneda" id="sel-moneda" onchange="onMonedaChange()"
-                            style="width:88px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.88rem;flex-shrink:0">
-                        @foreach (var m in Enum.GetValues<ControlGastos.Models.Moneda>())
-                        {
-                            <option value="@m">@(m == ControlGastos.Models.Moneda.ARS ? "$ ARS" : "U$D USD")</option>
-                        }
-                    </select>
-                    <input name="VM.Monto" type="text" inputmode="decimal"
-                           id="monto-total" autocomplete="off" style="flex:1"
-                           value="@(vm.Monto > 0 ? vm.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
-                           placeholder="@(esEdicion ? "" : "Ingresa el total del gasto")" />
-                </div>
-            </div>
-
-            <div class="form-group">
+            <div class="form-group full">
                 <label>Medio de pago</label>
                 <select id="sel-medio" onchange="onMedioChange(this)">
                     <option value="">— Sin asignar —</option>
@@ -108,6 +91,24 @@
                 <label>Monto por cuota</label>
                 <input type="number" step="0.01" id="monto-cuota" readonly style="opacity:.7" />
                 <div id="info-cierre" style="font-size:.78rem;color:var(--text2);margin-top:4px"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Moneda</label>
+                <select asp-for="VM.Moneda" id="sel-moneda" onchange="onMonedaChange()">
+                    @foreach (var m in Enum.GetValues<ControlGastos.Models.Moneda>())
+                    {
+                        <option value="@m">@(m == ControlGastos.Models.Moneda.ARS ? "$ Peso (ARS)" : "U$D Dólar (USD)")</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Monto total</label>
+                <input name="VM.Monto" type="text" inputmode="decimal"
+                       id="monto-total" autocomplete="off"
+                       value="@(vm.Monto > 0 ? vm.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")"
+                       placeholder="@(esEdicion ? "" : "Ingresa el total del gasto")" />
             </div>
 
             <div class="form-group full">
