@@ -15,10 +15,9 @@ public class CuentaResumenVM
     public string     Nombre             { get; set; } = "";
     public TipoCuenta Tipo               { get; set; }
     public decimal    SaldoInicial       { get; set; }
-    public decimal    SaldoActual        { get; set; }
-    public decimal?   AlertaSaldo        { get; set; }
-    public decimal?   InteresesMensuales { get; set; }
-    public bool       EnAlerta           => AlertaSaldo.HasValue && SaldoActual < AlertaSaldo.Value;
+    public decimal    SaldoActual  { get; set; }
+    public decimal?   AlertaSaldo  { get; set; }
+    public bool       EnAlerta     => AlertaSaldo.HasValue && SaldoActual < AlertaSaldo.Value;
 }
 
 public class CuentaDetalleVM
@@ -58,9 +57,8 @@ public class CuentaFormVM : IValidatableObject
     [Range(0, 9999999999.99, ErrorMessage = "El saldo inicial no puede ser negativo ni superar $ 9.999.999.999,99.")]
     public decimal SaldoInicial { get; set; }
 
-    public decimal? AlertaSaldo        { get; set; }
-    public decimal? InteresesMensuales { get; set; }
-    public bool     Activa             { get; set; } = true;
+    public decimal? AlertaSaldo { get; set; }
+    public bool     Activa      { get; set; } = true;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
@@ -74,16 +72,6 @@ public class CuentaFormVM : IValidatableObject
             if (AlertaSaldo.Value > max)
                 yield return new ValidationResult(
                     "El monto de alerta no puede superar $ 9.999.999.999,99.", new[] { nameof(AlertaSaldo) });
-        }
-
-        if (InteresesMensuales.HasValue)
-        {
-            if (InteresesMensuales.Value < 0)
-                yield return new ValidationResult(
-                    "Los intereses no pueden ser negativos.", new[] { nameof(InteresesMensuales) });
-            if (InteresesMensuales.Value > max)
-                yield return new ValidationResult(
-                    "Los intereses no pueden superar $ 9.999.999.999,99.", new[] { nameof(InteresesMensuales) });
         }
     }
 }

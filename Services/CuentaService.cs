@@ -21,9 +21,8 @@ public class CuentaService(ICuentaRepository repo)
                 Nombre             = c.Nombre,
                 Tipo               = c.Tipo,
                 SaldoInicial       = c.SaldoInicial,
-                SaldoActual        = saldo,
-                AlertaSaldo        = c.AlertaSaldo,
-                InteresesMensuales = c.InteresesMensuales
+                SaldoActual  = saldo,
+                AlertaSaldo  = c.AlertaSaldo,
             });
         }
 
@@ -87,9 +86,8 @@ public class CuentaService(ICuentaRepository repo)
                 Id                 = c.Id,
                 Nombre             = c.Nombre,
                 Tipo               = c.Tipo,
-                SaldoActual        = saldo,
-                AlertaSaldo        = c.AlertaSaldo,
-                InteresesMensuales = c.InteresesMensuales
+                SaldoActual  = saldo,
+                AlertaSaldo  = c.AlertaSaldo,
             });
         }
         return resultado;
@@ -101,12 +99,11 @@ public class CuentaService(ICuentaRepository repo)
         {
             await repo.AddAsync(new Cuenta
             {
-                Nombre             = vm.Nombre,
-                Tipo               = vm.Tipo,
-                SaldoInicial       = vm.SaldoInicial,
-                AlertaSaldo        = vm.AlertaSaldo,
-                InteresesMensuales = vm.InteresesMensuales,
-                Activa             = true
+                Nombre       = vm.Nombre,
+                Tipo         = vm.Tipo,
+                SaldoInicial = vm.SaldoInicial,
+                AlertaSaldo  = vm.AlertaSaldo,
+                Activa       = true
             });
         }
         else
@@ -114,12 +111,11 @@ public class CuentaService(ICuentaRepository repo)
             var c = await repo.GetByIdAsync(vm.Id);
             if (c == null) return Result.Fail("Cuenta no encontrada.");
 
-            c.Nombre             = vm.Nombre;
-            c.Tipo               = vm.Tipo;
-            c.SaldoInicial       = vm.SaldoInicial;
-            c.AlertaSaldo        = vm.AlertaSaldo;
-            c.InteresesMensuales = vm.InteresesMensuales;
-            c.Activa             = vm.Activa;
+            c.Nombre       = vm.Nombre;
+            c.Tipo         = vm.Tipo;
+            c.SaldoInicial = vm.SaldoInicial;
+            c.AlertaSaldo  = vm.AlertaSaldo;
+            c.Activa       = vm.Activa;
 
             await repo.UpdateAsync(c);
         }

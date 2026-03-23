@@ -153,7 +153,7 @@ public class AppDbContext : DbContext
         mb.Entity<TarjetaCuota>().Property(tc => tc.MontoCuota).HasPrecision(18, 2);
         mb.Entity<Cuenta>().Property(c => c.SaldoInicial).HasPrecision(18, 2);
         mb.Entity<Cuenta>().Property(c => c.AlertaSaldo).HasPrecision(18, 2);
-        mb.Entity<Cuenta>().Property(c => c.InteresesMensuales).HasPrecision(18, 2);
+
         mb.Entity<Deuda>().Property(d => d.Monto).HasPrecision(18, 2);
         mb.Entity<Deuda>().Property(d => d.MontoPagado).HasPrecision(18, 2);
         mb.Entity<Tarjeta>().Property(t => t.LimiteCredito).HasPrecision(18, 2);

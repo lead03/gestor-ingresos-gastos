@@ -10,12 +10,11 @@
     // Serializar datos para edición inline
     var cuentasJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Cuentas.Select(c => new {
-            id                 = c.Id,
-            nombre             = c.Nombre,
-            tipo               = c.Tipo.ToString(),
-            saldoInicial       = c.SaldoInicial,
-            alertaSaldo        = c.AlertaSaldo,
-            interesesMensuales = c.InteresesMensuales
+            id           = c.Id,
+            nombre       = c.Nombre,
+            tipo         = c.Tipo.ToString(),
+            saldoInicial = c.SaldoInicial,
+            alertaSaldo  = c.AlertaSaldo,
         }));
 }
 
@@ -83,12 +82,6 @@ else
                     <div style="font-size:.78rem;color:var(--text2);margin-top:2px">
                         Saldo inicial: $ @Peso(c.SaldoInicial)
                     </div>
-                    @if (c.InteresesMensuales.HasValue && c.InteresesMensuales.Value > 0)
-                    {
-                        <div style="font-size:.78rem;color:var(--green);margin-top:2px">
-                            ↑ Intereses del mes: $ @Peso(c.InteresesMensuales.Value)
-                        </div>
-                    }
                 </div>
 
                 <a asp-page="./Detalle" asp-route-id="@c.Id"
@@ -136,14 +129,6 @@ else
                     <span asp-validation-for="Form.SaldoInicial" class="field-error"></span>
                 </div>
 
-                <div class="form-group">
-                    <label>Intereses del mes ($) <span style="font-weight:400;color:var(--text2)">(opcional)</span></label>
-                    <input id="f-intereses" type="text" inputmode="decimal"
-                           autocomplete="off" placeholder="Ingresa los intereses del mes" />
-                    <input type="hidden" asp-for="Form.InteresesMensuales" id="h-intereses" />
-                    <span asp-validation-for="Form.InteresesMensuales" class="field-error"></span>
-                </div>
-
                 <div class="form-group full">
                     <label>Alerta de saldo mínimo ($) <span style="font-weight:400;color:var(--text2)">(opcional)</span></label>
                     <input id="f-alerta" type="text" inputmode="decimal"
@@ -167,12 +152,10 @@ else
 const CUENTAS_DATA = @Html.Raw(cuentasJson);
 
 // ── Money inputs ──────────────────────────────────────────────────
-const elSaldo     = document.getElementById('f-saldo-inicial');
-const elIntereses = document.getElementById('f-intereses');
-const elAlerta    = document.getElementById('f-alerta');
+const elSaldo  = document.getElementById('f-saldo-inicial');
+const elAlerta = document.getElementById('f-alerta');
 
 setupMoneyInput(elSaldo);
-setupMoneyInput(elIntereses);
 setupMoneyInput(elAlerta);
 
 // ── Modal ──────────────────────────────────────────────────────────
@@ -182,9 +165,8 @@ function openModal() {
     document.getElementById('f-id').value       = '0';
     document.getElementById('f-nombre').value   = '';
     document.getElementById('f-tipo').value     = 'Billetera';
-    elSaldo.value     = '';
-    elIntereses.value = '';
-    elAlerta.value    = '';
+    elSaldo.value  = '';
+    elAlerta.value = '';
     ocultarError();
     document.getElementById('modal-cuenta').classList.add('open');
     setTimeout(() => document.getElementById('f-nombre').focus(), 100);
@@ -199,9 +181,8 @@ function openModalEditar(id) {
     document.getElementById('f-nombre').value = c.nombre;
     document.getElementById('f-tipo').value   = c.tipo;
 
-    setMoneyField(elSaldo,     c.saldoInicial);
-    setMoneyField(elIntereses, c.interesesMensuales);
-    setMoneyField(elAlerta,    c.alertaSaldo);
+    setMoneyField(elSaldo,  c.saldoInicial);
+    setMoneyField(elAlerta, c.alertaSaldo);
 
     ocultarError();
     document.getElementById('modal-cuenta').classList.add('open');
@@ -247,9 +228,6 @@ function prepararSubmit() {
     if (saldo < 0) { mostrarError('El saldo inicial no puede ser negativo.'); return false; }
     if (saldo > MAX_MONTO) { mostrarError('El saldo inicial no puede superar $ 9.999.999.999,99.'); return false; }
 
-    const intereses = getRawMoney(elIntereses);
-    if (intereses > MAX_MONTO) { mostrarError('Los intereses no pueden superar $ 9.999.999.999,99.'); return false; }
-
     const alerta = getRawMoney(elAlerta);
     if (alerta > MAX_MONTO) { mostrarError('La alerta no puede superar $ 9.999.999.999,99.'); return false; }
 
@@ -257,9 +235,6 @@ function prepararSubmit() {
     restoreMoneyForSubmit(elSaldo);
     document.getElementById('h-saldo-inicial').value = elSaldo.value;
     elSaldo.value = ''; // evitar doble bind
-
-    restoreOptionalMoneyForSubmit(elIntereses);
-    document.getElementById('h-intereses').value = elIntereses.value;
 
     restoreOptionalMoneyForSubmit(elAlerta);
     document.getElementById('h-alerta').value = elAlerta.value;
