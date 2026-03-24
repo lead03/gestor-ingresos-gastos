@@ -10,7 +10,8 @@ public class Cuenta
     [MaxLength(60)]
     public string Nombre { get; set; } = "";
 
-    public TipoCuenta Tipo   { get; set; } = TipoCuenta.Billetera;
+    public int         TipoId     { get; set; } = 2; // 0=Efectivo, 1=Banco, 2=Billetera
+    public TipoEntidad? TipoEntidad { get; set; }
     public Moneda     Moneda { get; set; } = Moneda.ARS;
 
     [Range(0, double.MaxValue, ErrorMessage = "El saldo inicial no puede ser negativo.")]

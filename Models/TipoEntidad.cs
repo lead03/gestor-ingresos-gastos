@@ -10,4 +10,5 @@ public class TipoEntidad
     public string Nombre { get; set; } = "";
 
     public ICollection<ConfigOpcion> Opciones { get; set; } = new List<ConfigOpcion>();
+    public ICollection<Cuenta>       Cuentas  { get; set; } = new List<Cuenta>();
 }

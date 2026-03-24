@@ -7,349 +7,495 @@
     var catsFijas     = Model.Categorias.Where(c => c.TipoId == 1 && c.Habilitada).OrderBy(c => c.Nombre).ToList();
     var catsVariables = Model.Categorias.Where(c => c.TipoId == 2 && c.Habilitada).OrderBy(c => c.Nombre).ToList();
     var catsDeshabl   = Model.Categorias.Where(c => !c.Habilitada).OrderBy(c => c.TipoId).ThenBy(c => c.Nombre).ToList();
+    var tiposHab      = Model.TiposIngreso.Where(t => t.Habilitada).OrderBy(t => t.Nombre).ToList();
+    var tiposDeshabl  = Model.TiposIngreso.Where(t => !t.Habilitada).OrderBy(t => t.Nombre).ToList();
 }
 
 <div class="page-header">
     <div><div class="page-title">Configuración</div></div>
 </div>
 
-<!-- ── Cotización del dólar ─────────────────────────────────────────── -->
-<div class="card" style="margin-bottom:24px" id="cotizacion">
-    <div class="card-header">
-        <span class="card-title">Cotización del dólar (USD → ARS)</span>
-    </div>
-    <div style="padding:16px">
-        <form method="post" asp-page-handler="GuardarCotizacion" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-
-            <div>
-                <label style="font-size:.8rem;color:var(--text2);display:block;margin-bottom:4px">Tipo de dólar (API)</label>
-                <select name="NuevoTipoDolar"
-                        style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.88rem">
-                    @foreach (var t in ControlGastos.Services.CotizacionService.TiposDisponibles)
-                    {
-                        <option value="@t.Key" selected="@(Model.TipoDolarActual == t.Key)">@t.Value</option>
-                    }
-                </select>
-            </div>
-
-            <div>
-                <label style="font-size:.8rem;color:var(--text2);display:block;margin-bottom:4px">
-                    Valor manual (respaldo si no hay API)
-                </label>
-                <input name="CotizacionManualInput" type="number" step="0.01" min="0"
-                       value="@(Model.CotizacionManual?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
-                       placeholder="Ej: 1200.00"
-                       style="width:140px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.88rem" />
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
-        </form>
-
-        <div style="margin-top:12px;font-size:.85rem">
-            @if (Model.CotizacionActual.HasValue)
-            {
-                var (color, icon) = Model.FuenteCotizacionTipo switch
-                {
-                    "api"      => ("var(--green)", "✓"),
-                    "ultima_api" => ("#e0a800",   "⚡"),
-                    _          => ("var(--text2)", "✎"),
-                };
-                <span style="color:@color">@icon Cotización actual:</span>
-                <strong style="color:var(--text);margin-left:4px"> $ @Model.CotizacionActual.Value.ToString("N2")</strong>
-                <span style="color:var(--text2);margin-left:8px;font-size:.78rem">· @Model.FuenteCotizacion</span>
-                @if (Model.FuenteCotizacionTipo == "ultima_api")
-                {
-                    <div style="margin-top:4px;font-size:.78rem;color:#e0a800">
-                        ⚠ Sin conexión a la API. Se está usando el último valor conocido. Ingrese un valor manual como respaldo.
-                    </div>
-                }
-            }
-            else
-            {
-                <span style="color:#e05555">✕ Sin cotización disponible. Ingrese un valor manual.</span>
-            }
-        </div>
-    </div>
-</div>
-
-<!-- ── Categorías de gastos ─────────────────────────────────────────── -->
-<div class="card" style="margin-bottom:24px">
-    <div class="card-header">
-        <span class="card-title">Categorías de gastos</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px">
-
-        <!-- Gastos Fijos -->
-        <div>
-            <div style="font-size:.82rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
-                Gastos Fijos
-            </div>
-            <ul style="list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px" id="lista-fijos">
-                @foreach (var c in catsFijas)
-                {
-                    <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
-                            <span style="font-size:.88rem">@c.Nombre</span>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-ghost btn-sm"
-                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', @c.TipoId)">✎</button>
-                                <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
-                                    <input type="hidden" name="id" value="@c.Id" />
-                                    <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                            onclick="return confirm('¿Deshabilitar @c.Nombre? Si tiene gastos asociados se deshabilitará; si no, se eliminará permanentemente.')">✕</button>
-                                </form>
-                            </div>
-                        </div>
-                        <!-- Fila de edición inline (oculta) -->
-                        <div id="edit-cat-@c.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
-                            <form method="post" asp-page-handler="EditarCat" style="display:flex;gap:8px;align-items:center">
-                                <input type="hidden" name="EditCatId" value="@c.Id" />
-                                <input type="text" name="EditCatNombre" value="@c.Nombre"
-                                       style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
-                                <select name="EditCatTipoId"
-                                        style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem">
-                                    <option value="1" selected="@(c.TipoId==1)">Fijo</option>
-                                    <option value="2" selected="@(c.TipoId==2)">Variable</option>
-                                </select>
-                                <button type="submit" class="btn btn-primary btn-sm">✓</button>
-                                <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
-                            </form>
-                        </div>
-                    </li>
-                }
-            </ul>
-            <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px">
-                <input type="hidden" name="NuevaCatTipoId" value="1" />
-                <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría fija..."
-                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
-                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
-            </form>
-        </div>
-
-        <!-- Gastos Variables -->
-        <div>
-            <div style="font-size:.82rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
-                Gastos Variables
-            </div>
-            <ul style="list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px">
-                @foreach (var c in catsVariables)
-                {
-                    <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
-                            <span style="font-size:.88rem">@c.Nombre</span>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-ghost btn-sm"
-                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', @c.TipoId)">✎</button>
-                                <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
-                                    <input type="hidden" name="id" value="@c.Id" />
-                                    <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                            onclick="return confirm('¿Deshabilitar @c.Nombre? Si tiene gastos asociados se deshabilitará; si no, se eliminará permanentemente.')">✕</button>
-                                </form>
-                            </div>
-                        </div>
-                        <div id="edit-cat-@c.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
-                            <form method="post" asp-page-handler="EditarCat" style="display:flex;gap:8px;align-items:center">
-                                <input type="hidden" name="EditCatId" value="@c.Id" />
-                                <input type="text" name="EditCatNombre" value="@c.Nombre"
-                                       style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
-                                <select name="EditCatTipoId"
-                                        style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem">
-                                    <option value="1" selected="@(c.TipoId==1)">Fijo</option>
-                                    <option value="2" selected="@(c.TipoId==2)">Variable</option>
-                                </select>
-                                <button type="submit" class="btn btn-primary btn-sm">✓</button>
-                                <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
-                            </form>
-                        </div>
-                    </li>
-                }
-            </ul>
-            <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px">
-                <input type="hidden" name="NuevaCatTipoId" value="2" />
-                <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría variable..."
-                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
-                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
-            </form>
-        </div>
-    </div>
-
-    @if (catsDeshabl.Any())
+<!-- ── Tabs ──────────────────────────────────────────────────────────── -->
+<div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border);overflow-x:auto">
+    @foreach (var tab in new[] {
+        ("categorias",    "Categorías"),
+        ("tipos-ingreso", "Tipos de ingreso"),
+        ("redes",         "Redes"),
+        ("bancos",        "Bancos"),
+        ("billeteras",    "Billeteras"),
+        ("cotizacion",    "Cotización USD")
+    })
     {
-        <div style="padding:0 16px 16px">
-            <details id="section-deshabilitadas">
-                <summary style="cursor:pointer;font-size:.82rem;color:var(--text2);font-weight:600;padding:8px 0;user-select:none">
-                    ▸ Deshabilitadas (@catsDeshabl.Count)
-                </summary>
-                <ul style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px">
-                    @foreach (var c in catsDeshabl)
-                    {
-                        <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
-                            <span style="font-size:.85rem">
-                                @c.Nombre
-                                <span style="font-size:.72rem;color:var(--text2);margin-left:6px">(@c.Tipo.Nombre)</span>
-                            </span>
-                            <form method="post" asp-page-handler="HabilitarCat" style="display:inline">
-                                <input type="hidden" name="id" value="@c.Id" />
-                                <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.75rem">↑ Habilitar</button>
-                            </form>
-                        </li>
-                    }
-                </ul>
-            </details>
-        </div>
+        <button id="tab-btn-@tab.Item1" onclick="switchTab('@tab.Item1')"
+                style="padding:8px 16px;border:none;border-bottom:2px solid transparent;background:none;
+                       cursor:pointer;font-size:.88rem;color:var(--text2);white-space:nowrap;
+                       margin-bottom:-2px;transition:color .15s">
+            @tab.Item2
+        </button>
     }
 </div>
 
-<!-- ── Tipos de ingreso ──────────────────────────────────────────────── -->
-@{
-    var tiposHab   = Model.TiposIngreso.Where(t => t.Habilitada).OrderBy(t => t.Nombre).ToList();
-    var tiposDeshabl = Model.TiposIngreso.Where(t => !t.Habilitada).OrderBy(t => t.Nombre).ToList();
-}
-<div class="card" style="margin-bottom:24px" id="tipos-ingreso">
-    <div class="card-header">
-        <span class="card-title">Tipos de ingreso</span>
-    </div>
-    <div style="padding:16px">
-        <ul style="list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:5px">
-            @foreach (var t in tiposHab)
-            {
-                <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
-                        <span style="font-size:.88rem">@t.Nombre</span>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-ghost btn-sm"
-                                    onclick="toggleEditTipo(@t.Id, '@t.Nombre.Replace("'","\\'")')">✎</button>
-                            <form method="post" asp-page-handler="DeshabilitarTipoIngreso" style="display:inline">
-                                <input type="hidden" name="id" value="@t.Id" />
-                                <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                        onclick="return confirm('¿Deshabilitar @t.Nombre?')">✕</button>
-                            </form>
-                        </div>
-                    </div>
-                    <div id="edit-tipo-@t.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
-                        <form method="post" asp-page-handler="EditarTipoIngreso" style="display:flex;gap:8px;align-items:center">
-                            <input type="hidden" name="EditTipoId" value="@t.Id" />
-                            <input type="text" name="EditTipoNombre" value="@t.Nombre"
-                                   style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
-                            <button type="submit" class="btn btn-primary btn-sm">✓</button>
-                            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditTipo(@t.Id)">✕</button>
-                        </form>
-                    </div>
-                </li>
-            }
-        </ul>
-        <form method="post" asp-page-handler="AgregarTipoIngreso" style="display:flex;gap:8px">
-            <input name="NuevoTipoNombre" type="text" placeholder="Nuevo tipo de ingreso..."
-                   style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
-            <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
-        </form>
-        @if (tiposDeshabl.Any())
-        {
-            <details style="margin-top:12px">
-                <summary style="cursor:pointer;font-size:.82rem;color:var(--text2);font-weight:600;padding:4px 0;user-select:none">
-                    ▸ Deshabilitados (@tiposDeshabl.Count)
-                </summary>
-                <ul style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px">
-                    @foreach (var t in tiposDeshabl)
+<!-- ══ CATEGORÍAS ════════════════════════════════════════════════════ -->
+<div id="panel-categorias" class="tab-panel">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Categorías de gastos</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px">
+
+            <!-- Fijas -->
+            <div>
+                <div class="section-label">Gastos Fijos</div>
+                <ul id="list-fijos" style="list-style:none;padding:0;margin:0 0 4px;display:flex;flex-direction:column;gap:5px">
+                    @foreach (var c in catsFijas)
                     {
-                        <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
-                            <span style="font-size:.85rem">@t.Nombre</span>
-                            <form method="post" asp-page-handler="HabilitarTipoIngreso" style="display:inline">
-                                <input type="hidden" name="id" value="@t.Id" />
-                                <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.75rem">↑ Habilitar</button>
-                            </form>
+                        <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
+                                <span style="font-size:.88rem">@c.Nombre</span>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-ghost btn-sm"
+                                            onclick="toggleEditCat(@c.Id)">✎</button>
+                                    <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
+                                        <input type="hidden" name="id" value="@c.Id" />
+                                        <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                                onclick="return confirm('¿Deshabilitar @c.Nombre?')">✕</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div id="edit-cat-@c.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
+                                <form method="post" asp-page-handler="EditarCat" style="display:flex;gap:8px;align-items:center">
+                                    <input type="hidden" name="EditCatId" value="@c.Id" />
+                                    <input type="text" name="EditCatNombre" value="@c.Nombre" class="form-input" style="flex:1" />
+                                    <select name="EditCatTipoId" class="form-input" style="width:auto">
+                                        <option value="1" selected="@(c.TipoId==1)">Fijo</option>
+                                        <option value="2" selected="@(c.TipoId==2)">Variable</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-primary btn-sm">✓</button>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
+                                </form>
+                            </div>
                         </li>
                     }
                 </ul>
-            </details>
+                <div class="pagination-bar" id="pag-fijos"></div>
+                <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px;margin-top:12px">
+                    <input type="hidden" name="NuevaCatTipoId" value="1" />
+                    <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría fija..." class="form-input" style="flex:1" />
+                    <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+                </form>
+            </div>
+
+            <!-- Variables -->
+            <div>
+                <div class="section-label">Gastos Variables</div>
+                <ul id="list-variables" style="list-style:none;padding:0;margin:0 0 4px;display:flex;flex-direction:column;gap:5px">
+                    @foreach (var c in catsVariables)
+                    {
+                        <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
+                                <span style="font-size:.88rem">@c.Nombre</span>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-ghost btn-sm"
+                                            onclick="toggleEditCat(@c.Id)">✎</button>
+                                    <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
+                                        <input type="hidden" name="id" value="@c.Id" />
+                                        <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                                onclick="return confirm('¿Deshabilitar @c.Nombre?')">✕</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div id="edit-cat-@c.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
+                                <form method="post" asp-page-handler="EditarCat" style="display:flex;gap:8px;align-items:center">
+                                    <input type="hidden" name="EditCatId" value="@c.Id" />
+                                    <input type="text" name="EditCatNombre" value="@c.Nombre" class="form-input" style="flex:1" />
+                                    <select name="EditCatTipoId" class="form-input" style="width:auto">
+                                        <option value="1" selected="@(c.TipoId==1)">Fijo</option>
+                                        <option value="2" selected="@(c.TipoId==2)">Variable</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-primary btn-sm">✓</button>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                </ul>
+                <div class="pagination-bar" id="pag-variables"></div>
+                <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px;margin-top:12px">
+                    <input type="hidden" name="NuevaCatTipoId" value="2" />
+                    <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría variable..." class="form-input" style="flex:1" />
+                    <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+                </form>
+            </div>
+        </div>
+
+        @if (catsDeshabl.Any())
+        {
+            <div style="padding:0 16px 16px">
+                <details>
+                    <summary style="cursor:pointer;font-size:.82rem;color:var(--text2);font-weight:600;padding:8px 0;user-select:none">
+                        ▸ Deshabilitadas (@catsDeshabl.Count)
+                    </summary>
+                    <ul style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px">
+                        @foreach (var c in catsDeshabl)
+                        {
+                            <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
+                                <span style="font-size:.85rem">
+                                    @c.Nombre
+                                    <span style="font-size:.72rem;color:var(--text2);margin-left:6px">(@(c.TipoId == 1 ? "Fijo" : "Variable"))</span>
+                                </span>
+                                <form method="post" asp-page-handler="HabilitarCat" style="display:inline">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.75rem">↑ Habilitar</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </details>
+            </div>
         }
     </div>
 </div>
 
-<!-- ── Redes y Bancos ────────────────────────────────────────────────── -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
-
-    <!-- Redes de tarjeta -->
+<!-- ══ TIPOS DE INGRESO ══════════════════════════════════════════════ -->
+<div id="panel-tipos-ingreso" class="tab-panel">
     <div class="card">
-        <div class="card-header">
-            <span class="card-title">Redes de tarjeta</span>
-        </div>
+        <div class="card-header"><span class="card-title">Tipos de ingreso</span></div>
         <div style="padding:16px">
-            <form method="post" asp-page-handler="AgregarRed" style="display:flex;gap:8px;margin-bottom:16px">
-                <input name="NuevaRed" type="text" placeholder="Ej: VISA"
-                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" />
+            <ul id="list-tipos" style="list-style:none;padding:0;margin:0 0 4px;display:flex;flex-direction:column;gap:5px">
+                @foreach (var t in tiposHab)
+                {
+                    <li style="background:var(--bg2);border-radius:6px;overflow:hidden">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px">
+                            <span style="font-size:.88rem">@t.Nombre</span>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-ghost btn-sm"
+                                        onclick="toggleEditTipo(@t.Id)">✎</button>
+                                <form method="post" asp-page-handler="DeshabilitarTipoIngreso" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                            onclick="return confirm('¿Deshabilitar @t.Nombre?')">✕</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div id="edit-tipo-@t.Id" style="display:none;padding:8px 10px;border-top:1px solid var(--border)">
+                            <form method="post" asp-page-handler="EditarTipoIngreso" style="display:flex;gap:8px;align-items:center">
+                                <input type="hidden" name="EditTipoId" value="@t.Id" />
+                                <input type="text" name="EditTipoNombre" value="@t.Nombre" class="form-input" style="flex:1" />
+                                <button type="submit" class="btn btn-primary btn-sm">✓</button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditTipo(@t.Id)">✕</button>
+                            </form>
+                        </div>
+                    </li>
+                }
+            </ul>
+            <div class="pagination-bar" id="pag-tipos"></div>
+            <form method="post" asp-page-handler="AgregarTipoIngreso" style="display:flex;gap:8px;margin-top:12px">
+                <input name="NuevoTipoNombre" type="text" placeholder="Nuevo tipo de ingreso..." class="form-input" style="flex:1" />
                 <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
             </form>
-            <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+            @if (tiposDeshabl.Any())
+            {
+                <details style="margin-top:16px">
+                    <summary style="cursor:pointer;font-size:.82rem;color:var(--text2);font-weight:600;padding:4px 0;user-select:none">
+                        ▸ Deshabilitados (@tiposDeshabl.Count)
+                    </summary>
+                    <ul style="list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px">
+                        @foreach (var t in tiposDeshabl)
+                        {
+                            <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
+                                <span style="font-size:.85rem">@t.Nombre</span>
+                                <form method="post" asp-page-handler="HabilitarTipoIngreso" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.75rem">↑ Habilitar</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </details>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ══ REDES ═════════════════════════════════════════════════════════ -->
+<div id="panel-redes" class="tab-panel">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Redes de tarjeta</span></div>
+        <div style="padding:16px">
+            <form method="post" asp-page-handler="AgregarRed" style="display:flex;gap:8px;margin-bottom:16px">
+                <input name="NuevaRed" type="text" placeholder="Ej: VISA" class="form-input" style="flex:1" />
+                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+            </form>
+            <ul id="list-redes" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
                 @foreach (var r in Model.Redes)
                 {
                     <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
                         <span style="font-size:.9rem">@r.Valor</span>
                         <form method="post" asp-page-handler="Eliminar" style="display:inline">
                             <input type="hidden" name="id" value="@r.Id" />
-                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555;padding:2px 8px"
+                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
                                     onclick="return confirm('¿Eliminar @r.Valor?')">✕</button>
                         </form>
                     </li>
                 }
             </ul>
+            <div class="pagination-bar" id="pag-redes"></div>
         </div>
     </div>
+</div>
 
-    <!-- Bancos / Emisores -->
+<!-- ══ BANCOS ════════════════════════════════════════════════════════ -->
+<div id="panel-bancos" class="tab-panel">
     <div class="card">
-        <div class="card-header">
-            <span class="card-title">Bancos / Emisores</span>
-        </div>
+        <div class="card-header"><span class="card-title">Bancos</span></div>
         <div style="padding:16px">
             <form method="post" asp-page-handler="AgregarBanco" style="display:flex;gap:8px;margin-bottom:16px">
-                <input name="NuevoBanco" type="text" placeholder="Ej: Galicia"
-                       style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" />
+                <input name="NuevoBanco" type="text" placeholder="Ej: Galicia" class="form-input" style="flex:1" />
                 <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
             </form>
-            <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+            <ul id="list-bancos" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
                 @foreach (var b in Model.Bancos)
                 {
                     <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
                         <span style="font-size:.9rem">@b.Valor</span>
                         <form method="post" asp-page-handler="Eliminar" style="display:inline">
                             <input type="hidden" name="id" value="@b.Id" />
-                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555;padding:2px 8px"
+                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
                                     onclick="return confirm('¿Eliminar @b.Valor?')">✕</button>
                         </form>
                     </li>
                 }
             </ul>
+            <div class="pagination-bar" id="pag-bancos"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ BILLETERAS ════════════════════════════════════════════════════ -->
+<div id="panel-billeteras" class="tab-panel">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Billeteras virtuales</span></div>
+        <div style="padding:16px">
+            <form method="post" asp-page-handler="AgregarBilletera" style="display:flex;gap:8px;margin-bottom:16px">
+                <input name="NuevaBilletera" type="text" placeholder="Ej: MercadoPago" class="form-input" style="flex:1" />
+                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+            </form>
+            <ul id="list-billeteras" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
+                @foreach (var b in Model.Billeteras)
+                {
+                    <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
+                        <span style="font-size:.9rem">@b.Valor</span>
+                        <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                            <input type="hidden" name="id" value="@b.Id" />
+                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
+                                    onclick="return confirm('¿Eliminar @b.Valor?')">✕</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+            <div class="pagination-bar" id="pag-billeteras"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ COTIZACIÓN ════════════════════════════════════════════════════ -->
+<div id="panel-cotizacion" class="tab-panel">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Cotización del dólar (USD → ARS)</span></div>
+        <div style="padding:16px">
+            <form method="post" asp-page-handler="GuardarCotizacion" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+                <div>
+                    <label class="form-label">Tipo de dólar (API)</label>
+                    <select name="NuevoTipoDolar" class="form-input">
+                        @foreach (var t in ControlGastos.Services.CotizacionService.TiposDisponibles)
+                        {
+                            <option value="@t.Key" selected="@(Model.TipoDolarActual == t.Key)">@t.Value</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Valor manual (respaldo si no hay API)</label>
+                    <input name="CotizacionManualInput" type="number" step="0.01" min="0"
+                           value="@(Model.CotizacionManual?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                           placeholder="Ej: 1200.00" class="form-input" style="width:140px" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+            </form>
+            <div style="margin-top:12px;font-size:.85rem">
+                @if (Model.CotizacionActual.HasValue)
+                {
+                    var (color, icon) = Model.FuenteCotizacionTipo switch
+                    {
+                        "api"        => ("var(--green)", "✓"),
+                        "ultima_api" => ("#e0a800",      "⚡"),
+                        _            => ("var(--text2)", "✎"),
+                    };
+                    <span style="color:@color">@icon Cotización actual:</span>
+                    <strong style="color:var(--text);margin-left:4px">$ @Model.CotizacionActual.Value.ToString("N2")</strong>
+                    <span style="color:var(--text2);margin-left:8px;font-size:.78rem">· @Model.FuenteCotizacion</span>
+
+                    @if (Model.FuenteCotizacionTipo == "ultima_api")
+                    {
+                        <div style="margin-top:6px;font-size:.78rem;color:#e0a800">
+                            ⚠ Sin conexión a la API. Usando el último valor conocido.
+                            @if (Model.FechaUltimaApi.HasValue)
+                            {
+                                <span style="margin-left:6px;color:var(--text2)">
+                                    Obtenido el @Model.FechaUltimaApi.Value.ToString("dd/MM/yyyy") a las @Model.FechaUltimaApi.Value.ToString("HH:mm")
+                                </span>
+                            }
+                        </div>
+                        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+                            <button type="button" id="btn-reintentar" onclick="reintentarCotizacion()"
+                                    class="btn btn-ghost btn-sm">↺ Reintentar conexión</button>
+                            <span id="msg-reintento" style="font-size:.8rem;display:none"></span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <span style="color:#e05555">✕ Sin cotización disponible. Ingrese un valor manual.</span>
+                    <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+                        <button type="button" id="btn-reintentar" onclick="reintentarCotizacion()"
+                                class="btn btn-ghost btn-sm">↺ Reintentar conexión</button>
+                        <span id="msg-reintento" style="font-size:.8rem;display:none"></span>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+<style>
+    .tab-panel { display: none }
+    .tab-btn-active {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+        font-weight: 600;
+    }
+    .section-label {
+        font-size: .82rem; font-weight: 700; color: var(--text2);
+        text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px;
+    }
+    .form-label { font-size: .8rem; color: var(--text2); display: block; margin-bottom: 4px }
+    .pagination-bar { display:flex; gap:6px; align-items:center; margin-top:8px; font-size:.82rem; color:var(--text2); min-height:28px }
+    .pagination-bar button {
+        padding:3px 10px; border-radius:5px; border:1px solid var(--border);
+        background:var(--bg2); color:var(--text); cursor:pointer; font-size:.8rem;
+    }
+    .pagination-bar button:disabled { opacity:.35; cursor:default }
+    .pagination-bar button.pag-active { background:var(--primary); color:#fff; border-color:var(--primary) }
+</style>
 <script>
-function toggleEditCat(id, nombre, tipo) {
+const PAGE_SIZE = 10;
+const TABS = ['categorias','tipos-ingreso','redes','bancos','billeteras','cotizacion'];
+
+function switchTab(id) {
+    TABS.forEach(t => {
+        document.getElementById('panel-' + t).style.display = 'none';
+        document.getElementById('tab-btn-' + t).classList.remove('tab-btn-active');
+    });
+    document.getElementById('panel-' + id).style.display = 'block';
+    document.getElementById('tab-btn-' + id).classList.add('tab-btn-active');
+    history.replaceState(null, '', '#' + id);
+}
+
+function initPagination(listId, barId) {
+    const list = document.getElementById(listId);
+    const bar  = document.getElementById(barId);
+    if (!list || !bar) return;
+    const items = Array.from(list.children);
+    if (items.length <= PAGE_SIZE) return;
+
+    let page = 1;
+    const pages = Math.ceil(items.length / PAGE_SIZE);
+
+    function render() {
+        items.forEach((el, i) => {
+            el.style.display = (i >= (page-1)*PAGE_SIZE && i < page*PAGE_SIZE) ? '' : 'none';
+        });
+        bar.innerHTML = '';
+        const prev = Object.assign(document.createElement('button'), { textContent: '‹', disabled: page === 1 });
+        prev.onclick = () => { page--; render(); };
+        bar.appendChild(prev);
+
+        for (let p = 1; p <= pages; p++) {
+            const btn = document.createElement('button');
+            btn.textContent = p;
+            if (p === page) btn.classList.add('pag-active');
+            btn.onclick = ((_p) => () => { page = _p; render(); })(p);
+            bar.appendChild(btn);
+        }
+
+        const next = Object.assign(document.createElement('button'), { textContent: '›', disabled: page === pages });
+        next.onclick = () => { page++; render(); };
+        bar.appendChild(next);
+
+        const info = document.createElement('span');
+        info.textContent = `${(page-1)*PAGE_SIZE+1}–${Math.min(page*PAGE_SIZE, items.length)} de ${items.length}`;
+        bar.appendChild(info);
+    }
+    render();
+}
+
+function toggleEditCat(id) {
     const row = document.getElementById('edit-cat-' + id);
-    const visible = row.style.display !== 'none';
-    // Cerrar todos los otros
+    const open = row.style.display !== 'none';
     document.querySelectorAll('[id^="edit-cat-"]').forEach(el => el.style.display = 'none');
-    if (!visible) {
-        row.style.display = 'block';
-        // Si hay anchor de deshabilitadas abierto, scrollear
-        const anchor = document.getElementById('section-deshabilitadas');
-        if (anchor) anchor.open = false;
+    if (!open) row.style.display = 'block';
+}
+
+function toggleEditTipo(id) {
+    const row = document.getElementById('edit-tipo-' + id);
+    const open = row.style.display !== 'none';
+    document.querySelectorAll('[id^="edit-tipo-"]').forEach(el => el.style.display = 'none');
+    if (!open) row.style.display = 'block';
+}
+
+async function reintentarCotizacion() {
+    const btn = document.getElementById('btn-reintentar');
+    const msg = document.getElementById('msg-reintento');
+    btn.disabled = true;
+    btn.textContent = '↺ Reintentando...';
+    msg.style.display = 'none';
+
+    try {
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+        const res   = await fetch('?handler=ReintentarCotizacion', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token }
+        });
+        const data = await res.json();
+
+        msg.style.display = '';
+        if (data.ok) {
+            msg.style.color = 'var(--green)';
+            msg.textContent = `✓ Conexión reestablecida. Valor actualizado: $ ${Number(data.valor).toLocaleString('es-AR', {minimumFractionDigits:2})} (${data.fecha})`;
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            msg.style.color = '#e05555';
+            msg.textContent = '✕ Sin conexión. No se pudo obtener el valor de la API.';
+            btn.disabled = false;
+            btn.textContent = '↺ Reintentar conexión';
+        }
+    } catch {
+        msg.style.display = '';
+        msg.style.color = '#e05555';
+        msg.textContent = '✕ Error al intentar la conexión.';
+        btn.disabled = false;
+        btn.textContent = '↺ Reintentar conexión';
     }
 }
 
-// Abrir sección de deshabilitadas si la URL tiene #categorias
-if (window.location.hash === '#categorias') {
-    const d = document.getElementById('section-deshabilitadas');
-    if (d) d.open = true;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash.replace('#', '') || 'categorias';
+    switchTab(TABS.includes(hash) ? hash : 'categorias');
 
-function toggleEditTipo(id, nombre) {
-    const row = document.getElementById('edit-tipo-' + id);
-    const visible = row.style.display !== 'none';
-    document.querySelectorAll('[id^="edit-tipo-"]').forEach(el => el.style.display = 'none');
-    if (!visible) row.style.display = 'block';
-}
+    initPagination('list-fijos',     'pag-fijos');
+    initPagination('list-variables', 'pag-variables');
+    initPagination('list-tipos',     'pag-tipos');
+    initPagination('list-redes',     'pag-redes');
+    initPagination('list-bancos',    'pag-bancos');
+    initPagination('list-billeteras','pag-billeteras');
+});
 </script>
 }

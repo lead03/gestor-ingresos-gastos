@@ -6,9 +6,10 @@ namespace ControlGastos.Services;
 
 /// <summary>Resultado de la cotización con su fuente de origen.</summary>
 public record CotizacionResultado(
-    decimal Valor,
-    string  Fuente,      // texto para mostrar al usuario
-    string  FuenteTipo   // "api" | "ultima_api" | "manual"
+    decimal  Valor,
+    string   Fuente,        // texto para mostrar al usuario
+    string   FuenteTipo,    // "api" | "ultima_api" | "manual"
+    DateTime? FechaUltimaApi = null
 );
 
 public class CotizacionService(
@@ -52,20 +53,25 @@ public class CotizacionService(
             var venta = doc.RootElement.GetProperty("venta").GetDecimal();
 
             // Guardar en caché y persistir como "último valor conocido de API"
+            var ahora = DateTime.Now;
             cache.Set(CacheKey, venta, TimeSpan.FromMinutes(30));
-            await configSvc.UpsertSettingAsync("UltimaCotizacionAPI",  venta.ToString(CultureInfo.InvariantCulture));
-            await configSvc.UpsertSettingAsync("UltimaCotizacionTipo", tipNombre);
+            await configSvc.UpsertSettingAsync("UltimaCotizacionAPI",   venta.ToString(CultureInfo.InvariantCulture));
+            await configSvc.UpsertSettingAsync("UltimaCotizacionTipo",  tipNombre);
+            await configSvc.UpsertSettingAsync("UltimaCotizacionFecha", ahora.ToString("O"));
 
-            return new(venta, $"API · {tipNombre}", "api");
+            return new(venta, $"API · {tipNombre}", "api", ahora);
         }
         catch
         {
             // 3 — Último valor de API persistido en DB
-            var ultimaStr  = await configSvc.GetSettingAsync("UltimaCotizacionAPI");
-            var ultimaTipo = await configSvc.GetSettingAsync("UltimaCotizacionTipo") ?? tipNombre;
+            var ultimaStr   = await configSvc.GetSettingAsync("UltimaCotizacionAPI");
+            var ultimaTipo  = await configSvc.GetSettingAsync("UltimaCotizacionTipo")  ?? tipNombre;
+            var ultimaFecha = await configSvc.GetSettingAsync("UltimaCotizacionFecha");
+            DateTime? fechaDt = DateTime.TryParse(ultimaFecha, null, DateTimeStyles.RoundtripKind, out var fd) ? fd : null;
+
             if (ultimaStr is not null &&
                 decimal.TryParse(ultimaStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var ultimaVal))
-                return new(ultimaVal, $"Último valor API · {ultimaTipo} (sin conexión)", "ultima_api");
+                return new(ultimaVal, $"Último valor API · {ultimaTipo} (sin conexión)", "ultima_api", fechaDt);
 
             // 4 — Valor manual
             var manualStr = await configSvc.GetSettingAsync("CotizacionManual");
@@ -80,6 +86,13 @@ public class CotizacionService(
     /// <summary>Solo el valor decimal (para cálculos internos).</summary>
     public async Task<decimal?> GetCotizacionAsync() =>
         (await GetCotizacionConFuenteAsync())?.Valor;
+
+    /// <summary>Fuerza una nueva consulta a la API, ignorando caché.</summary>
+    public async Task<CotizacionResultado?> ReintentarAsync()
+    {
+        cache.Remove(CacheKey);
+        return await GetCotizacionConFuenteAsync();
+    }
 
     public async Task SaveTipoDolarAsync(string tipo)
     {

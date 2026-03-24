@@ -1,12 +1,5 @@
 namespace ControlGastos.Models;
 
-public enum TipoCuenta
-{
-    Banco,
-    Billetera,
-    Efectivo
-}
-
 public enum TipoParticipante
 {
     Yo,

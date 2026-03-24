@@ -171,9 +171,18 @@ public class AppDbContext : DbContext
             .Property(d => d.Estado)
             .HasConversion<string>();
 
+        // Cuenta → TipoEntidad
         mb.Entity<Cuenta>()
-            .Property(c => c.Tipo)
-            .HasConversion<string>();
+            .HasOne(c => c.TipoEntidad)
+            .WithMany(t => t.Cuentas)
+            .HasForeignKey(c => c.TipoId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // TipoEntidad.Id puede ser 0 (Efectivo), no auto-generado
+        mb.Entity<TipoEntidad>()
+            .Property(t => t.Id)
+            .ValueGeneratedNever();
 
         // Precisiones
         mb.Entity<GastoItem>().Property(g => g.Monto).HasPrecision(18, 2);

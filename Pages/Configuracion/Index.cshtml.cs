@@ -16,8 +16,9 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     public string   TipoDolarActual       { get; set; } = "blue";
     public decimal? CotizacionActual      { get; set; }
     public decimal? CotizacionManual      { get; set; }
-    public string? FuenteCotizacion    { get; set; }
-    public string? FuenteCotizacionTipo { get; set; }
+    public string?  FuenteCotizacion      { get; set; }
+    public string?  FuenteCotizacionTipo  { get; set; }
+    public DateTime? FechaUltimaApi       { get; set; }
 
     [BindProperty] public string  NuevaRed              { get; set; } = "";
     [BindProperty] public string  NuevoBanco            { get; set; } = "";
@@ -90,6 +91,14 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         return RedirectToPage(null, "categorias");
     }
 
+    public async Task<IActionResult> OnPostReintentarCotizacionAsync()
+    {
+        var res = await cotizacionSvc.ReintentarAsync();
+        if (res is { FuenteTipo: "api" })
+            return new JsonResult(new { ok = true,  valor = res.Valor, fecha = res.FechaUltimaApi?.ToString("dd/MM/yyyy HH:mm") });
+        return new JsonResult(new { ok = false });
+    }
+
     public async Task<IActionResult> OnPostGuardarCotizacionAsync()
     {
         await cotizacionSvc.SaveTipoDolarAsync(NuevoTipoDolar);
@@ -127,15 +136,17 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
 
     private async Task CargarAsync()
     {
-        Redes      = await svc.GetRedesAsync();
-        Bancos     = await svc.GetBancosAsync();
-        Categorias = await gastoSvc.GetTodasCategoriasAsync();
+        Redes        = await svc.GetRedesAsync();
+        Bancos       = await svc.GetBancosAsync();
+        Billeteras   = await svc.GetBilleterasAsync();
+        Categorias   = await gastoSvc.GetTodasCategoriasAsync();
         TiposIngreso = await ingresoSvc.GetTodosTiposAsync();
         TipoDolarActual  = await cotizacionSvc.GetTipoDolarAsync();
         var cotizRes         = await cotizacionSvc.GetCotizacionConFuenteAsync();
         CotizacionActual     = cotizRes?.Valor;
         FuenteCotizacion     = cotizRes?.Fuente;
         FuenteCotizacionTipo = cotizRes?.FuenteTipo;
+        FechaUltimaApi       = cotizRes?.FechaUltimaApi;
         CotizacionManual = await cotizacionSvc.GetCotizacionManualAsync();
         ViewData["Active"] = "configuracion";
     }

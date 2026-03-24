@@ -22,7 +22,7 @@
         <a asp-page="/MeDeben/Index"   class="nav-link @(ViewData["Active"]?.ToString()=="medeben"  ?"active":"")">Deudas</a>
         <a asp-page="/Configuracion/Index" class="nav-link @(ViewData["Active"]?.ToString()=="configuracion"?"active":"")">⚙ Config.</a>
     </div>
-    <div class="nav-period">
+    <div class="nav-period" @(ViewData["Active"]?.ToString() == "configuracion" ? "style=display:none" : "")>
         <form method="get" id="period-form" style="display:flex;gap:8px;align-items:center">
             <select name="mes" onchange="document.getElementById('period-form').submit()" class="period-select">
                 @for (int m = 1; m <= 12; m++)

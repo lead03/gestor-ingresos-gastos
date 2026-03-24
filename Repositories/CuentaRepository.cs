@@ -8,13 +8,16 @@ public class CuentaRepository(AppDbContext db) : ICuentaRepository
 {
     public Task<List<Cuenta>> GetAllActivasAsync() =>
         db.Cuentas
+          .Include(c => c.TipoEntidad)
           .Where(c => c.Activa)
-          .OrderBy(c => c.Tipo)
+          .OrderBy(c => c.TipoId)
           .ThenBy(c => c.Nombre)
           .ToListAsync();
 
     public Task<Cuenta?> GetByIdAsync(int id) =>
-        db.Cuentas.FindAsync(id).AsTask();
+        db.Cuentas
+          .Include(c => c.TipoEntidad)
+          .FirstOrDefaultAsync(c => c.Id == id);
 
     public async Task AddAsync(Cuenta cuenta)
     {

@@ -136,6 +136,7 @@ using (var scope = app.Services.CreateScope())
     if (!db.TiposEntidad.Any())
     {
         db.TiposEntidad.AddRange(
+            new ControlGastos.Models.TipoEntidad { Id = 0, Nombre = "Efectivo"  },
             new ControlGastos.Models.TipoEntidad { Id = 1, Nombre = "Banco"     },
             new ControlGastos.Models.TipoEntidad { Id = 2, Nombre = "Billetera" }
         );
@@ -154,7 +155,7 @@ using (var scope = app.Services.CreateScope())
     // Seed ConfigOpciones (Bancos)
     if (!db.ConfigOpciones.Any(c => c.Tipo == "Banco"))
     {
-        string[] bancos = ["Galicia", "Santander", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC", "Santander"];
+        string[] bancos = ["Galicia", "Santander", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC"];
         for (int i = 0; i < bancos.Length; i++)
             db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Banco", TipoEntidadId = 1, Valor = bancos[i], Orden = i + 1 });
         db.SaveChanges();
@@ -172,7 +173,7 @@ using (var scope = app.Services.CreateScope())
     // Seed cuenta Efectivo si no hay ninguna activa
     if (!db.Cuentas.Any(c => c.Activa))
     {
-        db.Cuentas.Add(new ControlGastos.Models.Cuenta { Nombre = "Efectivo", Tipo = ControlGastos.Models.TipoCuenta.Efectivo, SaldoInicial = 0, Activa = true });
+        db.Cuentas.Add(new ControlGastos.Models.Cuenta { Nombre = "Efectivo", TipoId = 0, SaldoInicial = 0, Activa = true });
         db.SaveChanges();
     }
 }

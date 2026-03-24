@@ -300,9 +300,10 @@ public class GastoService(
 
             resultado.Add(new CuentaResumenVM
             {
-                Id          = c.Id,
-                Nombre      = c.Nombre,
-                Tipo        = c.Tipo,
+                Id         = c.Id,
+                Nombre     = c.Nombre,
+                TipoId     = c.TipoId,
+                TipoNombre = c.TipoEntidad?.Nombre ?? "",
                 SaldoActual = saldo,
                 AlertaSaldo = c.AlertaSaldo
             });

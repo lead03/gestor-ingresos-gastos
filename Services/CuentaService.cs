@@ -17,10 +17,11 @@ public class CuentaService(ICuentaRepository repo)
             var saldo = await CalcularSaldoAsync(c);
             resumen.Add(new CuentaResumenVM
             {
-                Id                 = c.Id,
-                Nombre             = c.Nombre,
-                Tipo               = c.Tipo,
-                SaldoInicial       = c.SaldoInicial,
+                Id           = c.Id,
+                Nombre       = c.Nombre,
+                TipoId       = c.TipoId,
+                TipoNombre   = c.TipoEntidad?.Nombre ?? "",
+                SaldoInicial = c.SaldoInicial,
                 SaldoActual  = saldo,
                 AlertaSaldo  = c.AlertaSaldo,
                 Moneda       = c.Moneda,
@@ -84,9 +85,10 @@ public class CuentaService(ICuentaRepository repo)
             var saldo = await CalcularSaldoAsync(c);
             resultado.Add(new CuentaResumenVM
             {
-                Id                 = c.Id,
-                Nombre             = c.Nombre,
-                Tipo               = c.Tipo,
+                Id         = c.Id,
+                Nombre     = c.Nombre,
+                TipoId     = c.TipoId,
+                TipoNombre = c.TipoEntidad?.Nombre ?? "",
                 SaldoActual  = saldo,
                 AlertaSaldo  = c.AlertaSaldo,
                 Moneda       = c.Moneda,
@@ -102,7 +104,7 @@ public class CuentaService(ICuentaRepository repo)
             await repo.AddAsync(new Cuenta
             {
                 Nombre       = vm.Nombre,
-                Tipo         = vm.Tipo,
+                TipoId       = vm.TipoId!.Value,
                 Moneda       = vm.Moneda,
                 SaldoInicial = vm.SaldoInicial,
                 AlertaSaldo  = vm.AlertaSaldo,
@@ -114,9 +116,9 @@ public class CuentaService(ICuentaRepository repo)
             var c = await repo.GetByIdAsync(vm.Id);
             if (c == null) return Result.Fail("Cuenta no encontrada.");
 
-            c.Nombre       = vm.Nombre;
-            c.Tipo         = vm.Tipo;
-            c.Moneda       = vm.Moneda;
+            c.Nombre  = vm.Nombre;
+            c.TipoId  = vm.TipoId!.Value;
+            c.Moneda  = vm.Moneda;
             c.SaldoInicial = vm.SaldoInicial;
             c.AlertaSaldo  = vm.AlertaSaldo;
             c.Activa       = vm.Activa;

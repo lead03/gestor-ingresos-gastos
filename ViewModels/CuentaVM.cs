@@ -13,7 +13,8 @@ public class CuentaResumenVM
 {
     public int        Id                 { get; set; }
     public string     Nombre             { get; set; } = "";
-    public TipoCuenta Tipo               { get; set; }
+    public int        TipoId             { get; set; }
+    public string     TipoNombre         { get; set; } = "";
     public decimal    SaldoInicial       { get; set; }
     public decimal    SaldoActual  { get; set; }
     public decimal?   AlertaSaldo  { get; set; }
@@ -53,7 +54,8 @@ public class CuentaFormVM : IValidatableObject
     [MaxLength(60, ErrorMessage = "El nombre no puede superar 60 caracteres.")]
     public string Nombre { get; set; } = "";
 
-    public TipoCuenta Tipo { get; set; } = TipoCuenta.Billetera;
+    [Required(ErrorMessage = "El tipo de cuenta es obligatorio.")]
+    public int? TipoId { get; set; }
 
     [Range(0, 9999999999.99, ErrorMessage = "El saldo inicial no puede ser negativo ni superar $ 9.999.999.999,99.")]
     public decimal SaldoInicial { get; set; }
