@@ -22,7 +22,7 @@
         <a asp-page="/MeDeben/Index"   class="nav-link @(ViewData["Active"]?.ToString()=="medeben"  ?"active":"")">Deudas</a>
         <a asp-page="/Configuracion/Index" class="nav-link @(ViewData["Active"]?.ToString()=="configuracion"?"active":"")">⚙ Config.</a>
     </div>
-    <div class="nav-period" @(ViewData["Active"]?.ToString() == "configuracion" ? "style=display:none" : "")>
+    <div class="nav-period" @(ViewData["Active"]?.ToString() == "configuracion" ? "style=\"display:none\"" : "")>
         <form method="get" id="period-form" style="display:flex;gap:8px;align-items:center">
             <select name="mes" onchange="document.getElementById('period-form').submit()" class="period-select">
                 @for (int m = 1; m <= 12; m++)
@@ -68,6 +68,9 @@ document.getElementById('modal-error').addEventListener('click', function(e) {
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="~/js/paginator.js" asp-append-version="true"></script>
+<script src="~/js/tabs.js" asp-append-version="true"></script>
+<script src="~/js/modal.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

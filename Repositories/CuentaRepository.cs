@@ -56,4 +56,7 @@ public class CuentaRepository(AppDbContext db) : ICuentaRepository
           .Where(i => i.Distribuciones.Any(d => d.CuentaId == cuentaId))
           .OrderByDescending(i => i.Anio).ThenByDescending(i => i.Mes).ThenByDescending(i => i.Dia)
           .ToListAsync();
+
+    public Task<List<Ingreso>> GetPagosDeudaByCuentaAsync(int cuentaId) =>
+        Task.FromResult(new List<Ingreso>());
 }

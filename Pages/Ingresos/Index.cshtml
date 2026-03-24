@@ -44,7 +44,7 @@
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="tbody-ingresos">
             @if (!vm.Items.Any())
             {
                 <tr><td colspan="6" class="text-center" style="padding:32px;color:var(--text2)">No hay ingresos registrados para este mes.</td></tr>
@@ -88,4 +88,13 @@
             }
         </table>
     </div>
+    <div id="pag-ingresos"></div>
 </div>
+
+@section Scripts {
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    initPaginator('tbody-ingresos', 'pag-ingresos');
+});
+</script>
+}

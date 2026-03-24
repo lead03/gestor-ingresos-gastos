@@ -10,7 +10,7 @@
 
 <div class="page-header">
     <div><div class="page-title">Deudas</div></div>
-    <button class="btn btn-primary" onclick="openModal()">+ Nueva deuda</button>
+    <button class="btn btn-primary" onclick="openModal('modal-deuda')">+ Nueva deuda</button>
 </div>
 
 <div class="kpi-grid" style="margin-bottom:24px">
@@ -22,7 +22,7 @@
     <div class="kpi-card">
         <div class="kpi-label">Le debo</div>
         <div class="kpi-value red">$ @Peso(vm.TotalLeDebo)</div>
-        <<div class="kpi-delta">@vm.MeDeben.Count(d => d.Estado != EstadoDeuda.Pagada) activa(s)</div>
+        <div class="kpi-delta">@vm.LeDebo.Count(d => d.Estado != EstadoDeuda.Pagada) activa(s)</div>
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Neto a favor</div>
@@ -47,7 +47,7 @@
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="tbody-medeben">
                 @if (!vm.MeDeben.Any())
                 {
                     <tr><td colspan="8" class="text-center" style="padding:24px;color:var(--text2)">Sin deudas registradas.</td></tr>
@@ -90,6 +90,7 @@
             }
         </table>
     </div>
+    <div id="pag-medeben"></div>
 </div>
 
 <!-- Le debo -->
@@ -108,7 +109,7 @@
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="tbody-ledebo">
                 @if (!vm.LeDebo.Any())
                 {
                     <tr><td colspan="7" class="text-center" style="padding:24px;color:var(--text2)">Sin deudas registradas.</td></tr>
@@ -136,6 +137,7 @@
             </tbody>
         </table>
     </div>
+    <div id="pag-ledebo"></div>
 </div>
 
 <!-- Modal nueva deuda -->
@@ -169,7 +171,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-deuda')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Guardar</button>
             </div>
         </form>
@@ -177,11 +179,11 @@
 </div>
 
 @section Scripts {
-    <script>
-        function openModal()  { document.getElementById('modal-deuda').classList.add('open'); }
-        function closeModal() { document.getElementById('modal-deuda').classList.remove('open'); }
-        document.getElementById('modal-deuda').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
-    </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    initModal('modal-deuda');
+    initPaginator('tbody-medeben', 'pag-medeben');
+    initPaginator('tbody-ledebo',  'pag-ledebo');
+});
+</script>
 }

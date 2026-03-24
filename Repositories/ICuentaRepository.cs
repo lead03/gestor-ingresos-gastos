@@ -11,4 +11,5 @@ public interface ICuentaRepository
     Task DeleteAsync(int id);
     Task<List<GastoItem>>  GetGastosByCuentaAsync(int cuentaId);
     Task<List<Ingreso>>    GetIngresosByCuentaAsync(int cuentaId);
+    Task<List<Ingreso>>    GetPagosDeudaByCuentaAsync(int cuentaId);
 }

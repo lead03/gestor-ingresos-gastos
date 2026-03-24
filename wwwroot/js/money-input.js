@@ -34,9 +34,9 @@ function setupMoneyInput(el, onChangeCb) {
     el.type = 'text';
     el.setAttribute('inputmode', 'decimal');
 
-    el.addEventListener('keydown', function(e) {
+    el.addEventListener('keydown', function (e) {
         const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
-                         'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+            'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
         if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
 
         if (/^\d$/.test(e.key)) {
@@ -44,7 +44,7 @@ function setupMoneyInput(el, onChangeCb) {
             const commaIdx = el.value.indexOf(',');
             if (commaIdx !== -1) {
                 const selStart = el.selectionStart;
-                const selEnd   = el.selectionEnd;
+                const selEnd = el.selectionEnd;
                 if (selStart > commaIdx) {
                     const charsAfterComma = el.value.substring(commaIdx + 1, selStart);
                     if (charsAfterComma.length >= 2 && selStart === selEnd) {
@@ -58,7 +58,7 @@ function setupMoneyInput(el, onChangeCb) {
         // Coma y punto (numpad) — ambos actúan como separador decimal
         if (e.key === ',' || e.key === '.') {
             const textBefore = el.value.substring(0, el.selectionStart);
-            const textAfter  = el.value.substring(el.selectionEnd);
+            const textAfter = el.value.substring(el.selectionEnd);
             if ((textBefore + textAfter).includes(',')) { e.preventDefault(); return; }
             if (e.key === '.') {
                 e.preventDefault();
@@ -72,17 +72,17 @@ function setupMoneyInput(el, onChangeCb) {
         e.preventDefault();
     });
 
-    el.addEventListener('focus', function() {
+    el.addEventListener('focus', function () {
         if (getRawMoney(el) === 0) setTimeout(() => el.select(), 0);
     });
 
-    el.addEventListener('input', function() {
-        const cursor    = el.selectionStart;
-        const oldVal    = el.value;
+    el.addEventListener('input', function () {
+        const cursor = el.selectionStart;
+        const oldVal = el.value;
         const dotsAntes = (oldVal.substring(0, cursor).match(/\./g) || []).length;
 
-        const parts  = oldVal.replace(/\./g, '').split(',');
-        let intStr   = parts[0].replace(/\D/g, '');
+        const parts = oldVal.replace(/\./g, '').split(',');
+        let intStr = parts[0].replace(/\D/g, '');
         const decStr = parts.length > 1 ? parts[1].substring(0, 2) : null;
 
         if (parseInt(intStr || '0', 10) > 9999999999) intStr = '9999999999';
@@ -91,15 +91,15 @@ function setupMoneyInput(el, onChangeCb) {
         const newVal = decStr !== null ? `${intFmt},${decStr}` : intFmt;
         el.value = newVal;
 
-        const subNew      = newVal.substring(0, cursor);
+        const subNew = newVal.substring(0, cursor);
         const dotsDespues = (subNew.match(/\./g) || []).length;
-        const newCursor   = Math.min(cursor + (dotsDespues - dotsAntes), newVal.length);
-        try { el.setSelectionRange(newCursor, newCursor); } catch (_) {}
+        const newCursor = Math.min(cursor + (dotsDespues - dotsAntes), newVal.length);
+        try { el.setSelectionRange(newCursor, newCursor); } catch (_) { }
 
         if (onChangeCb) onChangeCb();
     });
 
-    el.addEventListener('blur', function() {
+    el.addEventListener('blur', function () {
         const raw = getRawMoney(el);
         if (raw > 0) {
             el.value = raw.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

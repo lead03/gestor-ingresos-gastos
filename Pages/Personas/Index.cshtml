@@ -11,7 +11,7 @@
         <div class="page-title">Personas</div>
         <div class="page-subtitle">@vm.Personas.Count persona(s) registrada(s)</div>
     </div>
-    <button class="btn btn-primary" onclick="openModal()">+ Nueva persona</button>
+    <button class="btn btn-primary" onclick="openModal('modal-persona')">+ Nueva persona</button>
 </div>
 
 @if (!vm.Personas.Any())
@@ -19,7 +19,7 @@
     <div class="card" style="text-align:center;padding:48px;color:var(--text2)">
         No hay personas registradas todavía.
         <br><br>
-        <button class="btn btn-primary" onclick="openModal()">+ Registrar primera persona</button>
+        <button class="btn btn-primary" onclick="openModal('modal-persona')">+ Registrar primera persona</button>
     </div>
 }
 else
@@ -78,7 +78,7 @@ else
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-persona')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Guardar</button>
             </div>
         </form>
@@ -87,10 +87,8 @@ else
 
 @section Scripts {
 <script>
-function openModal()  { document.getElementById('modal-persona').classList.add('open'); }
-function closeModal() { document.getElementById('modal-persona').classList.remove('open'); }
-document.getElementById('modal-persona').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
+document.addEventListener('DOMContentLoaded', function () {
+    initModal('modal-persona');
 });
 </script>
 }

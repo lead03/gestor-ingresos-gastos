@@ -292,11 +292,15 @@ public class GastoService(
 
         foreach (var c in cuentas)
         {
-            var gastos   = await cuentaRepo.GetGastosByCuentaAsync(c.Id);
-            var ingresos = await cuentaRepo.GetIngresosByCuentaAsync(c.Id);
-            var saldo    = c.SaldoInicial
-                         + ingresos.Sum(i => i.Monto)
-                         - gastos.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
+            var gastos     = await cuentaRepo.GetGastosByCuentaAsync(c.Id);
+            var ingresos   = await cuentaRepo.GetIngresosByCuentaAsync(c.Id);
+            var pagosDeuda = await cuentaRepo.GetPagosDeudaByCuentaAsync(c.Id);
+            var saldo      = c.SaldoInicial
+                           + ingresos.Sum(i => i.Monto)
+                           + pagosDeuda.SelectMany(p => p.Distribuciones)
+                                       .Where(d => d.CuentaId == c.Id)
+                                       .Sum(d => d.Monto)
+                           - gastos.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
 
             resultado.Add(new CuentaResumenVM
             {

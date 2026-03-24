@@ -566,3 +566,77 @@ textarea {
     gap: 10px;
     margin-top: 20px;
 }
+
+/* ── Tabs ──────────────────────────────────────────────────────────── */
+.tab-btn {
+    padding: 8px 18px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+.tab-panel { display: none; }
+
+/* ── Config labels ─────────────────────────────────────────────────── */
+.section-label {
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 10px;
+}
+.form-label { font-size: .8rem; color: var(--text2); display: block; margin-bottom: 4px; }
+
+/* ── Paginator ─────────────────────────────────────────────────────── */
+.paginator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 0 2px;
+    flex-wrap: wrap;
+}
+.paginator-info {
+    font-size: .78rem;
+    color: var(--text2);
+    margin-right: 8px;
+}
+.paginator-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: .82rem;
+    cursor: pointer;
+    transition: background .15s;
+    min-width: 32px;
+}
+.paginator-btn:hover:not(.paginator-disabled) {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+.paginator-btn.paginator-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+.paginator-btn.paginator-disabled {
+    opacity: .35;
+    cursor: default;
+}
+.paginator-sep {
+    color: var(--text2);
+    padding: 0 2px;
+    font-size: .82rem;
+}
