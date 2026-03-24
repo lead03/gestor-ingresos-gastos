@@ -12,6 +12,12 @@ public class ConfiguracionRepository(AppDbContext db) : IConfiguracionRepository
           .OrderBy(c => c.Orden).ThenBy(c => c.Valor)
           .ToListAsync();
 
+    public Task<List<ConfigOpcion>> GetByTipoEntidadAsync(int tipoEntidadId) =>
+        db.ConfigOpciones
+          .Where(c => c.TipoEntidadId == tipoEntidadId)
+          .OrderBy(c => c.Orden).ThenBy(c => c.Valor)
+          .ToListAsync();
+
     public Task<List<ConfigOpcion>> GetAllAsync() =>
         db.ConfigOpciones
           .OrderBy(c => c.Tipo).ThenBy(c => c.Orden).ThenBy(c => c.Valor)
@@ -19,10 +25,9 @@ public class ConfiguracionRepository(AppDbContext db) : IConfiguracionRepository
 
     public async Task AddAsync(ConfigOpcion opcion)
     {
-        // Calcular siguiente orden
-        var maxOrden = await db.ConfigOpciones
-            .Where(c => c.Tipo == opcion.Tipo)
-            .MaxAsync(c => (int?)c.Orden) ?? 0;
+        var maxOrden = opcion.TipoEntidadId.HasValue
+            ? await db.ConfigOpciones.Where(c => c.TipoEntidadId == opcion.TipoEntidadId).MaxAsync(c => (int?)c.Orden) ?? 0
+            : await db.ConfigOpciones.Where(c => c.Tipo == opcion.Tipo).MaxAsync(c => (int?)c.Orden) ?? 0;
         opcion.Orden = maxOrden + 1;
         db.ConfigOpciones.Add(opcion);
         await db.SaveChangesAsync();

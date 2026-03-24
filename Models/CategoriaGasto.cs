@@ -9,8 +9,8 @@ public class CategoriaGasto
     [Required, MaxLength(80)]
     public string Nombre { get; set; } = "";
 
-    // "Fijo" | "Variable"
-    public string Tipo { get; set; } = "Variable";
+    public int TipoId { get; set; }
+    public TipoCategoriaGasto Tipo { get; set; } = null!;
     public bool Habilitada { get; set; } = true;
 
     public ICollection<GastoItem> Gastos { get; set; } = new List<GastoItem>();

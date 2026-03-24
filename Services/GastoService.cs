@@ -24,10 +24,10 @@ public class GastoService(
             Mes            = mes,
             Anio           = anio,
             Items          = items,
-            TotalFijos        = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
-            TotalVariables    = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
-            TotalFijosUsd     = items.Where(g => g.Categoria.Tipo == "Fijo"     && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
-            TotalVariablesUsd = items.Where(g => g.Categoria.Tipo == "Variable" && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
+            TotalFijos        = items.Where(g => g.Categoria.TipoId == 1 && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
+            TotalVariables    = items.Where(g => g.Categoria.TipoId == 2 && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
+            TotalFijosUsd     = items.Where(g => g.Categoria.TipoId == 1 && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
+            TotalVariablesUsd = items.Where(g => g.Categoria.TipoId == 2 && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
             PorDia         = items.GroupBy(g => g.Dia)
                                   .ToDictionary(grp => grp.Key, grp => grp.ToList())
         };
@@ -248,23 +248,23 @@ public class GastoService(
     public Task<List<CategoriaGasto>> GetTodasCategoriasAsync() =>
         gastoRepo.GetTodasCategoriasAsync();
 
-    public async Task AgregarCategoriaAsync(string nombre, string tipo)
+    public async Task AgregarCategoriaAsync(string nombre, int tipoId)
     {
         await gastoRepo.AddCategoriaAsync(new CategoriaGasto
         {
             Nombre     = nombre.Trim(),
-            Tipo       = tipo,
+            TipoId     = tipoId,
             Habilitada = true
         });
     }
 
-    public async Task EditarCategoriaAsync(int id, string nombre, string tipo)
+    public async Task EditarCategoriaAsync(int id, string nombre, int tipoId)
     {
-        var todas  = await gastoRepo.GetTodasCategoriasAsync();
-        var cat    = todas.FirstOrDefault(c => c.Id == id);
+        var todas = await gastoRepo.GetTodasCategoriasAsync();
+        var cat   = todas.FirstOrDefault(c => c.Id == id);
         if (cat == null) return;
         cat.Nombre = nombre.Trim();
-        cat.Tipo   = tipo;
+        cat.TipoId = tipoId;
         await gastoRepo.UpdateCategoriaAsync(cat);
     }
 

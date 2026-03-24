@@ -7,7 +7,8 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<CategoriaGasto>    CategoriasGasto    => Set<CategoriaGasto>();
+    public DbSet<TipoCategoriaGasto> TiposCategoriaGasto => Set<TipoCategoriaGasto>();
+    public DbSet<CategoriaGasto>    CategoriasGasto     => Set<CategoriaGasto>();
     public DbSet<GastoItem>         Gastos             => Set<GastoItem>();
     public DbSet<GastoParticipante> GastoParticipantes => Set<GastoParticipante>();
     public DbSet<Ingreso>           Ingresos           => Set<Ingreso>();
@@ -20,11 +21,19 @@ public class AppDbContext : DbContext
     public DbSet<TarjetaFechaMensual> TarjetaFechasMensuales => Set<TarjetaFechaMensual>();
     public DbSet<TipoIngreso>         TiposIngreso           => Set<TipoIngreso>();
     public DbSet<IngresoDistribucion> IngresoDistribuciones  => Set<IngresoDistribucion>();
-    public DbSet<ConfigOpcion> ConfigOpciones => Set<ConfigOpcion>();
+    public DbSet<TipoEntidad> TiposEntidad => Set<TipoEntidad>();
+    public DbSet<ConfigOpcion>     ConfigOpciones    => Set<ConfigOpcion>();
     public DbSet<MonedaItem>   Monedas        => Set<MonedaItem>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        // CategoriaGasto → TipoCategoriaGasto
+        mb.Entity<CategoriaGasto>()
+            .HasOne(c => c.Tipo)
+            .WithMany(t => t.Categorias)
+            .HasForeignKey(c => c.TipoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // GastoItem → Categoria
         mb.Entity<GastoItem>()
             .HasOne(g => g.Categoria)
@@ -98,6 +107,14 @@ public class AppDbContext : DbContext
             .HasIndex(c => new { c.Tipo, c.Valor })
             .IsUnique();
 
+        // ConfigOpcion → TipoEntidad (nullable)
+        mb.Entity<ConfigOpcion>()
+            .HasOne(c => c.TipoEntidad)
+            .WithMany(t => t.Opciones)
+            .HasForeignKey(c => c.TipoEntidadId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Ingreso → TipoIngreso
         mb.Entity<Ingreso>()
             .HasOne(i => i.TipoIngreso)
@@ -146,12 +163,6 @@ public class AppDbContext : DbContext
             .HasColumnName("MonedaId")
             .HasConversion<int>();
 
-        // Tabla Monedas: seed con datos iniciales
-        mb.Entity<MonedaItem>().HasData(
-            new MonedaItem { Id = (int)Moneda.ARS, Codigo = "ARS", Nombre = "Peso Argentino", Simbolo = "$"  },
-            new MonedaItem { Id = (int)Moneda.USD, Codigo = "USD", Nombre = "Dólar",          Simbolo = "U$D" }
-        );
-
         mb.Entity<Deuda>()
             .Property(d => d.Direccion)
             .HasConversion<string>();
@@ -178,43 +189,5 @@ public class AppDbContext : DbContext
         mb.Entity<Deuda>().Property(d => d.MontoPagado).HasPrecision(18, 2);
         mb.Entity<Tarjeta>().Property(t => t.LimiteCredito).HasPrecision(18, 2);
 
-        // Seed categorías
-        mb.Entity<CategoriaGasto>().HasData(
-            new CategoriaGasto { Id = 1,  Nombre = "Alimentos",         Tipo = "Variable" },
-            new CategoriaGasto { Id = 2,  Nombre = "Higiene/perfumería", Tipo = "Variable" },
-            new CategoriaGasto { Id = 3,  Nombre = "Farmacia",           Tipo = "Variable" },
-            new CategoriaGasto { Id = 4,  Nombre = "Salidas/delivery",   Tipo = "Variable" },
-            new CategoriaGasto { Id = 5,  Nombre = "Forrajería",         Tipo = "Variable" },
-            new CategoriaGasto { Id = 6,  Nombre = "Bancarios",          Tipo = "Variable" },
-            new CategoriaGasto { Id = 7,  Nombre = "Automóvil",          Tipo = "Variable" },
-            new CategoriaGasto { Id = 8,  Nombre = "Tarjeta de Naty",    Tipo = "Variable" },
-            new CategoriaGasto { Id = 9,  Nombre = "Tienda XBOX",        Tipo = "Variable" },
-            new CategoriaGasto { Id = 10, Nombre = "Tienda PS Store",    Tipo = "Variable" },
-            new CategoriaGasto { Id = 11, Nombre = "Tienda Steam",       Tipo = "Variable" },
-            new CategoriaGasto { Id = 12, Nombre = "Tienda Nintendo",    Tipo = "Variable" },
-            new CategoriaGasto { Id = 13, Nombre = "E-Shops",            Tipo = "Variable" },
-            new CategoriaGasto { Id = 14, Nombre = "Otros",              Tipo = "Variable" },
-            new CategoriaGasto { Id = 15, Nombre = "AySA",               Tipo = "Fijo" },
-            new CategoriaGasto { Id = 16, Nombre = "Bomba",              Tipo = "Fijo" },
-            new CategoriaGasto { Id = 17, Nombre = "Electricidad",       Tipo = "Fijo" },
-            new CategoriaGasto { Id = 18, Nombre = "Gas",                Tipo = "Fijo" },
-            new CategoriaGasto { Id = 19, Nombre = "Municipio",          Tipo = "Fijo" },
-            new CategoriaGasto { Id = 20, Nombre = "ARBA/AFIP",          Tipo = "Fijo" },
-            new CategoriaGasto { Id = 21, Nombre = "Alquiler",           Tipo = "Fijo" },
-            new CategoriaGasto { Id = 22, Nombre = "Telered",            Tipo = "Fijo" },
-            new CategoriaGasto { Id = 23, Nombre = "Claro",              Tipo = "Fijo" },
-            new CategoriaGasto { Id = 24, Nombre = "Seguro",             Tipo = "Fijo" },
-            new CategoriaGasto { Id = 25, Nombre = "Contaduría",         Tipo = "Fijo" },
-            new CategoriaGasto { Id = 26, Nombre = "Jeep plan",          Tipo = "Fijo" },
-            new CategoriaGasto { Id = 27, Nombre = "Suscripciones",      Tipo = "Fijo" }
-        );
-
-        // Seed tarjetas
-        mb.Entity<Tarjeta>().HasData(
-            new Tarjeta { Id = 1, Nombre = "Galicia - VISA",           Banco = "Galicia",     Red = "VISA",       DiaCierre = 19, DiaVencimiento = 4  },
-            new Tarjeta { Id = 2, Nombre = "Santander - VISA",         Banco = "Santander",   Red = "VISA",       DiaCierre = 12, DiaVencimiento = 3  },
-            new Tarjeta { Id = 3, Nombre = "MercadoPago - MasterCard", Banco = "MercadoPago", Red = "Mastercard", DiaCierre = 12, DiaVencimiento = 17 },
-            new Tarjeta { Id = 4, Nombre = "Santander - AMEX",         Banco = "Santander",   Red = "AMEX",       DiaCierre = 12, DiaVencimiento = 3  }
-        );
     }
 }

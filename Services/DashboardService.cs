@@ -35,8 +35,8 @@ public class DashboardService(
             Mes   = mes, Anio = anio,
             TotalGastos          = gastos.Sum(MontoEfectivo),
             TotalIngresos        = ingresos.Sum(i => i.Monto),
-            TotalGastosFijos     = gastos.Where(g => g.Categoria.Tipo == "Fijo").Sum(MontoEfectivo),
-            TotalGastosVariables = gastos.Where(g => g.Categoria.Tipo == "Variable").Sum(MontoEfectivo),
+            TotalGastosFijos     = gastos.Where(g => g.Categoria.TipoId == 1).Sum(MontoEfectivo),
+            TotalGastosVariables = gastos.Where(g => g.Categoria.TipoId == 2).Sum(MontoEfectivo),
             TotalGastosUsd       = gastos.Where(g => g.Moneda == Moneda.USD).Sum(g => g.MiParteMes), // monto bruto en USD
             CotizacionDolar      = cotizacion,
             FuenteCotizacion     = cotizRes?.Fuente,

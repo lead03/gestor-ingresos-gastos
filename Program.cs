@@ -36,142 +36,145 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-    // Migración manual: agregar columna LimiteCredito si no existe
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Tarjetas ADD COLUMN LimiteCredito REAL"); } catch { /* ya existe */ }
 
-    // Migración manual: tabla de fechas mensuales por tarjeta
-    try
+    // Seed TiposCategoriaGasto
+    if (!db.TiposCategoriaGasto.Any())
     {
-        db.Database.ExecuteSqlRaw("""
-            CREATE TABLE IF NOT EXISTS TarjetaFechasMensuales (
-                Id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                TarjetaId      INTEGER NOT NULL,
-                Mes            INTEGER NOT NULL,
-                Anio           INTEGER NOT NULL,
-                DiaCierre      INTEGER NOT NULL,
-                DiaVencimiento INTEGER NOT NULL,
-                FOREIGN KEY (TarjetaId) REFERENCES Tarjetas(Id),
-                UNIQUE (TarjetaId, Mes, Anio)
-            )
-            """);
-    } catch { /* ya existe */ }
+        db.TiposCategoriaGasto.AddRange(
+            new ControlGastos.Models.TipoCategoriaGasto { Id = 1, Nombre = "Fijo"     },
+            new ControlGastos.Models.TipoCategoriaGasto { Id = 2, Nombre = "Variable" }
+        );
+        db.SaveChanges();
+    }
 
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas ADD COLUMN GastoItemId INTEGER"); } catch { /* ya existe */ }
-
-    // Tabla Monedas (lookup) + seed
-    try
+    // Seed Monedas
+    if (!db.Monedas.Any())
     {
-        db.Database.ExecuteSqlRaw("""
-            CREATE TABLE IF NOT EXISTS Monedas (
-                Id      INTEGER PRIMARY KEY,
-                Codigo  TEXT NOT NULL,
-                Nombre  TEXT NOT NULL,
-                Simbolo TEXT NOT NULL
-            )
-            """);
-    } catch { }
-    try { db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO Monedas (Id, Codigo, Nombre, Simbolo) VALUES (1,'ARS','Peso Argentino','$')");   } catch { }
-    try { db.Database.ExecuteSqlRaw("INSERT OR IGNORE INTO Monedas (Id, Codigo, Nombre, Simbolo) VALUES (2,'USD','Dólar','U$D')"); } catch { }
+        db.Monedas.AddRange(
+            new ControlGastos.Models.MonedaItem { Id = (int)ControlGastos.Models.Moneda.ARS, Codigo = "ARS", Nombre = "Peso Argentino", Simbolo = "$"   },
+            new ControlGastos.Models.MonedaItem { Id = (int)ControlGastos.Models.Moneda.USD, Codigo = "USD", Nombre = "Dólar",           Simbolo = "U$D" }
+        );
+        db.SaveChanges();
+    }
 
-    // MonedaId en GastoItems (migra desde columna Moneda TEXT)
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE GastoItems     ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
-    try { db.Database.ExecuteSqlRaw("UPDATE GastoItems     SET MonedaId = CASE WHEN Moneda = 'USD' THEN 2 ELSE 1 END WHERE MonedaId = 1"); } catch { }
-    // MonedaId en TarjetaCuotas (migra desde columna Moneda TEXT)
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas  ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
-    try { db.Database.ExecuteSqlRaw("UPDATE TarjetaCuotas  SET MonedaId = CASE WHEN Moneda = 'USD' THEN 2 ELSE 1 END WHERE MonedaId = 1"); } catch { }
-    // MonedaId en Cuentas e Ingresos (columnas nuevas)
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Cuentas        ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Ingresos       ADD COLUMN MonedaId INTEGER NOT NULL DEFAULT 1"); } catch { }
-
-    // Migración manual: tabla de opciones configurables
-    try
+    // Seed TiposIngreso
+    if (!db.TiposIngreso.Any())
     {
-        db.Database.ExecuteSqlRaw("""
-            CREATE TABLE IF NOT EXISTS ConfigOpciones (
-                Id     INTEGER PRIMARY KEY AUTOINCREMENT,
-                Tipo   TEXT    NOT NULL,
-                Valor  TEXT    NOT NULL,
-                Orden  INTEGER NOT NULL DEFAULT 0,
-                UNIQUE (Tipo, Valor)
-            )
-            """);
-    } catch { /* ya existe */ }
+        db.TiposIngreso.AddRange(
+            new ControlGastos.Models.TipoIngreso { Nombre = "Sueldo / Salario", Habilitada = true },
+            new ControlGastos.Models.TipoIngreso { Nombre = "Freelance",        Habilitada = true },
+            new ControlGastos.Models.TipoIngreso { Nombre = "Alquiler cobrado", Habilitada = true },
+            new ControlGastos.Models.TipoIngreso { Nombre = "Ahorros",          Habilitada = true },
+            new ControlGastos.Models.TipoIngreso { Nombre = "Inversiones",      Habilitada = true }
+        );
+        db.SaveChanges();
+    }
 
-    // Seed de opciones por defecto (si la tabla está vacía)
-    var hayRedes  = db.ConfigOpciones.Any(c => c.Tipo == "Red");
-    var hayBancos = db.ConfigOpciones.Any(c => c.Tipo == "Banco");
+    // Seed Categorías
+    if (!db.CategoriasGasto.Any())
+    {
+        db.CategoriasGasto.AddRange(
+            // Fijo (TipoId = 1)
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Alquiler",             TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Expensas",             TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Salud prepaga",        TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Agua",                 TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Gas",                  TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Electricidad",         TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Internet",             TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Telefonía",            TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Seguro automotriz",    TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Seguro de vida",       TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Seguro de hogar",      TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Impuesto municipal",   TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Impuesto provincial",  TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Impuesto nacional",    TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Cuota del auto",       TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Educación",            TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Actividad física",     TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Servicio doméstico",   TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Suscripciones",        TipoId = 1 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Cochera",              TipoId = 1 },
+            // Variable (TipoId = 2)
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Carnicería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Verdulería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Granja",               TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Pastas",               TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Fiambrería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Mercado",              TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Limpieza",             TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Perfumería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Forrajería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Panadería",            TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Delivery",             TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Restaurante",          TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Ferretería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Muebles",              TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Mercería",             TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Indumentaria",         TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Librería",             TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Heladería",            TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Veterinaria",          TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Electrónica",          TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Juguetería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Floristería",          TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Óptica",               TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Cerrajería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Tintorería",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Transporte",           TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Salud",                TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Educación",            TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Entretenimiento",      TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Arte",                 TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Gastos bancarios",     TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Impuestos en compras", TipoId = 2 }
+        );
+        db.SaveChanges();
+    }
 
-    if (!hayRedes)
+    // Seed TiposEntidad
+    if (!db.TiposEntidad.Any())
+    {
+        db.TiposEntidad.AddRange(
+            new ControlGastos.Models.TipoEntidad { Id = 1, Nombre = "Banco"     },
+            new ControlGastos.Models.TipoEntidad { Id = 2, Nombre = "Billetera" }
+        );
+        db.SaveChanges();
+    }
+
+    // Seed ConfigOpciones (Redes)
+    if (!db.ConfigOpciones.Any(c => c.Tipo == "Red"))
     {
         string[] redes = ["VISA", "Mastercard", "AMEX", "Naranja", "Cabal"];
         for (int i = 0; i < redes.Length; i++)
             db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Red", Valor = redes[i], Orden = i + 1 });
         db.SaveChanges();
     }
-    if (!hayBancos)
+
+    // Seed ConfigOpciones (Bancos)
+    if (!db.ConfigOpciones.Any(c => c.Tipo == "Banco"))
     {
-        string[] bancos = ["Galicia", "Santander", "MercadoPago", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC", "Naranja X"];
+        string[] bancos = ["Galicia", "Santander", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC", "Santander"];
         for (int i = 0; i < bancos.Length; i++)
-            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Banco", Valor = bancos[i], Orden = i + 1 });
+            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Banco", TipoEntidadId = 1, Valor = bancos[i], Orden = i + 1 });
         db.SaveChanges();
     }
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE CategoriasGasto ADD COLUMN Habilitada INTEGER NOT NULL DEFAULT 1"); } catch { /* ya existe */ }
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Gastos ADD COLUMN Moneda TEXT NOT NULL DEFAULT 'ARS'"); } catch { }
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE TarjetaCuotas ADD COLUMN Moneda TEXT NOT NULL DEFAULT 'ARS'"); } catch { }
 
-    // Tabla TiposIngreso
-    try { db.Database.ExecuteSqlRaw(@"
-        CREATE TABLE IF NOT EXISTS TiposIngreso (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Nombre TEXT NOT NULL,
-            Habilitada INTEGER NOT NULL DEFAULT 1
-        )"); } catch { }
+    // Seed ConfigOpciones (Billeteras)
+    if (!db.ConfigOpciones.Any(c => c.Tipo == "Billetera"))
+    {
+        string[] billeteras = ["MercadoPago", "Naranja X", "Ualá", "Lemon", "Brubank", "Personal Pay"];
+        for (int i = 0; i < billeteras.Length; i++)
+            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Billetera", TipoEntidadId = 2, Valor = billeteras[i], Orden = i + 1 });
+        db.SaveChanges();
+    }
 
-    // Seed TiposIngreso si está vacía
-    try {
-        db.Database.ExecuteSqlRaw(@"
-            INSERT OR IGNORE INTO TiposIngreso (Id, Nombre, Habilitada) VALUES
-            (1, 'Sueldo / Salario', 1),
-            (2, 'Freelance', 1),
-            (3, 'Alquiler cobrado', 1),
-            (4, 'Ahorros', 1),
-            (5, 'Dólares', 1),
-            (6, 'Inversiones', 1),
-            (7, 'Otros', 1)
-        ");
-    } catch { }
-
-    // Tabla IngresoDistribuciones
-    try { db.Database.ExecuteSqlRaw(@"
-        CREATE TABLE IF NOT EXISTS IngresoDistribuciones (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            IngresoId INTEGER NOT NULL,
-            CuentaId INTEGER NOT NULL,
-            Monto TEXT NOT NULL DEFAULT '0',
-            FOREIGN KEY (IngresoId) REFERENCES Ingresos(Id) ON DELETE CASCADE,
-            FOREIGN KEY (CuentaId) REFERENCES Cuentas(Id)
-        )"); } catch { }
-
-    // Columna TipoIngresoId en Ingresos (DEFAULT 7 = Otros)
-    try { db.Database.ExecuteSqlRaw("ALTER TABLE Ingresos ADD COLUMN TipoIngresoId INTEGER NOT NULL DEFAULT 7"); } catch { }
-    // Migrar datos existentes: CuentaId → IngresoDistribuciones
-    try {
-        db.Database.ExecuteSqlRaw(@"
-            INSERT OR IGNORE INTO IngresoDistribuciones (IngresoId, CuentaId, Monto)
-            SELECT Id, CuentaId, Monto FROM Ingresos
-            WHERE CuentaId IS NOT NULL
-              AND Id NOT IN (SELECT DISTINCT IngresoId FROM IngresoDistribuciones)
-        ");
-    } catch { }
-
-    // Crear cuenta Efectivo por defecto si no hay ninguna
-    try {
-        db.Database.ExecuteSqlRaw(@"
-            INSERT OR IGNORE INTO Cuentas (Nombre, Tipo, SaldoInicial, Activa)
-            SELECT 'Efectivo', 'Efectivo', 0, 1
-            WHERE NOT EXISTS (SELECT 1 FROM Cuentas WHERE Activa = 1)
-        ");
-    } catch { }
+    // Seed cuenta Efectivo si no hay ninguna activa
+    if (!db.Cuentas.Any(c => c.Activa))
+    {
+        db.Cuentas.Add(new ControlGastos.Models.Cuenta { Nombre = "Efectivo", Tipo = ControlGastos.Models.TipoCuenta.Efectivo, SaldoInicial = 0, Activa = true });
+        db.SaveChanges();
+    }
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");

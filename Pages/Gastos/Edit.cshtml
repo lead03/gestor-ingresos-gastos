@@ -6,7 +6,7 @@
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
     bool esEdicion = vm.Id != 0;
-    var tiposGasto = vm.Categorias.GroupBy(c => c.Tipo).OrderBy(g => g.Key);
+    var tiposGasto = vm.Categorias.GroupBy(c => c.Tipo.Nombre).OrderBy(g => g.Key);
     var tarjetasJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Tarjetas.Select(t => new { id = t.Id, nombre = t.Nombre, diaCierre = t.DiaCierre }));
     var cuentasJson = System.Text.Json.JsonSerializer.Serialize(

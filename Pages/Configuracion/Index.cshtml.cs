@@ -9,6 +9,7 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
 {
     public List<ConfigOpcion>   Redes      { get; set; } = new();
     public List<ConfigOpcion>   Bancos     { get; set; } = new();
+    public List<ConfigOpcion>   Billeteras { get; set; } = new();
     public List<CategoriaGasto> Categorias { get; set; } = new();
     public List<TipoIngreso>    TiposIngreso { get; set; } = new();
 
@@ -20,11 +21,12 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
 
     [BindProperty] public string  NuevaRed              { get; set; } = "";
     [BindProperty] public string  NuevoBanco            { get; set; } = "";
+    [BindProperty] public string  NuevaBilletera        { get; set; } = "";
     [BindProperty] public string  NuevaCatNombre        { get; set; } = "";
-    [BindProperty] public string  NuevaCatTipo          { get; set; } = "Variable";
+    [BindProperty] public int     NuevaCatTipoId        { get; set; } = 2;
     [BindProperty] public int     EditCatId             { get; set; }
     [BindProperty] public string  EditCatNombre         { get; set; } = "";
-    [BindProperty] public string  EditCatTipo           { get; set; } = "Variable";
+    [BindProperty] public int     EditCatTipoId         { get; set; } = 2;
     [BindProperty] public string  NuevoTipoDolar        { get; set; } = "blue";
     [BindProperty] public decimal CotizacionManualInput { get; set; }
     [BindProperty] public string  NuevoTipoNombre       { get; set; } = "";
@@ -49,6 +51,12 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostAgregarBilleteraAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(NuevaBilletera)) await svc.AddBilleteraAsync(NuevaBilletera);
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostEliminarAsync(int id)
     {
         await svc.DeleteAsync(id);
@@ -59,14 +67,14 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     public async Task<IActionResult> OnPostAgregarCatAsync()
     {
         if (!string.IsNullOrWhiteSpace(NuevaCatNombre))
-            await gastoSvc.AgregarCategoriaAsync(NuevaCatNombre, NuevaCatTipo);
+            await gastoSvc.AgregarCategoriaAsync(NuevaCatNombre, NuevaCatTipoId);
         return RedirectToPage(null, "categorias");
     }
 
     public async Task<IActionResult> OnPostEditarCatAsync()
     {
         if (EditCatId > 0 && !string.IsNullOrWhiteSpace(EditCatNombre))
-            await gastoSvc.EditarCategoriaAsync(EditCatId, EditCatNombre, EditCatTipo);
+            await gastoSvc.EditarCategoriaAsync(EditCatId, EditCatNombre, EditCatTipoId);
         return RedirectToPage(null, "categorias");
     }
 

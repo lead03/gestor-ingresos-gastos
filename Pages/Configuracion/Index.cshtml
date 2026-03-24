@@ -4,9 +4,9 @@
     ViewData["Title"] = "Configuración";
     Layout = "/Pages/Shared/_Layout.cshtml";
 
-    var catsFijas     = Model.Categorias.Where(c => c.Tipo == "Fijo"     && c.Habilitada).OrderBy(c => c.Nombre).ToList();
-    var catsVariables = Model.Categorias.Where(c => c.Tipo == "Variable" && c.Habilitada).OrderBy(c => c.Nombre).ToList();
-    var catsDeshabl   = Model.Categorias.Where(c => !c.Habilitada).OrderBy(c => c.Tipo).ThenBy(c => c.Nombre).ToList();
+    var catsFijas     = Model.Categorias.Where(c => c.TipoId == 1 && c.Habilitada).OrderBy(c => c.Nombre).ToList();
+    var catsVariables = Model.Categorias.Where(c => c.TipoId == 2 && c.Habilitada).OrderBy(c => c.Nombre).ToList();
+    var catsDeshabl   = Model.Categorias.Where(c => !c.Habilitada).OrderBy(c => c.TipoId).ThenBy(c => c.Nombre).ToList();
 }
 
 <div class="page-header">
@@ -92,7 +92,7 @@
                             <span style="font-size:.88rem">@c.Nombre</span>
                             <div class="btn-group">
                                 <button type="button" class="btn btn-ghost btn-sm"
-                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', '@c.Tipo')">✎</button>
+                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', @c.TipoId)">✎</button>
                                 <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
                                     <input type="hidden" name="id" value="@c.Id" />
                                     <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
@@ -106,10 +106,10 @@
                                 <input type="hidden" name="EditCatId" value="@c.Id" />
                                 <input type="text" name="EditCatNombre" value="@c.Nombre"
                                        style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
-                                <select name="EditCatTipo"
+                                <select name="EditCatTipoId"
                                         style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem">
-                                    <option value="Fijo"     selected="@(c.Tipo=="Fijo")">Fijo</option>
-                                    <option value="Variable" selected="@(c.Tipo=="Variable")">Variable</option>
+                                    <option value="1" selected="@(c.TipoId==1)">Fijo</option>
+                                    <option value="2" selected="@(c.TipoId==2)">Variable</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary btn-sm">✓</button>
                                 <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
@@ -119,7 +119,7 @@
                 }
             </ul>
             <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px">
-                <input type="hidden" name="NuevaCatTipo" value="Fijo" />
+                <input type="hidden" name="NuevaCatTipoId" value="1" />
                 <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría fija..."
                        style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
                 <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
@@ -139,7 +139,7 @@
                             <span style="font-size:.88rem">@c.Nombre</span>
                             <div class="btn-group">
                                 <button type="button" class="btn btn-ghost btn-sm"
-                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', '@c.Tipo')">✎</button>
+                                        onclick="toggleEditCat(@c.Id, '@c.Nombre.Replace("'","\\'")', @c.TipoId)">✎</button>
                                 <form method="post" asp-page-handler="DeshabilitarCat" style="display:inline">
                                     <input type="hidden" name="id" value="@c.Id" />
                                     <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
@@ -152,10 +152,10 @@
                                 <input type="hidden" name="EditCatId" value="@c.Id" />
                                 <input type="text" name="EditCatNombre" value="@c.Nombre"
                                        style="flex:1;padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem" />
-                                <select name="EditCatTipo"
+                                <select name="EditCatTipoId"
                                         style="padding:5px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:.85rem">
-                                    <option value="Fijo"     selected="@(c.Tipo=="Fijo")">Fijo</option>
-                                    <option value="Variable" selected="@(c.Tipo=="Variable")">Variable</option>
+                                    <option value="1" selected="@(c.TipoId==1)">Fijo</option>
+                                    <option value="2" selected="@(c.TipoId==2)">Variable</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary btn-sm">✓</button>
                                 <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditCat(@c.Id)">✕</button>
@@ -165,7 +165,7 @@
                 }
             </ul>
             <form method="post" asp-page-handler="AgregarCat" style="display:flex;gap:8px">
-                <input type="hidden" name="NuevaCatTipo" value="Variable" />
+                <input type="hidden" name="NuevaCatTipoId" value="2" />
                 <input name="NuevaCatNombre" type="text" placeholder="Nueva categoría variable..."
                        style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:.85rem" />
                 <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
@@ -186,7 +186,7 @@
                         <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px;opacity:.6">
                             <span style="font-size:.85rem">
                                 @c.Nombre
-                                <span style="font-size:.72rem;color:var(--text2);margin-left:6px">(@c.Tipo)</span>
+                                <span style="font-size:.72rem;color:var(--text2);margin-left:6px">(@c.Tipo.Nombre)</span>
                             </span>
                             <form method="post" asp-page-handler="HabilitarCat" style="display:inline">
                                 <input type="hidden" name="id" value="@c.Id" />

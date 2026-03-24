@@ -8,7 +8,7 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
 {
     public Task<List<GastoItem>> GetByMesAsync(int mes, int anio) =>
         db.Gastos
-          .Include(g => g.Categoria)
+          .Include(g => g.Categoria).ThenInclude(c => c.Tipo)
           .Include(g => g.Cuenta)
           .Include(g => g.Tarjeta)
           .Include(g => g.TarjetaCuota)
@@ -28,8 +28,9 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
 
     public Task<List<CategoriaGasto>> GetCategoriasAsync() =>
         db.CategoriasGasto
+          .Include(c => c.Tipo)
           .Where(c => c.Habilitada)
-          .OrderBy(c => c.Tipo)
+          .OrderBy(c => c.TipoId)
           .ThenBy(c => c.Nombre)
           .ToListAsync();
 
@@ -57,7 +58,8 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
 
     public Task<List<CategoriaGasto>> GetTodasCategoriasAsync() =>
         db.CategoriasGasto
-          .OrderBy(c => c.Tipo)
+          .Include(c => c.Tipo)
+          .OrderBy(c => c.TipoId)
           .ThenBy(c => c.Nombre)
           .ToListAsync();
 
