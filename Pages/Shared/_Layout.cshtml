@@ -5,138 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Mis Finanzas</title>
     <link rel="stylesheet" href="~/css/variables.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/navbar.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 @{
-    var active      = ViewData["Active"]?.ToString() ?? "";
-    int curMes      = (int)(ViewData["Mes"]  ?? DateTime.Today.Month);
-    int curAnio     = (int)(ViewData["Anio"] ?? DateTime.Today.Year);
-    int prevMes     = curMes  == 1  ? 12          : curMes  - 1;
-    int prevAnio    = curMes  == 1  ? curAnio - 1 : curAnio;
-    int nextMes     = curMes  == 12 ? 1           : curMes  + 1;
-    int nextAnio    = curMes  == 12 ? curAnio + 1 : curAnio;
-    string[] meses  = { "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-                        "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
-    string mesNombre = meses[curMes - 1];
-    string mesAbrev  = mesNombre.Substring(0, 3);
-    string pagePath  = Context.Request.Path;
+        var active = ViewData["Active"]?.ToString() ?? "";
+        int curMes = (int)(ViewData["Mes"] ?? DateTime.Today.Month);
+        int curAnio = (int)(ViewData["Anio"] ?? DateTime.Today.Year);
+        int prevMes = curMes == 1 ? 12 : curMes - 1;
+        int prevAnio = curMes == 1 ? curAnio - 1 : curAnio;
+        int nextMes = curMes == 12 ? 1 : curMes + 1;
+        int nextAnio = curMes == 12 ? curAnio + 1 : curAnio;
+        string[] meses = { "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                                                "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
+        string mesNombre = meses[curMes - 1];
+        string mesAbrev = mesNombre.Substring(0, 3);
+        string pagePath = Context.Request.Path;
 }
 <body>
-<nav class="navbar" role="navigation" aria-label="Navegación principal">
-    <div class="navbar__inner">
+    <nav class="navbar" role="navigation" aria-label="Navegación principal">
+        <div class="navbar__inner">
 
-        <!-- Logo -->
-        <a asp-page="/Dashboard/Index" class="navbar__brand">
-            <svg class="navbar__brand-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
-            <span class="navbar__brand-full">Mis Finanzas</span>
-            <span class="navbar__brand-short">MF</span>
-        </a>
+            <!-- Logo -->
+            <a asp-page="/Dashboard/Index" class="navbar__brand">
+                <svg class="navbar__brand-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <span class="navbar__brand-full">Mis Finanzas</span>
+                <span class="navbar__brand-short">MF</span>
+            </a>
 
-        <!-- Desktop nav links -->
-        <div class="navbar__links">
-            <a asp-page="/Dashboard/Index"    class="navbar__link @(active=="dashboard"     ?"navbar__link--active":"")">Dashboard</a>
-            <a asp-page="/Gastos/Index"        class="navbar__link @(active=="gastos"        ?"navbar__link--active":"")">Gastos</a>
-            <a asp-page="/Ingresos/Index"      class="navbar__link @(active=="ingresos"      ?"navbar__link--active":"")">Ingresos</a>
-            <a asp-page="/Tarjetas/Index"      class="navbar__link @(active=="tarjetas"      ?"navbar__link--active":"")">Tarjetas</a>
-            <a asp-page="/Cuentas/Index"       class="navbar__link @(active=="cuentas"       ?"navbar__link--active":"")">Cuentas</a>
-            <a asp-page="/Personas/Index"      class="navbar__link @(active=="personas"      ?"navbar__link--active":"")">Personas</a>
-            <a asp-page="/MeDeben/Index"       class="navbar__link @(active=="medeben"       ?"navbar__link--active":"")">Deudas</a>
-            <a asp-page="/Configuracion/Index" class="navbar__link @(active=="configuracion" ?"navbar__link--active":"")">Config</a>
-        </div>
-
-        <!-- Right section: period selector + hamburger -->
-        <div class="navbar__right">
-
-            <!-- Siempre renderizado: ocupa espacio fijo → el navbar no se desplaza al cambiar de vista -->
-            <!-- En Config: clase is-disabled → opacity 0.3 + pointer-events: none vía CSS          -->
-            <div class="navbar__period @(active == "configuracion" ? "is-disabled" : "")"
-                 aria-label="Período seleccionado"
-                 @(active == "configuracion" ? "aria-disabled=true" : "")>
-                <a href="@pagePath?mes=@prevMes&anio=@prevAnio" class="navbar__period-btn"
-                   aria-label="Mes anterior"
-                   @(active == "configuracion" ? "tabindex=-1" : "")>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </a>
-                <span class="navbar__period-label">
-                    <span class="navbar__period-full">@mesNombre @curAnio</span>
-                    <span class="navbar__period-short">@mesAbrev @curAnio</span>
-                </span>
-                <a href="@pagePath?mes=@nextMes&anio=@nextAnio" class="navbar__period-btn"
-                   aria-label="Mes siguiente"
-                   @(active == "configuracion" ? "tabindex=-1" : "")>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </a>
+            <!-- Desktop nav links -->
+            <div class="navbar__links">
+                <a asp-page="/Dashboard/Index" class="navbar__link @(active == "dashboard" ? "navbar__link--active" : "")">Dashboard</a>
+                <a asp-page="/Gastos/Index" class="navbar__link @(active == "gastos" ? "navbar__link--active" : "")">Gastos</a>
+                <a asp-page="/Ingresos/Index" class="navbar__link @(active == "ingresos" ? "navbar__link--active" : "")">Ingresos</a>
+                <a asp-page="/Tarjetas/Index" class="navbar__link @(active == "tarjetas" ? "navbar__link--active" : "")">Tarjetas</a>
+                <a asp-page="/Cuentas/Index" class="navbar__link @(active == "cuentas" ? "navbar__link--active" : "")">Cuentas</a>
+                <a asp-page="/Personas/Index" class="navbar__link @(active == "personas" ? "navbar__link--active" : "")">Personas</a>
+                <a asp-page="/MeDeben/Index" class="navbar__link @(active == "medeben" ? "navbar__link--active" : "")">Deudas</a>
+                <a asp-page="/Configuracion/Index" class="navbar__link @(active == "configuracion" ? "navbar__link--active" : "")">Config</a>
             </div>
 
-            <button class="navbar__hamburger" id="navbar-toggle" aria-expanded="false" aria-controls="navbar-mobile" aria-label="Abrir menú de navegación">
-                <svg id="navbar-icon-menu" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="6"  x2="21" y2="6"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-                <svg id="navbar-icon-close" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
-                    <line x1="18" y1="6"  x2="6"  y2="18"></line>
-                    <line x1="6"  y1="6"  x2="18" y2="18"></line>
-                </svg>
-            </button>
+            <!-- Right section: period selector + hamburger -->
+            <div class="navbar__right">
 
+                <!-- Siempre renderizado: ocupa espacio fijo → el navbar no se desplaza al cambiar de vista -->
+                <!-- En Config: clase is-disabled → opacity 0.3 + pointer-events: none vía CSS          -->
+                <div class="navbar__period @(active == "configuracion" ? "is-disabled" : "")"
+                     aria-label="Período seleccionado"
+                     @(active == "configuracion" ? "aria-disabled=true" : "")>
+                    <a href="@pagePath?mes=@prevMes&anio=@prevAnio" class="navbar__period-btn"
+                       aria-label="Mes anterior"
+                       @(active == "configuracion" ? "tabindex=-1" : "")>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </a>
+                    <span class="navbar__period-label">
+                        <span class="navbar__period-full">@mesNombre @curAnio</span>
+                        <span class="navbar__period-short">@mesAbrev @curAnio</span>
+                    </span>
+                    <a href="@pagePath?mes=@nextMes&anio=@nextAnio" class="navbar__period-btn"
+                       aria-label="Mes siguiente"
+                       @(active == "configuracion" ? "tabindex=-1" : "")>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+                </div>
+
+                <button class="navbar__hamburger" id="navbar-toggle" aria-expanded="false" aria-controls="navbar-mobile" aria-label="Abrir menú de navegación">
+                    <svg id="navbar-icon-menu" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                    <svg id="navbar-icon-close" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+
+            </div>
+        </div>
+
+        <!-- Mobile menu -->
+        <div class="navbar__mobile" id="navbar-mobile" aria-hidden="true">
+            <a asp-page="/Dashboard/Index" class="navbar__mobile-link @(active == "dashboard" ? "navbar__mobile-link--active" : "")">Dashboard</a>
+            <a asp-page="/Gastos/Index" class="navbar__mobile-link @(active == "gastos" ? "navbar__mobile-link--active" : "")">Gastos</a>
+            <a asp-page="/Ingresos/Index" class="navbar__mobile-link @(active == "ingresos" ? "navbar__mobile-link--active" : "")">Ingresos</a>
+            <a asp-page="/Tarjetas/Index" class="navbar__mobile-link @(active == "tarjetas" ? "navbar__mobile-link--active" : "")">Tarjetas</a>
+            <a asp-page="/Cuentas/Index" class="navbar__mobile-link @(active == "cuentas" ? "navbar__mobile-link--active" : "")">Cuentas</a>
+            <a asp-page="/Personas/Index" class="navbar__mobile-link @(active == "personas" ? "navbar__mobile-link--active" : "")">Personas</a>
+            <a asp-page="/MeDeben/Index" class="navbar__mobile-link @(active == "medeben" ? "navbar__mobile-link--active" : "")">Deudas</a>
+            <a asp-page="/Configuracion/Index" class="navbar__mobile-link @(active == "configuracion" ? "navbar__mobile-link--active" : "")">Config</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        @RenderBody()
+    </main>
+
+    <!-- Modal de error global -->
+    <div class="modal-bg" id="modal-error">
+        <div class="modal" style="max-width:400px;text-align:center">
+            <div style="font-size:1.5rem;margin-bottom:12px">⚠</div>
+            <div class="modal-title" id="modal-error-titulo" style="margin-bottom:8px"></div>
+            <p id="modal-error-texto" style="color:var(--text2);font-size:.9rem;margin-bottom:20px"></p>
+            <button class="btn btn-primary" onclick="cerrarError()" style="width:100%">Entendido</button>
         </div>
     </div>
 
-    <!-- Mobile menu -->
-    <div class="navbar__mobile" id="navbar-mobile" aria-hidden="true">
-        <a asp-page="/Dashboard/Index"    class="navbar__mobile-link @(active=="dashboard"     ?"navbar__mobile-link--active":"")">Dashboard</a>
-        <a asp-page="/Gastos/Index"        class="navbar__mobile-link @(active=="gastos"        ?"navbar__mobile-link--active":"")">Gastos</a>
-        <a asp-page="/Ingresos/Index"      class="navbar__mobile-link @(active=="ingresos"      ?"navbar__mobile-link--active":"")">Ingresos</a>
-        <a asp-page="/Tarjetas/Index"      class="navbar__mobile-link @(active=="tarjetas"      ?"navbar__mobile-link--active":"")">Tarjetas</a>
-        <a asp-page="/Cuentas/Index"       class="navbar__mobile-link @(active=="cuentas"       ?"navbar__mobile-link--active":"")">Cuentas</a>
-        <a asp-page="/Personas/Index"      class="navbar__mobile-link @(active=="personas"      ?"navbar__mobile-link--active":"")">Personas</a>
-        <a asp-page="/MeDeben/Index"       class="navbar__mobile-link @(active=="medeben"       ?"navbar__mobile-link--active":"")">Deudas</a>
-        <a asp-page="/Configuracion/Index" class="navbar__mobile-link @(active=="configuracion" ?"navbar__mobile-link--active":"")">Config</a>
-    </div>
-</nav>
+    <script src="~/js/modal.js" asp-append-version="true"></script>
+    <script src="~/js/navbar.js" asp-append-version="true"></script>
+    <script src="~/js/paginator.js" asp-append-version="true"></script>
+    <script src="~/js/tabs.js" asp-append-version="true"></script>
 
-<main class="main-content">
-    @RenderBody()
-</main>
+    <script>
+        // Modal de error global — usa modal.js para ESC key y scroll lock
+        initModal('modal-error');
 
-<!-- Modal de error global -->
-<div class="modal-bg" id="modal-error">
-    <div class="modal" style="max-width:400px;text-align:center">
-        <div style="font-size:1.5rem;margin-bottom:12px">⚠</div>
-        <div class="modal-title" id="modal-error-titulo" style="margin-bottom:8px"></div>
-        <p id="modal-error-texto" style="color:var(--text2);font-size:.9rem;margin-bottom:20px"></p>
-        <button class="btn btn-primary" onclick="cerrarError()" style="width:100%">Entendido</button>
-    </div>
-</div>
+        function mostrarError(titulo, texto) {
+            document.getElementById('modal-error-titulo').textContent = titulo;
+            document.getElementById('modal-error-texto').textContent  = texto;
+            openModal('modal-error');
+        }
+        function cerrarError() {
+            closeModal('modal-error');
+        }
+    </script>
 
-<script src="~/js/modal.js" asp-append-version="true"></script>
-<script src="~/js/navbar.js" asp-append-version="true"></script>
-<script src="~/js/paginator.js" asp-append-version="true"></script>
-<script src="~/js/tabs.js" asp-append-version="true"></script>
-
-<script>
-// Modal de error global — usa modal.js para ESC key y scroll lock
-initModal('modal-error');
-
-function mostrarError(titulo, texto) {
-    document.getElementById('modal-error-titulo').textContent = titulo;
-    document.getElementById('modal-error-texto').textContent  = texto;
-    openModal('modal-error');
-}
-function cerrarError() {
-    closeModal('modal-error');
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-@await RenderSectionAsync("Scripts", required: false)
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

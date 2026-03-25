@@ -1,0 +1,282 @@
+/**
+ * navbar.css — Estilos del componente Navbar
+ *
+ * Diseño propio (Tailwind Slate + Emerald) independiente del tema general
+ * de la app. Usamos px en lugar de rem para ser inmunes al
+ * html { font-size: 15px } del reset y coincidir 1:1 con el diseño React/Figma.
+ *
+ * Cargado después de variables.css y antes de site.css en _Layout.cshtml.
+ */
+
+/* ── Variables propias del navbar ─────────────────────────────────── */
+:root {
+    --nav-bg: #0f172a; /* slate-900  — fondo navbar     */
+    --nav-bg2: #1e293b; /* slate-800  — period, hover bg  */
+    --nav-bg3: #334155; /* slate-700  — period-btn hover  */
+    --nav-border: #1e293b; /* slate-800  — border-bottom     */
+    --nav-text: #94a3b8; /* slate-400  — links inactivos   */
+    --nav-text-active: #e2e8f0; /* slate-200  — links hover       */
+    --nav-period-text: #e2e8f0; /* slate-200  — texto del período */
+    --nav-accent: #34d399; /* emerald-400 — brand, activo    */
+    --nav-accent-bg: rgba(16, 185, 129, .2); /* emerald-500/20 — fondo activo  */
+    --nav-accent-bg-hv: rgba(16, 185, 129, .28); /* emerald-500/28 — hover activo  */
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+.navbar {
+    background: var(--nav-bg);
+    border-bottom: 1px solid var(--nav-border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+}
+
+.navbar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px;
+    gap: 12px;
+}
+
+/* ── Brand ────────────────────────────────────────────────────────── */
+.navbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--nav-accent);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 28px;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: opacity .15s;
+}
+
+    .navbar__brand:hover {
+        opacity: .85;
+    }
+
+.navbar__brand-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.navbar__brand-short {
+    display: none;
+}
+
+/* ── Desktop links ────────────────────────────────────────────────── */
+.navbar__links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 1 auto;
+}
+
+.navbar__link {
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--nav-text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    white-space: nowrap;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+    .navbar__link:hover {
+        background: var(--nav-bg2);
+        color: var(--nav-text-active);
+    }
+
+.navbar__link--active {
+    background: var(--nav-accent-bg);
+    color: var(--nav-accent);
+}
+
+    .navbar__link--active:hover {
+        background: var(--nav-accent-bg-hv);
+        color: var(--nav-accent);
+    }
+
+/* ── Right section ────────────────────────────────────────────────── */
+.navbar__right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* ── Period selector ──────────────────────────────────────────────── */
+.navbar__period {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--nav-bg2);
+    border-radius: 8px;
+    padding: 4px 8px;
+    transition: opacity 0.2s;
+}
+
+    /* En vista Config: ocupa el mismo espacio pero no interactúa */
+    .navbar__period.is-disabled {
+        opacity: 0.3;
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+
+.navbar__period-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--nav-text);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+    line-height: 0;
+}
+
+    .navbar__period-btn:hover {
+        background: var(--nav-bg3);
+    }
+
+    .navbar__period-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+.navbar__period-label {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--nav-period-text);
+    min-width: 140px;
+    text-align: center;
+    user-select: none;
+}
+
+.navbar__period-short {
+    display: none;
+}
+
+/* ── Hamburger (mobile only) ──────────────────────────────────────── */
+.navbar__hamburger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background: transparent;
+    border: none;
+    color: var(--nav-text);
+    cursor: pointer;
+    border-radius: 8px;
+    line-height: 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+    .navbar__hamburger:hover {
+        background: var(--nav-bg2);
+        color: var(--nav-text-active);
+    }
+
+    .navbar__hamburger svg {
+        width: 24px;
+        height: 24px;
+    }
+
+/* ── Mobile menu ──────────────────────────────────────────────────── */
+.navbar__mobile {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid var(--nav-border);
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.navbar__mobile--open {
+    display: flex;
+}
+
+.navbar__mobile-link {
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--nav-text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+    .navbar__mobile-link:hover {
+        background: var(--nav-bg2);
+        color: var(--nav-text-active);
+    }
+
+.navbar__mobile-link--active {
+    background: var(--nav-accent-bg);
+    color: var(--nav-accent);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 1023px) { /* < lg */
+    .navbar__links {
+        display: none;
+    }
+
+    .navbar__hamburger {
+        display: flex;
+    }
+}
+
+@media (max-width: 639px) { /* < sm */
+    .navbar__brand-full {
+        display: none;
+    }
+
+    .navbar__brand-short {
+        display: inline;
+    }
+
+    .navbar__period-full {
+        display: none;
+    }
+
+    .navbar__period-short {
+        display: inline;
+    }
+
+    .navbar__period-label {
+        min-width: 100px;
+    }
+}
+
+@media (min-width: 640px) {
+    .navbar__brand-full {
+        display: inline;
+    }
+
+    .navbar__brand-short {
+        display: none;
+    }
+
+    .navbar__period-full {
+        display: inline;
+    }
+
+    .navbar__period-short {
+        display: none;
+    }
+}
