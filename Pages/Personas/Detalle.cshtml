@@ -4,8 +4,19 @@
 @{
     ViewData["Title"] = Model.VM.Persona.Nombre;
     Layout = "/Pages/Shared/_Layout.cshtml";
-    var vm = Model.VM;
+    var vm   = Model.VM;
+    var mes  = (int)ViewData["Mes"]!;
+    var anio = (int)ViewData["Anio"]!;
     string Peso(decimal v) => v.ToString("N2");
+
+    var nombresMeses = new[]{ "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+                              "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
+    string LabelMes(int m, int a) => $"{nombresMeses[m]} {a}";
+
+    // Filas del mes seleccionado (puede ser 0 o 1 grupo)
+    var filasDelMes = vm.PorMes.FirstOrDefault()?.Participaciones
+                      ?? new List<ControlGastos.ViewModels.PersonaParticipacionVM>();
+    decimal totalDelMes = vm.PorMes.FirstOrDefault()?.Total ?? 0;
 }
 
 <div class="page-header">
@@ -19,77 +30,85 @@
     <a asp-page="./Index" class="btn btn-ghost">← Personas</a>
 </div>
 
-<!-- KPI balance -->
+<!-- KPIs -->
 <div class="kpi-grid" style="margin-bottom:24px">
     <div class="kpi-card">
-        <div class="kpi-label">Balance</div>
+        <div class="kpi-label">Balance total</div>
         <div class="kpi-value @vm.ClaseBalance">@vm.EstadoBalance</div>
     </div>
     <div class="kpi-card">
         <div class="kpi-label">Gastos compartidos</div>
-        <div class="kpi-value accent">@vm.PorMes.Sum(m => m.Participaciones.Count) movimiento(s)</div>
+        <div class="kpi-value accent">@vm.TotalMovimientos movimiento(s)</div>
     </div>
-    <div class="kpi-card">
-        <div class="kpi-label">Deudas directas</div>
-        <div class="kpi-value @(vm.TotalDeudas > 0 ? "amber" : "accent")">
-            $ @Peso(Math.Abs(vm.TotalDeudas))
+    @if (vm.TotalDeudas != 0)
+    {
+        <div class="kpi-card">
+            <div class="kpi-label">Deudas directas</div>
+            <div class="kpi-value @(vm.TotalDeudas > 0 ? "amber" : "red")">
+                $ @Peso(Math.Abs(vm.TotalDeudas))
+            </div>
         </div>
-    </div>
+    }
 </div>
 
-<!-- Movimientos por mes -->
+<!-- ── Gastos compartidos del mes ────────────────────────────────────── -->
 <div class="card" style="margin-bottom:20px">
-    <div class="card-header"><span class="card-title">Gastos compartidos por mes</span></div>
+    <div class="card-header">
+        <span class="card-title">Gastos compartidos — @LabelMes(mes, anio)</span>
+        @if (filasDelMes.Any())
+        {
+            <span class="amount amber" style="font-size:.95rem">$ @Peso(totalDelMes)</span>
+        }
+    </div>
 
-    @if (!vm.PorMes.Any())
+    @if (!filasDelMes.Any())
     {
         <div style="padding:24px;text-align:center;color:var(--text2)">
-            Sin movimientos registrados todavía.
+            Sin movimientos este mes.
         </div>
     }
-
-    @foreach (var mes in vm.PorMes)
+    else
     {
-        <div style="margin-bottom:16px">
-            <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:8px 14px;background:var(--bg3);border-radius:6px;margin-bottom:8px">
-                <span style="font-weight:600;font-size:.9rem">@mes.Label</span>
-                <span class="amount amber">$ @Peso(mes.Total)</span>
-            </div>
-            <div class="table-wrap">
-                <table>
-                    <thead>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha compra</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th class="text-right">Su parte</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-gastos">
+                    @foreach (var p in filasDelMes)
+                    {
                         <tr>
-                            <th>Fecha</th>
-                            <th>Categoría</th>
-                            <th>Descripción</th>
-                            <th class="text-right">Su parte</th>
+                            <td>@p.Dia/@p.MesCompra/@p.AnioCompra</td>
+                            <td>@p.Categoria</td>
+                            <td>
+                                @(string.IsNullOrEmpty(p.Descripcion) ? "—" : p.Descripcion)
+                                @if (p.EsCuota)
+                                {
+                                    <span class="badge badge-var" style="margin-left:4px;font-size:.65rem">cuota @p.NumeroCuota/@p.TotalCuotas</span>
+                                }
+                            </td>
+                            <td class="text-right amount amber">$ @Peso(p.Monto)</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var p in mes.Participaciones)
-                        {
-                            <tr>
-                                <td>@p.GastoItem.Dia/@p.GastoItem.Mes/@p.GastoItem.Anio</td>
-                                <td>@p.GastoItem.Categoria.Nombre</td>
-                                <td>@(string.IsNullOrEmpty(p.GastoItem.Descripcion) ? "—" : p.GastoItem.Descripcion)</td>
-                                <td class="text-right amount amber">$ @Peso(p.Monto)</td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="3">Total @mes.Label</td>
-                            <td class="text-right">$ @Peso(mes.Total)</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">Total @LabelMes(mes, anio)</td>
+                        <td class="text-right">$ @Peso(totalDelMes)</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
+        <div id="pag-gastos"></div>
     }
 </div>
 
-<!-- Deudas directas -->
+<!-- ── Deudas directas ────────────────────────────────────────────────── -->
 @if (vm.Deudas.Any())
 {
     <div class="card">
@@ -131,4 +150,12 @@
             </table>
         </div>
     </div>
+}
+
+@section Scripts {
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    initPaginator('tbody-gastos', 'pag-gastos');
+});
+</script>
 }

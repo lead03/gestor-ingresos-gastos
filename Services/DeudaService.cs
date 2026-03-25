@@ -5,7 +5,7 @@ using ControlGastos.ViewModels;
 
 namespace ControlGastos.Services;
 
-public class DeudaService(IDeudaRepository repo)
+public class DeudaService(IDeudaRepository repo, IGastoParticipanteRepository participanteRepo)
 {
     // ── Lista principal ───────────────────────────────────────────────
 
@@ -17,6 +17,20 @@ public class DeudaService(IDeudaRepository repo)
         var deudas    = await repo.GetAllAsync();
         var cuotasMes = await repo.GetCuotasByMesAsync(mes, anio);
 
+        // Para cuentas de crédito (AceptaCuotas) vinculadas a una persona,
+        // el saldo del mes se calcula desde los GastoParticipantes expandidos por cuota.
+        var saldosVirtuales = new Dictionary<int, decimal>();
+        foreach (var d in deudas.Where(d => d.AceptaCuotas && d.PersonaId.HasValue))
+        {
+            var expandidas = await participanteRepo.GetExpandedByPersonaAsync(d.PersonaId!.Value);
+            saldosVirtuales[d.Id] = expandidas
+                .Where(p => p.Mes == mes && p.Anio == anio)
+                .Sum(p => p.Monto);
+        }
+
+        decimal SaldoEfectivo(Deuda d) =>
+            saldosVirtuales.TryGetValue(d.Id, out var sv) ? sv : CalcSaldo(d);
+
         var meDeben = deudas.Where(d => d.Direccion == DireccionDeuda.MeDeben).ToList();
         var leDebo  = deudas.Where(d => d.Direccion == DireccionDeuda.LeDebo).ToList();
 
@@ -25,20 +39,21 @@ public class DeudaService(IDeudaRepository repo)
             MeDeben = meDeben,
             LeDebo  = leDebo,
             TotalMeDeben = meDeben.Where(d => d.Estado != EstadoDeuda.Pagada)
-                                  .Sum(d => CalcSaldo(d)),
+                                  .Sum(d => SaldoEfectivo(d)),
             TotalLeDebo  = leDebo.Where(d => d.Estado != EstadoDeuda.Pagada)
-                                 .Sum(d => CalcSaldo(d)),
+                                 .Sum(d => SaldoEfectivo(d)),
             CuotasMes      = cuotasMes,
             TotalCuotasMes = cuotasMes.Where(c => c.Estado != EstadoDeuda.Pagada)
                                       .Sum(c => c.Saldo),
             DeudasConCuotas = deudas.Where(d => d.AceptaCuotas).ToList(),
+            SaldosVirtuales = saldosVirtuales,
             Mes  = mes,
             Anio = anio
         };
     }
 
     /// <summary>
-    /// Saldo efectivo de una deuda.
+    /// Saldo efectivo de una deuda sin cuenta virtual.
     /// - Si acepta cuotas: suma los saldos de cuotas activas/parciales.
     /// - Si no: Monto − MontoPagado.
     /// </summary>

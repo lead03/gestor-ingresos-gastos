@@ -65,6 +65,10 @@ public class DeudaListVM
     /// Deudas con AceptaCuotas=true disponibles para agregar cuotas.
     public List<Deuda> DeudasConCuotas { get; set; } = new();
 
+    /// Saldo del mes calculado desde GastoParticipantes (para cuentas de crédito con PersonaId).
+    /// Clave: DeudaId → saldo efectivo del mes seleccionado.
+    public Dictionary<int, decimal> SaldosVirtuales { get; set; } = new();
+
     public int Mes  { get; set; }
     public int Anio { get; set; }
 }

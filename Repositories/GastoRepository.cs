@@ -1,5 +1,6 @@
 using ControlGastos.Data;
 using ControlGastos.Models;
+using ControlGastos.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControlGastos.Repositories;
@@ -17,7 +18,7 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
             .Include(g => g.Tarjeta)
             .Include(g => g.TarjetaCuota)
             .Include(g => g.Participantes).ThenInclude(p => p.Persona)
-            .Where(g => g.Mes == mes && g.Anio == anio)
+            .Where(g => g.Mes == mes && g.Anio == anio && g.TarjetaCuotaId == null)
             .OrderBy(g => g.Dia)
             .ToListAsync();
 
@@ -152,11 +153,103 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
     public Task<List<GastoParticipante>> GetByPersonaAsync(int personaId) =>
         db.GastoParticipantes
           .Include(p => p.GastoItem).ThenInclude(g => g.Categoria)
+          .Include(p => p.GastoItem).ThenInclude(g => g.TarjetaCuota)
           .Where(p => p.PersonaId == personaId)
           .OrderByDescending(p => p.GastoItem.Anio)
           .ThenByDescending(p => p.GastoItem.Mes)
           .ThenByDescending(p => p.GastoItem.Dia)
           .ToListAsync();
+
+    public async Task<List<PersonaParticipacionVM>> GetExpandedByPersonaAsync(int personaId)
+    {
+        // 1. Participaciones con info del gasto y primera cuota (si aplica)
+        var participaciones = await db.GastoParticipantes
+            .AsNoTracking()
+            .Include(p => p.GastoItem).ThenInclude(g => g.Categoria)
+            .Include(p => p.GastoItem).ThenInclude(g => g.TarjetaCuota)
+            .Where(p => p.PersonaId == personaId && p.Tipo == TipoParticipante.Persona)
+            .ToListAsync();
+
+        // 2. Para los gastos TC, traer TODAS sus cuotas (por GastoItemId)
+        var gastoIdsTc = participaciones
+            .Where(p => p.GastoItem.TarjetaCuotaId != null)
+            .Select(p => p.GastoItemId)
+            .Distinct()
+            .ToList();
+
+        var todasCuotas = gastoIdsTc.Count > 0
+            ? await db.TarjetaCuotas
+                .AsNoTracking()
+                .Where(tc => tc.GastoItemId != null && gastoIdsTc.Contains(tc.GastoItemId!.Value))
+                .OrderBy(tc => tc.AnioCierre).ThenBy(tc => tc.MesCierre)
+                .ToListAsync()
+            : new List<TarjetaCuota>();
+
+        // 3. Expandir
+        var resultado = new List<PersonaParticipacionVM>();
+
+        foreach (var par in participaciones)
+        {
+            var g = par.GastoItem;
+
+            if (g.TarjetaCuotaId != null)
+            {
+                // Gastos TC: una entrada por cada cuota
+                var cuotasGasto = todasCuotas
+                    .Where(tc => tc.GastoItemId == par.GastoItemId)
+                    .ToList();
+
+                if (cuotasGasto.Count == 0)
+                {
+                    // Fallback: sin cuotas encontradas, mostrar en mes de compra
+                    resultado.Add(MapDirect(par, g.Mes, g.Anio));
+                    continue;
+                }
+
+                int n = cuotasGasto.Count;
+                decimal montoPorCuota = Math.Round(par.Monto / n, 2);
+                decimal montoUltima   = par.Monto - montoPorCuota * (n - 1); // ajuste redondeo
+
+                for (int i = 0; i < n; i++)
+                {
+                    var cuota = cuotasGasto[i];
+                    resultado.Add(new PersonaParticipacionVM
+                    {
+                        Dia          = g.Dia,
+                        MesCompra    = g.Mes,
+                        AnioCompra   = g.Anio,
+                        Mes          = cuota.MesCierre,
+                        Anio         = cuota.AnioCierre,
+                        Categoria    = g.Categoria.Nombre,
+                        Descripcion  = g.Descripcion,
+                        Monto        = i < n - 1 ? montoPorCuota : montoUltima,
+                        NumeroCuota  = i + 1,
+                        TotalCuotas  = n
+                    });
+                }
+            }
+            else
+            {
+                // Gasto directo: una sola entrada
+                resultado.Add(MapDirect(par, g.Mes, g.Anio));
+            }
+        }
+
+        return resultado;
+
+        static PersonaParticipacionVM MapDirect(GastoParticipante par, int mes, int anio) =>
+            new()
+            {
+                Dia         = par.GastoItem.Dia,
+                MesCompra   = par.GastoItem.Mes,
+                AnioCompra  = par.GastoItem.Anio,
+                Mes         = mes,
+                Anio        = anio,
+                Categoria   = par.GastoItem.Categoria.Nombre,
+                Descripcion = par.GastoItem.Descripcion,
+                Monto       = par.Monto
+            };
+    }
 
     public async Task AddRangeAsync(IEnumerable<GastoParticipante> participantes)
     {

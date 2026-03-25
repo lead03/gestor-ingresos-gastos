@@ -49,48 +49,52 @@ public class PersonaService(
         return new PersonaListVM { Personas = resumen };
     }
 
-    public async Task<PersonaDetalleVM> GetDetalleAsync(int id)
+    public async Task<PersonaDetalleVM> GetDetalleAsync(int id, int mes = 0, int anio = 0)
     {
         var persona = await personaRepo.GetByIdWithDetalleAsync(id)
                       ?? throw new KeyNotFoundException($"Persona {id} no encontrada");
 
-        var participaciones = await participanteRepo.GetByPersonaAsync(id);
+        // Carga expandida: gastos TC se dividen en una entrada por cuota
+        var todas = await participanteRepo.GetExpandedByPersonaAsync(id);
+
+        // Deudas directas: excluir las cuentas de crédito (AceptaCuotas=true)
+        // porque esas se gestionan desde MeDeben/Deudas con el sistema de DeudaCuotas
         var deudas = persona.Deudas
-                        .Where(d => d.Estado != EstadoDeuda.Pagada)
+                        .Where(d => d.Estado != EstadoDeuda.Pagada && !d.AceptaCuotas)
                         .ToList();
 
-        // Balance total
-        decimal desdGastos = participaciones
-            .Where(p => p.Tipo == TipoParticipante.Persona)
-            .Sum(p => p.Monto);
-
+        // Balance ALL-TIME (no filtrado por mes)
+        decimal desdGastos = todas.Sum(p => p.Monto);
         decimal desdDeudas = deudas.Sum(d =>
         {
-            decimal saldo = d.AceptaCuotas
-                ? d.Cuotas.Where(c => c.Estado != EstadoDeuda.Pagada).Sum(c => c.Saldo)
-                : d.Monto - (d.MontoPagado ?? 0);
+            decimal saldo = d.Monto - (d.MontoPagado ?? 0);
             return d.Direccion == DireccionDeuda.MeDeben ? saldo : -saldo;
         });
 
-        // Agrupar participaciones por mes
-        var porMes = participaciones
-            .GroupBy(p => (p.GastoItem.Anio, p.GastoItem.Mes))
+        // Filtrar por el mes seleccionado para mostrar en pantalla
+        var filtradas = (mes > 0 && anio > 0)
+            ? todas.Where(p => p.Mes == mes && p.Anio == anio).ToList()
+            : todas;
+
+        var porMes = filtradas
+            .GroupBy(p => (p.Anio, p.Mes))
             .OrderByDescending(g => g.Key.Anio).ThenByDescending(g => g.Key.Mes)
             .Select(g => new PersonaMesVM
             {
-                Anio           = g.Key.Anio,
-                Mes            = g.Key.Mes,
-                Total          = g.Sum(p => p.Monto),
-                Participaciones= g.ToList()
+                Anio            = g.Key.Anio,
+                Mes             = g.Key.Mes,
+                Total           = g.Sum(p => p.Monto),
+                Participaciones = g.ToList()
             }).ToList();
 
         return new PersonaDetalleVM
         {
-            Persona     = persona,
-            Balance     = desdGastos + desdDeudas,
-            PorMes      = porMes,
-            Deudas      = deudas,
-            TotalDeudas = desdDeudas
+            Persona          = persona,
+            Balance          = desdGastos + desdDeudas,
+            TotalMovimientos = todas.Count(p => !p.EsCuota || p.NumeroCuota == 1),
+            PorMes           = porMes,
+            Deudas           = deudas,
+            TotalDeudas      = desdDeudas
         };
     }
 

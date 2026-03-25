@@ -146,9 +146,11 @@
                 }
                 @foreach (var d in vm.MeDeben)
                 {
-                    decimal saldo = d.AceptaCuotas
-                        ? d.Cuotas.Where(c => c.Estado != EstadoDeuda.Pagada).Sum(c => c.Saldo)
-                        : d.Monto - (d.MontoPagado ?? 0);
+                    decimal saldo = vm.SaldosVirtuales.TryGetValue(d.Id, out var sv)
+                        ? sv
+                        : d.AceptaCuotas
+                            ? d.Cuotas.Where(c => c.Estado != EstadoDeuda.Pagada).Sum(c => c.Saldo)
+                            : d.Monto - (d.MontoPagado ?? 0);
                     <tr style="@(d.Estado == EstadoDeuda.Pagada ? "opacity:.5" : "")">
                         <td>
                             @d.NombreMostrar
@@ -167,6 +169,10 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group" style="justify-content:center">
+                                @if (d.PersonaId.HasValue)
+                                {
+                                    <a href="/Personas/Detalle/@d.PersonaId?mes=@mes&anio=@anio" class="btn btn-ghost btn-sm" title="Ver detalle de persona">👤</a>
+                                }
                                 @if (!d.AceptaCuotas && d.Estado != EstadoDeuda.Pagada)
                                 {
                                     <form method="post" asp-page-handler="MarcarPagada" style="display:inline">
@@ -231,12 +237,18 @@
                             <span class="badge @(d.Estado == EstadoDeuda.Pagada ? "badge-ok" : "badge-pend")">@d.Estado</span>
                         </td>
                         <td class="text-center">
-                            <form method="post" asp-page-handler="Delete" style="display:inline">
-                                <input type="hidden" name="id"   value="@d.Id" />
-                                <input type="hidden" name="mes"  value="@mes"  />
-                                <input type="hidden" name="anio" value="@anio" />
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar?')">✕</button>
-                            </form>
+                            <div class="btn-group" style="justify-content:center">
+                                @if (d.PersonaId.HasValue)
+                                {
+                                    <a href="/Personas/Detalle/@d.PersonaId?mes=@mes&anio=@anio" class="btn btn-ghost btn-sm" title="Ver detalle de persona">👤</a>
+                                }
+                                <form method="post" asp-page-handler="Delete" style="display:inline">
+                                    <input type="hidden" name="id"   value="@d.Id" />
+                                    <input type="hidden" name="mes"  value="@mes"  />
+                                    <input type="hidden" name="anio" value="@anio" />
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar?')">✕</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 }
