@@ -68,7 +68,7 @@
 
             <div class="form-group">
                 <label>Límite de crédito ($) <span style="color:var(--text2);font-weight:400">(opcional)</span></label>
-                <input asp-for="VM.LimiteCredito" type="number" step="0.01" min="0" placeholder="0.00" />
+                <input asp-for="VM.LimiteCredito" type="text" inputmode="decimal" id="limite-credito" data-init-value="@((vm.LimiteCredito ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))" placeholder="0,00" />
             </div>
 
         </div>
@@ -81,3 +81,16 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script src="~/js/money-input.js"></script>
+<script>
+const elLimite = document.getElementById('limite-credito');
+document.addEventListener('DOMContentLoaded', function () {
+    setupMoneyInput(elLimite);
+});
+document.querySelector('form').addEventListener('submit', function () {
+    restoreOptionalMoneyForSubmit(elLimite);
+});
+</script>
+}

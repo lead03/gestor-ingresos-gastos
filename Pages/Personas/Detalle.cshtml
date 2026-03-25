@@ -13,10 +13,37 @@
                               "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
     string LabelMes(int m, int a) => $"{nombresMeses[m]} {a}";
 
-    // Filas del mes seleccionado (puede ser 0 o 1 grupo)
-    var filasDelMes = vm.PorMes.FirstOrDefault()?.Participaciones
+    // Gastos del mes seleccionado
+    var filasGastos = vm.PorMes.FirstOrDefault()?.Participaciones
                       ?? new List<ControlGastos.ViewModels.PersonaParticipacionVM>();
-    decimal totalDelMes = vm.PorMes.FirstOrDefault()?.Total ?? 0;
+
+    // Pagos del mes seleccionado
+    var filasPagos = vm.Pagos.Where(p => p.Fecha.Month == mes && p.Fecha.Year == anio).ToList();
+
+    // Tabla unificada ordenada por fecha
+    // (tipo, fecha, categoria, descripcion, monto, refId)
+    var filas = filasGastos
+        .Select(g => (
+            Tipo:        g.EsCuota ? "Crédito" : "Gasto",
+            Fecha:       new DateTime(g.AnioCompra, g.MesCompra, g.Dia),
+            Categoria:   g.EsCuota ? $"{g.Categoria} (cuota {g.NumeroCuota}/{g.TotalCuotas})" : g.Categoria,
+            Descripcion: g.Descripcion,
+            Monto:       g.Monto,
+            RefId:       g.GastoItemId
+        ))
+        .Concat(filasPagos.Select(p => (
+            Tipo:        "Pago",
+            Fecha:       p.Fecha,
+            Categoria:   "—",
+            Descripcion: p.Descripcion,
+            Monto:       p.Monto,
+            RefId:       p.Id
+        )))
+        .OrderBy(f => f.Fecha)
+        .ToList();
+
+    decimal totalGastosMes = filasGastos.Sum(g => g.Monto);
+    decimal totalPagosMes  = filasPagos.Sum(p => p.Monto);
 }
 
 <div class="page-header">
@@ -27,8 +54,16 @@
             <div class="page-subtitle">@vm.Persona.Notas</div>
         }
     </div>
-    <a asp-page="./Index" class="btn btn-ghost">← Personas</a>
+    <div style="display:flex;gap:.5rem;align-items:center">
+        <button class="btn btn-primary" onclick="openModal('modal-pago')">+ Ingresar pago</button>
+        <a asp-page="./Index" class="btn btn-ghost">← Personas</a>
+    </div>
 </div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" style="margin-bottom:16px">@TempData["Error"]</div>
+}
 
 <!-- KPIs -->
 <div class="kpi-grid" style="margin-bottom:24px">
@@ -49,19 +84,38 @@
             </div>
         </div>
     }
+    @if (vm.TotalPagos > 0)
+    {
+        <div class="kpi-card">
+            <div class="kpi-label">Pagos recibidos</div>
+            <div class="kpi-value green">$ @Peso(vm.TotalPagos)</div>
+        </div>
+    }
 </div>
 
-<!-- ── Gastos compartidos del mes ────────────────────────────────────── -->
+<!-- ── Movimientos del mes ─────────────────────────────────────────────── -->
 <div class="card" style="margin-bottom:20px">
     <div class="card-header">
-        <span class="card-title">Gastos compartidos — @LabelMes(mes, anio)</span>
-        @if (filasDelMes.Any())
+        <span class="card-title">Movimientos — @LabelMes(mes, anio)</span>
+        @if (filas.Any())
         {
-            <span class="amount amber" style="font-size:.95rem">$ @Peso(totalDelMes)</span>
+            <div style="display:flex;gap:16px">
+                <div style="text-align:right">
+                    <div style="font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Gastos</div>
+                    <div class="amount amber" style="font-size:1rem;font-weight:600">$ @Peso(totalGastosMes)</div>
+                </div>
+                @if (totalPagosMes > 0)
+                {
+                    <div style="text-align:right">
+                        <div style="font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Pagos</div>
+                        <div class="amount green" style="font-size:1rem;font-weight:600">$ @Peso(totalPagosMes)</div>
+                    </div>
+                }
+            </div>
         }
     </div>
 
-    @if (!filasDelMes.Any())
+    @if (!filas.Any())
     {
         <div style="padding:24px;text-align:center;color:var(--text2)">
             Sin movimientos este mes.
@@ -69,42 +123,68 @@
     }
     else
     {
+        <!-- Filtros -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 0 12px 0;border-bottom:1px solid var(--border);margin-bottom:0">
+            <button class="btn btn-ghost btn-sm filtro-mov active" data-filtro="todos"         onclick="filtrarMovimientos(this)">Todos</button>
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Gasto"         onclick="filtrarMovimientos(this)">Gastos</button>
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Crédito"       onclick="filtrarMovimientos(this)">Crédito</button>
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Pago"          onclick="filtrarMovimientos(this)">Pagos</button>
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="sin-credito"   onclick="filtrarMovimientos(this)">Sin crédito</button>
+        </div>
+
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Fecha compra</th>
+                        <th>Fecha</th>
+                        <th class="text-center">Tipo</th>
                         <th>Categoría</th>
                         <th>Descripción</th>
-                        <th class="text-right">Su parte</th>
+                        <th class="text-right">Monto</th>
+                        <th class="text-center">Acción</th>
                     </tr>
                 </thead>
-                <tbody id="tbody-gastos">
-                    @foreach (var p in filasDelMes)
+                <tbody id="tbody-movimientos">
+                    @foreach (var f in filas)
                     {
-                        <tr>
-                            <td>@p.Dia/@p.MesCompra/@p.AnioCompra</td>
-                            <td>@p.Categoria</td>
-                            <td>
-                                @(string.IsNullOrEmpty(p.Descripcion) ? "—" : p.Descripcion)
-                                @if (p.EsCuota)
+                        <tr data-tipo="@f.Tipo">
+                            <td>@f.Fecha.ToString("dd/MM/yy")</td>
+                            <td class="text-center">
+                                @if (f.Tipo == "Gasto")
                                 {
-                                    <span class="badge badge-var" style="margin-left:4px;font-size:.65rem">cuota @p.NumeroCuota/@p.TotalCuotas</span>
+                                    <span class="badge badge-var">Gasto</span>
+                                }
+                                else if (f.Tipo == "Crédito")
+                                {
+                                    <span class="badge badge-fijo">Crédito</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-ok">Pago</span>
                                 }
                             </td>
-                            <td class="text-right amount amber">$ @Peso(p.Monto)</td>
+                            <td>@f.Categoria</td>
+                            <td style="color:var(--text2)">@(string.IsNullOrEmpty(f.Descripcion) ? "—" : f.Descripcion)</td>
+                            <td class="text-right amount @(f.Tipo == "Pago" ? "green" : "amber")">
+                                @(f.Tipo == "Pago" ? "+" : "")$ @Peso(f.Monto)
+                            </td>
+                            <td class="text-center">
+                                @if (f.Tipo == "Gasto" || f.Tipo == "Crédito")
+                                {
+                                    <a href="/Gastos/Edit/@f.RefId" class="btn btn-ghost btn-sm" title="Editar gasto">✎</a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-ghost btn-sm" title="Editar pago"
+                                            onclick="abrirEditPago(@f.RefId, '@f.Fecha.ToString("yyyy-MM-dd")', @f.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture), '@(f.Descripcion ?? "")')">✎</button>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3">Total @LabelMes(mes, anio)</td>
-                        <td class="text-right">$ @Peso(totalDelMes)</td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
-        <div id="pag-gastos"></div>
+        <div id="pag-movimientos"></div>
     }
 </div>
 
@@ -152,10 +232,179 @@
     </div>
 }
 
+<!-- ── Modal: Nuevo pago ──────────────────────────────────────────────── -->
+<div class="modal-bg" id="modal-pago">
+    <div class="modal">
+        <div class="modal-title">Ingresar pago — @vm.Persona.Nombre</div>
+        <form method="post" asp-page-handler="Pago" asp-route-id="@vm.Persona.Id" asp-route-mes="@mes" asp-route-anio="@anio">
+            <input type="hidden" asp-for="PagoForm.PersonaId" value="@vm.Persona.Id" />
+            <input type="hidden" asp-for="PagoForm.Dia"  id="pago-dia"  />
+            <input type="hidden" asp-for="PagoForm.Mes"  id="pago-mes"  />
+            <input type="hidden" asp-for="PagoForm.Anio" id="pago-anio" />
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="pago-fecha" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="form-group">
+                    <label>Moneda</label>
+                    <select asp-for="PagoForm.Moneda" id="pago-moneda" onchange="onPagoMonedaChange()">
+                        <option value="ARS">$ Peso (ARS)</option>
+                        <option value="USD">U$D Dólar (USD)</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Monto ($)</label>
+                    <input type="text" inputmode="decimal" id="pago-monto" data-init-value="0" placeholder="0,00" />
+                    <input type="hidden" asp-for="PagoForm.Monto" id="h-pago-monto" />
+                </div>
+
+                <div class="form-group full">
+                    <label>Cuenta de destino</label>
+                    <select asp-for="PagoForm.CuentaId" id="pago-cuenta">
+                        <option value="">— Seleccioná una cuenta —</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Descripción <span style="color:var(--text2);font-weight:400">(opcional)</span></label>
+                    <input asp-for="PagoForm.Descripcion" type="text" id="pago-descripcion" placeholder="Ej: pago de deuda, devolución..." />
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-pago')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Modal: Editar pago ─────────────────────────────────────────────── -->
+<div class="modal-bg" id="modal-edit-pago">
+    <div class="modal">
+        <div class="modal-title">Editar pago</div>
+        <form method="post" asp-page-handler="EditPago" asp-route-id="@vm.Persona.Id" asp-route-mes="@mes" asp-route-anio="@anio">
+            <input type="hidden" name="PagoForm.PagoId"    id="edit-pago-id" />
+            <input type="hidden" name="PagoForm.PersonaId" value="@vm.Persona.Id" />
+            <input type="hidden" name="PagoForm.Dia"       id="edit-pago-dia"  />
+            <input type="hidden" name="PagoForm.Mes"       id="edit-pago-mes"  />
+            <input type="hidden" name="PagoForm.Anio"      id="edit-pago-anio" />
+            <input type="hidden" name="PagoForm.CuentaId"  value="0" />
+            <input type="hidden" name="PagoForm.Moneda"    value="ARS" />
+
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Fecha</label>
+                    <input type="date" id="edit-pago-fecha" />
+                </div>
+
+                <div class="form-group full">
+                    <label>Monto ($)</label>
+                    <input type="text" inputmode="decimal" id="edit-pago-monto" data-init-value="0" placeholder="0,00" />
+                    <input type="hidden" name="PagoForm.Monto" id="h-edit-pago-monto" />
+                </div>
+
+                <div class="form-group full">
+                    <label>Descripción <span style="color:var(--text2);font-weight:400">(opcional)</span></label>
+                    <input name="PagoForm.Descripcion" type="text" id="edit-pago-descripcion" placeholder="Ej: pago de deuda, devolución..." />
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit-pago')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @section Scripts {
+<script src="~/js/money-input.js"></script>
 <script>
+const CUENTAS_PAGO  = @Html.Raw(Model.CuentasJson);
+const elPagoMonto   = document.getElementById('pago-monto');
+const elEditMonto   = document.getElementById('edit-pago-monto');
+
+// ── Nuevo pago ──────────────────────────────────────────────────────
+function onPagoMonedaChange() {
+    const moneda = document.getElementById('pago-moneda').value;
+    const sel    = document.getElementById('pago-cuenta');
+    sel.innerHTML = '<option value="">— Seleccioná una cuenta —</option>';
+    CUENTAS_PAGO.filter(c => c.moneda === moneda).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value       = c.id;
+        opt.textContent = c.nombre;
+        sel.appendChild(opt);
+    });
+}
+
+function syncFechaPago() {
+    const d = new Date(document.getElementById('pago-fecha').value + 'T00:00:00');
+    document.getElementById('pago-dia').value  = d.getDate();
+    document.getElementById('pago-mes').value  = d.getMonth() + 1;
+    document.getElementById('pago-anio').value = d.getFullYear();
+}
+
+// ── Editar pago ─────────────────────────────────────────────────────
+function abrirEditPago(id, fecha, monto, descripcion) {
+    document.getElementById('edit-pago-id').value          = id;
+    document.getElementById('edit-pago-fecha').value       = fecha;
+    document.getElementById('edit-pago-descripcion').value = descripcion;
+
+    // Setear monto formateado
+    elEditMonto.dataset.initValue = monto;
+    setupMoneyInput(elEditMonto);
+
+    openModal('modal-edit-pago');
+}
+
+function syncFechaEditPago() {
+    const d = new Date(document.getElementById('edit-pago-fecha').value + 'T00:00:00');
+    document.getElementById('edit-pago-dia').value  = d.getDate();
+    document.getElementById('edit-pago-mes').value  = d.getMonth() + 1;
+    document.getElementById('edit-pago-anio').value = d.getFullYear();
+}
+
+function filtrarMovimientos(btn) {
+    document.querySelectorAll('.filtro-mov').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filtro = btn.dataset.filtro;
+    document.querySelectorAll('#tbody-movimientos tr').forEach(tr => {
+        const tipo = tr.dataset.tipo;
+        let visible = true;
+        if (filtro === 'Gasto')       visible = tipo === 'Gasto';
+        else if (filtro === 'Crédito')    visible = tipo === 'Crédito';
+        else if (filtro === 'Pago')       visible = tipo === 'Pago';
+        else if (filtro === 'sin-credito') visible = tipo !== 'Crédito';
+        tr.style.display = visible ? '' : 'none';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-    initPaginator('tbody-gastos', 'pag-gastos');
+    initModal('modal-pago');
+    initModal('modal-edit-pago');
+    initPaginator('tbody-movimientos', 'pag-movimientos');
+
+    setupMoneyInput(elPagoMonto);
+    syncFechaPago();
+    onPagoMonedaChange();
+
+    document.getElementById('pago-fecha').addEventListener('change', syncFechaPago);
+    document.getElementById('edit-pago-fecha').addEventListener('change', syncFechaEditPago);
+});
+
+document.getElementById('modal-pago').querySelector('form').addEventListener('submit', function () {
+    syncFechaPago();
+    document.getElementById('h-pago-monto').value = getRawMoney(elPagoMonto).toString();
+});
+
+document.getElementById('modal-edit-pago').querySelector('form').addEventListener('submit', function () {
+    syncFechaEditPago();
+    document.getElementById('h-edit-pago-monto').value = getRawMoney(elEditMonto).toString();
 });
 </script>
 }

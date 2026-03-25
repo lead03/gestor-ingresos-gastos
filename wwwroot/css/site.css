@@ -513,6 +513,12 @@ textarea {
         border-bottom-color: var(--accent2);
     }
 
+.filtro-mov.active {
+    background: var(--accent2);
+    color: #000;
+    border-color: var(--accent2);
+}
+
 .tab-panel {
     display: none;
 }

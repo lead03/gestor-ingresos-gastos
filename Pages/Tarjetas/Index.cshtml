@@ -180,10 +180,7 @@
     @if (!vm.CuotasPorTarjeta.Any())
     {
         <div class="card" style="text-align:center;padding:48px;color:var(--text2)">
-            No hay compras que cierren en @MesNombre(vm.Mes) @vm.Anio
-            @(vm.TarjetaIdFiltro.HasValue ? " para la tarjeta seleccionada" : "").
-            <br><br>
-            <a asp-page="./EditCuota" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-primary">+ Registrar compra</a>
+            Sin compras que cierren este mes@(vm.TarjetaIdFiltro.HasValue ? " para la tarjeta seleccionada" : "").
         </div>
     }
 </div>

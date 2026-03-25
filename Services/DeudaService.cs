@@ -5,7 +5,7 @@ using ControlGastos.ViewModels;
 
 namespace ControlGastos.Services;
 
-public class DeudaService(IDeudaRepository repo, IGastoParticipanteRepository participanteRepo)
+public class DeudaService(IDeudaRepository repo, IGastoParticipanteRepository participanteRepo, IPagoPersonaRepository pagoRepo)
 {
     // ── Lista principal ───────────────────────────────────────────────
 
@@ -18,14 +18,15 @@ public class DeudaService(IDeudaRepository repo, IGastoParticipanteRepository pa
         var cuotasMes = await repo.GetCuotasByMesAsync(mes, anio);
 
         // Para cuentas de crédito (AceptaCuotas) vinculadas a una persona,
-        // el saldo del mes se calcula desde los GastoParticipantes expandidos por cuota.
+        // el saldo es acumulado: total gastos all-time − total pagos recibidos.
         var saldosVirtuales = new Dictionary<int, decimal>();
         foreach (var d in deudas.Where(d => d.AceptaCuotas && d.PersonaId.HasValue))
         {
-            var expandidas = await participanteRepo.GetExpandedByPersonaAsync(d.PersonaId!.Value);
-            saldosVirtuales[d.Id] = expandidas
-                .Where(p => p.Mes == mes && p.Anio == anio)
-                .Sum(p => p.Monto);
+            var expandidas   = await participanteRepo.GetExpandedByPersonaAsync(d.PersonaId!.Value);
+            var pagos        = await pagoRepo.GetByPersonaAsync(d.PersonaId!.Value);
+            decimal gastos   = expandidas.Sum(p => p.Monto);
+            decimal abonado  = pagos.Sum(p => p.Monto);
+            saldosVirtuales[d.Id] = Math.Max(0, gastos - abonado);
         }
 
         decimal SaldoEfectivo(Deuda d) =>

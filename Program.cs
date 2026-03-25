@@ -8,7 +8,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpClient("dolarapi");
 builder.Services.AddMemoryCache();
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlite("DataSource=gastos_prueba.db"));
+    opt.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
 // Repositories
 builder.Services.AddScoped<IGastoRepository, GastoRepository>();
@@ -30,6 +30,15 @@ builder.Services.AddScoped<CuentaService>();
 builder.Services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
 builder.Services.AddScoped<ConfiguracionService>();
 builder.Services.AddScoped<CotizacionService>();
+builder.Services.AddScoped<IPagoPersonaRepository, PagoPersonaRepository>();
+
+var invariantCulture = System.Globalization.CultureInfo.InvariantCulture;
+builder.Services.Configure<Microsoft.AspNetCore.Builder.RequestLocalizationOptions>(opts =>
+{
+    opts.DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture(invariantCulture);
+    opts.SupportedCultures    = new[] { invariantCulture };
+    opts.SupportedUICultures  = new[] { invariantCulture };
+});
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -46,10 +55,40 @@ using (var scope = app.Services.CreateScope())
         db.Database.ExecuteSqlRaw(
             "ALTER TABLE Deudas ADD COLUMN AceptaCuotas INTEGER NOT NULL DEFAULT 0");
 
-    // Tabla DeudaCuotas
+    // Tabla PagosPersona — drop y recrear si tiene schema viejo (IngresoId)
     var tablas = db.Database
         .SqlQueryRaw<string>("SELECT name FROM sqlite_master WHERE type='table'")
         .ToList();
+    bool recrearPagos = false;
+    if (tablas.Contains("PagosPersona"))
+    {
+        var colsPagos = db.Database
+            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('PagosPersona')")
+            .ToList();
+        if (colsPagos.Contains("IngresoId"))
+        {
+            db.Database.ExecuteSqlRaw("DROP TABLE PagosPersona");
+            recrearPagos = true;
+        }
+    }
+    if (!tablas.Contains("PagosPersona") || recrearPagos)
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE PagosPersona (
+                Id          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                PersonaId   INTEGER NOT NULL,
+                CuentaId    INTEGER NULL,
+                Monto       TEXT    NOT NULL,
+                MonedaId    INTEGER NOT NULL DEFAULT 1,
+                Fecha       TEXT    NOT NULL,
+                Descripcion TEXT    NULL,
+                CONSTRAINT FK_PagosPersona_Personas
+                    FOREIGN KEY (PersonaId) REFERENCES Personas(Id) ON DELETE CASCADE,
+                CONSTRAINT FK_PagosPersona_Cuentas
+                    FOREIGN KEY (CuentaId) REFERENCES Cuentas(Id) ON DELETE SET NULL
+            );
+            CREATE INDEX IX_PagosPersona_PersonaId ON PagosPersona(PersonaId)");
+
+    // Tabla DeudaCuotas
     if (!tablas.Contains("DeudaCuotas"))
         db.Database.ExecuteSqlRaw(@"
             CREATE TABLE DeudaCuotas (
@@ -208,6 +247,7 @@ using (var scope = app.Services.CreateScope())
 }
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
+app.UseRequestLocalization();
 app.UseStaticFiles();
 app.UseRouting();
 app.MapRazorPages();

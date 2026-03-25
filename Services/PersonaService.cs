@@ -1,3 +1,4 @@
+using ControlGastos.Common;
 using ControlGastos.Models;
 using ControlGastos.Repositories;
 using ControlGastos.ViewModels;
@@ -7,7 +8,8 @@ namespace ControlGastos.Services;
 public class PersonaService(
     IPersonaRepository           personaRepo,
     IGastoParticipanteRepository participanteRepo,
-    IDeudaRepository             deudaRepo)
+    IDeudaRepository             deudaRepo,
+    IPagoPersonaRepository       pagoRepo)
 {
     public async Task<PersonaListVM> GetListAsync()
     {
@@ -36,13 +38,16 @@ public class PersonaService(
                     return d.Direccion == DireccionDeuda.MeDeben ? saldo : -saldo;
                 });
 
+            var pagos = await pagoRepo.GetByPersonaAsync(p.Id);
+            decimal desdPagos = pagos.Sum(pg => pg.Monto);
+
             resumen.Add(new PersonaResumenVM
             {
                 Id               = p.Id,
                 Nombre           = p.Nombre,
                 Notas            = p.Notas,
                 TotalMovimientos = participaciones.Count,
-                Balance          = desdGastos + desdDeudas
+                Balance          = desdGastos + desdDeudas - desdPagos
             });
         }
 
@@ -71,6 +76,9 @@ public class PersonaService(
             return d.Direccion == DireccionDeuda.MeDeben ? saldo : -saldo;
         });
 
+        var pagos = await pagoRepo.GetByPersonaAsync(id);
+        decimal desdPagos = pagos.Sum(p => p.Monto);
+
         // Filtrar por el mes seleccionado para mostrar en pantalla
         var filtradas = (mes > 0 && anio > 0)
             ? todas.Where(p => p.Mes == mes && p.Anio == anio).ToList()
@@ -90,12 +98,50 @@ public class PersonaService(
         return new PersonaDetalleVM
         {
             Persona          = persona,
-            Balance          = desdGastos + desdDeudas,
+            Balance          = desdGastos + desdDeudas - desdPagos,
             TotalMovimientos = todas.Count(p => !p.EsCuota || p.NumeroCuota == 1),
             PorMes           = porMes,
             Deudas           = deudas,
-            TotalDeudas      = desdDeudas
+            TotalDeudas      = desdDeudas,
+            Pagos            = pagos,
+            TotalPagos       = desdPagos
         };
+    }
+
+    public async Task<Result> SavePagoAsync(PagoPersonaFormVM vm)
+    {
+        if (vm.Monto <= 0 || vm.Monto > 9_999_999_999.99m)
+            return Result.Fail("El monto debe ser mayor a $0 y menor a $9.999.999.999,99.");
+        if (vm.CuentaId <= 0)
+            return Result.Fail("Debe seleccionar una cuenta.");
+
+        await pagoRepo.AddAsync(new PagoPersona
+        {
+            PersonaId   = vm.PersonaId,
+            CuentaId    = vm.CuentaId,
+            Monto       = vm.Monto,
+            Moneda      = vm.Moneda,
+            Fecha       = new DateTime(vm.Anio, vm.Mes, vm.Dia),
+            Descripcion = string.IsNullOrWhiteSpace(vm.Descripcion) ? null : vm.Descripcion.Trim()
+        });
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> EditPagoAsync(PagoPersonaFormVM vm)
+    {
+        if (vm.Monto <= 0 || vm.Monto > 9_999_999_999.99m)
+            return Result.Fail("El monto debe ser mayor a $0 y menor a $9.999.999.999,99.");
+
+        var pago = await pagoRepo.GetByIdAsync(vm.PagoId);
+        if (pago == null) return Result.Fail("Pago no encontrado.");
+
+        pago.Monto       = vm.Monto;
+        pago.Fecha       = new DateTime(vm.Anio, vm.Mes, vm.Dia);
+        pago.Descripcion = string.IsNullOrWhiteSpace(vm.Descripcion) ? null : vm.Descripcion.Trim();
+        await pagoRepo.UpdateAsync(pago);
+
+        return Result.Ok();
     }
 
     public async Task SaveAsync(PersonaFormVM vm)

@@ -215,6 +215,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
                     var cuota = cuotasGasto[i];
                     resultado.Add(new PersonaParticipacionVM
                     {
+                        GastoItemId  = par.GastoItemId,
                         Dia          = g.Dia,
                         MesCompra    = g.Mes,
                         AnioCompra   = g.Anio,
@@ -240,6 +241,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
         static PersonaParticipacionVM MapDirect(GastoParticipante par, int mes, int anio) =>
             new()
             {
+                GastoItemId = par.GastoItemId,
                 Dia         = par.GastoItem.Dia,
                 MesCompra   = par.GastoItem.Mes,
                 AnioCompra  = par.GastoItem.Anio,

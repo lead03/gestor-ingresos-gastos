@@ -2,6 +2,20 @@ using ControlGastos.Models;
 
 namespace ControlGastos.ViewModels;
 
+// ── Formulario pago recibido ──────────────────────────────────────────────
+public class PagoPersonaFormVM
+{
+    public int     PagoId      { get; set; }   // 0 = nuevo
+    public int     PersonaId   { get; set; }
+    public int     CuentaId    { get; set; }
+    public decimal Monto       { get; set; }
+    public int     Mes         { get; set; }
+    public int     Anio        { get; set; }
+    public int     Dia         { get; set; }
+    public Moneda  Moneda      { get; set; } = Moneda.ARS;
+    public string? Descripcion { get; set; }
+}
+
 // ── Lista de personas ─────────────────────────────────────────────────────
 public class PersonaListVM
 {
@@ -48,6 +62,10 @@ public class PersonaDetalleVM
     // Deudas directas
     public List<Deuda> Deudas { get; set; } = new();
     public decimal TotalDeudas { get; set; }
+
+    // Pagos recibidos
+    public List<PagoPersona> Pagos { get; set; } = new();
+    public decimal TotalPagos { get; set; }
 }
 
 public class PersonaMesVM
@@ -75,6 +93,7 @@ public class PersonaParticipacionVM
     public int    Anio { get; set; }
 
     // ── Gasto ─────────────────────────────────────────────────────────
+    public int     GastoItemId { get; set; }
     public string  Categoria   { get; set; } = "";
     public string? Descripcion { get; set; }
     public decimal Monto       { get; set; }   // parte del mes (total / n cuotas)

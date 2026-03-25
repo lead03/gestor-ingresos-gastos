@@ -36,7 +36,7 @@
 
             <div class="form-group">
                 <label>Monto total ($)</label>
-                <input asp-for="VM.MontoTotal" type="number" step="0.01" min="0" id="monto-total" oninput="calcCuota()" />
+                <input asp-for="VM.MontoTotal" type="text" inputmode="decimal" id="monto-total" data-init-value="@vm.MontoTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
             </div>
 
             <div class="form-group">
@@ -81,7 +81,7 @@
 
             <div class="form-group" id="monto-otro-wrap" style="display:@(vm.PagaParte=="DEBE"?"block":"none")">
                 <label>Monto que me debe ($)</label>
-                <input asp-for="VM.MontoPagoOtro" type="number" step="0.01" min="0" />
+                <input asp-for="VM.MontoPagoOtro" type="text" inputmode="decimal" id="monto-pago-otro" data-init-value="@((vm.MontoPagoOtro ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))" />
             </div>
 
         </div>
@@ -94,15 +94,27 @@
 </div>
 
 @section Scripts {
+<script src="~/js/money-input.js"></script>
 <script>
+const elMontoTotal = document.getElementById('monto-total');
+const elMontoOtro  = document.getElementById('monto-pago-otro');
+
 function calcCuota() {
-    const total  = parseFloat(document.getElementById('monto-total').value)  || 0;
+    const total  = getRawMoney(elMontoTotal);
     const cuotas = parseInt(document.getElementById('total-cuotas').value) || 1;
     document.getElementById('monto-cuota').value = cuotas > 0 ? (total / cuotas).toFixed(2) : '';
 }
 function togglePagaParte(sel) {
     document.getElementById('monto-otro-wrap').style.display = sel.value === 'DEBE' ? 'block' : 'none';
 }
-document.addEventListener('DOMContentLoaded', calcCuota);
+document.addEventListener('DOMContentLoaded', function () {
+    setupMoneyInput(elMontoTotal, calcCuota);
+    setupMoneyInput(elMontoOtro);
+    calcCuota();
+});
+document.querySelector('form').addEventListener('submit', function () {
+    restoreMoneyForSubmit(elMontoTotal);
+    restoreOptionalMoneyForSubmit(elMontoOtro);
+});
 </script>
 }

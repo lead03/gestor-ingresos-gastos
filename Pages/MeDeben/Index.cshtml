@@ -19,10 +19,6 @@
         <div class="page-title">Deudas</div>
         <div class="page-subtitle">@LabelMes(mes, anio)</div>
     </div>
-    <div style="display:flex;gap:.5rem">
-        <button class="btn btn-ghost btn-sm" onclick="openModal('modal-cuota')">+ Cuota del mes</button>
-        <button class="btn btn-primary"      onclick="openModal('modal-deuda')">+ Nueva deuda</button>
-    </div>
 </div>
 
 @if (TempData["Error"] != null)
@@ -280,11 +276,11 @@
                 <input type="hidden" asp-for="CuotaForm.Anio" value="@anio" />
                 <div class="form-group">
                     <label>Monto ($)</label>
-                    <input asp-for="CuotaForm.Monto" type="number" step="0.01" min="0.01" />
+                    <input asp-for="CuotaForm.Monto" type="text" inputmode="decimal" id="cuota-monto" data-init-value="0" />
                 </div>
                 <div class="form-group">
                     <label>Ya pagado ($)</label>
-                    <input asp-for="CuotaForm.MontoPagado" type="number" step="0.01" min="0" value="0" />
+                    <input asp-for="CuotaForm.MontoPagado" type="text" inputmode="decimal" id="cuota-monto-pagado" data-init-value="0" />
                 </div>
                 <div class="form-group full">
                     <label>Descripción</label>
@@ -320,7 +316,7 @@
                 </div>
                 <div class="form-group">
                     <label>Monto ($)</label>
-                    <input asp-for="Form.Monto" type="number" step="0.01" min="0" />
+                    <input asp-for="Form.Monto" type="text" inputmode="decimal" id="deuda-monto" data-init-value="0" />
                 </div>
                 <div class="form-group">
                     <label>Fecha</label>
@@ -346,12 +342,24 @@
 </div>
 
 @section Scripts {
+<script src="~/js/money-input.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     initModal('modal-deuda');
     initModal('modal-cuota');
     initPaginator('tbody-medeben', 'pag-medeben');
     initPaginator('tbody-ledebo',  'pag-ledebo');
+
+    setupMoneyInput(document.getElementById('cuota-monto'));
+    setupMoneyInput(document.getElementById('cuota-monto-pagado'));
+    setupMoneyInput(document.getElementById('deuda-monto'));
+});
+document.getElementById('modal-cuota').querySelector('form').addEventListener('submit', function () {
+    restoreMoneyForSubmit(document.getElementById('cuota-monto'));
+    restoreMoneyForSubmit(document.getElementById('cuota-monto-pagado'));
+});
+document.getElementById('modal-deuda').querySelector('form').addEventListener('submit', function () {
+    restoreMoneyForSubmit(document.getElementById('deuda-monto'));
 });
 </script>
 }

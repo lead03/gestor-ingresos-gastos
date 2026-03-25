@@ -310,9 +310,9 @@
                 </div>
                 <div>
                     <label class="form-label">Valor manual (respaldo si no hay API)</label>
-                    <input name="CotizacionManualInput" type="number" step="0.01" min="0"
-                           value="@(Model.CotizacionManual?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
-                           placeholder="Ej: 1200.00" class="form-input" style="width:140px" />
+                    <input name="CotizacionManualInput" type="text" inputmode="decimal" id="cotizacion-manual"
+                           data-init-value="@(Model.CotizacionManual?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0")"
+                           placeholder="Ej: 1.200,00" class="form-input" style="width:140px" />
                 </div>
                 <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
             </form>
@@ -362,6 +362,7 @@
 </div>
 
 @section Scripts {
+<script src="~/js/money-input.js"></script>
 <script>
 const TABS_CFG = ['categorias','tipos-ingreso','redes','bancos','billeteras','cotizacion'];
 
@@ -426,6 +427,11 @@ document.addEventListener('DOMContentLoaded', function () {
     initPaginator('list-redes',      'pag-redes',      10, 'li');
     initPaginator('list-bancos',     'pag-bancos',     10, 'li');
     initPaginator('list-billeteras', 'pag-billeteras', 10, 'li');
+
+    setupMoneyInput(document.getElementById('cotizacion-manual'));
+});
+document.getElementById('panel-cotizacion').querySelector('form').addEventListener('submit', function () {
+    restoreOptionalMoneyForSubmit(document.getElementById('cotizacion-manual'));
 });
 </script>
 }
