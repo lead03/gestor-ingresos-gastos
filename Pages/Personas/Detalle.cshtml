@@ -123,13 +123,27 @@
     }
     else
     {
+        var cntTodos      = filas.Count;
+        var cntGasto      = filas.Count(f => f.Tipo == "Gasto");
+        var cntCredito    = filas.Count(f => f.Tipo == "Crédito");
+        var cntPago       = filas.Count(f => f.Tipo == "Pago");
+        var cntSinCredito = filas.Count(f => f.Tipo != "Crédito");
+
         <!-- Filtros -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 0 12px 0;border-bottom:1px solid var(--border);margin-bottom:0">
-            <button class="btn btn-ghost btn-sm filtro-mov active" data-filtro="todos"         onclick="filtrarMovimientos(this)">Todos</button>
-            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Gasto"         onclick="filtrarMovimientos(this)">Gastos</button>
-            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Crédito"       onclick="filtrarMovimientos(this)">Crédito</button>
-            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Pago"          onclick="filtrarMovimientos(this)">Pagos</button>
-            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="sin-credito"   onclick="filtrarMovimientos(this)">Sin crédito</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border)">
+            <button class="btn btn-ghost btn-sm filtro-mov active" data-filtro="todos"       onclick="filtrarMovimientos(this)">Todos <span class="cnt">@cntTodos</span></button>
+            @if (cntGasto > 0) {
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Gasto"       onclick="filtrarMovimientos(this)">Gastos <span class="cnt">@cntGasto</span></button>
+            }
+            @if (cntCredito > 0) {
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Crédito"     onclick="filtrarMovimientos(this)">Crédito <span class="cnt">@cntCredito</span></button>
+            }
+            @if (cntPago > 0) {
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Pago"        onclick="filtrarMovimientos(this)">Pagos <span class="cnt">@cntPago</span></button>
+            }
+            @if (cntCredito > 0 && cntSinCredito > 0) {
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="sin-credito" onclick="filtrarMovimientos(this)">Sin crédito <span class="cnt">@cntSinCredito</span></button>
+            }
         </div>
 
         <div class="table-wrap">
@@ -147,7 +161,7 @@
                 <tbody id="tbody-movimientos">
                     @foreach (var f in filas)
                     {
-                        <tr data-tipo="@f.Tipo">
+                        <tr data-tipo="@f.Tipo" data-monto="@f.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-signo="@(f.Tipo == "Pago" ? 1 : -1)">
                             <td>@f.Fecha.ToString("dd/MM/yy")</td>
                             <td class="text-center">
                                 @if (f.Tipo == "Gasto")
@@ -182,9 +196,19 @@
                         </tr>
                     }
                 </tbody>
+                <tfoot>
+                    <tr id="tfoot-total">
+                        <td colspan="4" style="color:var(--text2);font-size:.82rem">
+                            <span id="tfoot-count"></span>
+                        </td>
+                        <td class="text-right" style="font-weight:700">
+                            <span id="tfoot-monto"></span>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
-        <div id="pag-movimientos"></div>
     }
 </div>
 
@@ -373,21 +397,46 @@ function filtrarMovimientos(btn) {
     document.querySelectorAll('.filtro-mov').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const filtro = btn.dataset.filtro;
-    document.querySelectorAll('#tbody-movimientos tr').forEach(tr => {
-        const tipo = tr.dataset.tipo;
+    const rows   = document.querySelectorAll('#tbody-movimientos tr');
+
+    let count = 0, sum = 0;
+    rows.forEach(tr => {
+        const tipo  = tr.dataset.tipo;
         let visible = true;
-        if (filtro === 'Gasto')       visible = tipo === 'Gasto';
-        else if (filtro === 'Crédito')    visible = tipo === 'Crédito';
-        else if (filtro === 'Pago')       visible = tipo === 'Pago';
-        else if (filtro === 'sin-credito') visible = tipo !== 'Crédito';
+        if      (filtro === 'Gasto')        visible = tipo === 'Gasto';
+        else if (filtro === 'Crédito')      visible = tipo === 'Crédito';
+        else if (filtro === 'Pago')         visible = tipo === 'Pago';
+        else if (filtro === 'sin-credito')  visible = tipo !== 'Crédito';
         tr.style.display = visible ? '' : 'none';
+        if (visible) {
+            count++;
+            const monto = parseFloat(tr.dataset.monto) || 0;
+            const signo = parseInt(tr.dataset.signo, 10);
+            sum += monto * signo;
+        }
     });
+
+    const fmt = n => Math.abs(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('tfoot-count').textContent = count + ' movimiento' + (count !== 1 ? 's' : '');
+    const montoEl = document.getElementById('tfoot-monto');
+    const esMixto = filtro === 'todos' || filtro === 'sin-credito';
+    if (esMixto) {
+        montoEl.textContent = (sum >= 0 ? '+' : '−') + '$ ' + fmt(sum);
+        montoEl.className   = sum >= 0 ? 'amount green' : 'amount amber';
+    } else if (filtro === 'Pago') {
+        montoEl.textContent = '+$ ' + fmt(sum);
+        montoEl.className   = 'amount green';
+    } else {
+        montoEl.textContent = '$ ' + fmt(Math.abs(sum));
+        montoEl.className   = 'amount amber';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     initModal('modal-pago');
     initModal('modal-edit-pago');
-    initPaginator('tbody-movimientos', 'pag-movimientos');
+    // Inicializar tfoot con "Todos"
+    filtrarMovimientos(document.querySelector('.filtro-mov.active'));
 
     setupMoneyInput(elPagoMonto);
     syncFechaPago();

@@ -519,6 +519,22 @@ textarea {
     border-color: var(--accent2);
 }
 
+.filtro-mov .cnt {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    border-radius: 10px;
+    padding: 0 5px;
+    font-size: .72rem;
+    font-weight: 700;
+    margin-left: 3px;
+    vertical-align: middle;
+    line-height: 1.5;
+}
+
+.filtro-mov.active .cnt {
+    background: rgba(0,0,0,.2);
+}
+
 .tab-panel {
     display: none;
 }
