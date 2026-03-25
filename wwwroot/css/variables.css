@@ -1,0 +1,39 @@
+/**
+ * variables.css — Tokens de diseño
+ *
+ * Contiene SOLO las variables CSS (:root).
+ * Debe cargarse antes que site.css.
+ * Modificar aquí para cambiar colores, radios y transiciones en toda la app.
+ */
+:root {
+    /* ── Fondos ─────────────────────────────────────────────────────────── */
+    --bg:      #0f1117;   /* Fondo principal de página                      */
+    --bg2:     #1a1d27;   /* Cards, navbar, modales                         */
+    --bg3:     #22263a;   /* Inputs, thead, filas hover, btn-ghost          */
+    --surface: #252940;   /* Superficie elevada (uso puntual)               */
+
+    /* ── Bordes ─────────────────────────────────────────────────────────── */
+    --border:  #2e3250;
+
+    /* ── Texto ──────────────────────────────────────────────────────────── */
+    --text:    #e8eaf6;   /* Texto principal                                */
+    --text2:   #9099c4;   /* Texto secundario, labels, subtítulos           */
+
+    /* ── Acentos ────────────────────────────────────────────────────────── */
+    --accent:  #6c7bff;   /* Botones primarios, links activos, foco         */
+    --accent2: #8b9bff;   /* Variante más clara del acento                  */
+
+    /* ── Semánticos ─────────────────────────────────────────────────────── */
+    --green:   #4caf7d;   /* Ingresos, estados positivos, OK                */
+    --red:     #f44747;   /* Gastos, errores, alertas, peligro              */
+    --amber:   #ffb347;   /* Advertencias, "mi parte" dividida              */
+    --teal:    #26c6da;   /* Uso informativo (cotización, info)             */
+
+    /* ── Forma ──────────────────────────────────────────────────────────── */
+    --radius:  10px;
+    --shadow:  0 2px 12px rgba(0, 0, 0, .4);
+
+    /* ── Transiciones ───────────────────────────────────────────────────── */
+    --transition-fast:   0.12s ease;
+    --transition-normal: 0.20s ease;
+}
