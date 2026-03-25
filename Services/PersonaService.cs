@@ -28,9 +28,13 @@ public class PersonaService(
 
             decimal desdDeudas = deudas
                 .Where(d => d.Estado != EstadoDeuda.Pagada)
-                .Sum(d => d.Direccion == DireccionDeuda.MeDeben
-                    ? d.Monto - (d.MontoPagado ?? 0)
-                    : -(d.Monto - (d.MontoPagado ?? 0)));
+                .Sum(d =>
+                {
+                    decimal saldo = d.AceptaCuotas
+                        ? d.Cuotas.Where(c => c.Estado != EstadoDeuda.Pagada).Sum(c => c.Saldo)
+                        : d.Monto - (d.MontoPagado ?? 0);
+                    return d.Direccion == DireccionDeuda.MeDeben ? saldo : -saldo;
+                });
 
             resumen.Add(new PersonaResumenVM
             {
@@ -61,9 +65,12 @@ public class PersonaService(
             .Sum(p => p.Monto);
 
         decimal desdDeudas = deudas.Sum(d =>
-            d.Direccion == DireccionDeuda.MeDeben
-                ? d.Monto - (d.MontoPagado ?? 0)
-                : -(d.Monto - (d.MontoPagado ?? 0)));
+        {
+            decimal saldo = d.AceptaCuotas
+                ? d.Cuotas.Where(c => c.Estado != EstadoDeuda.Pagada).Sum(c => c.Saldo)
+                : d.Monto - (d.MontoPagado ?? 0);
+            return d.Direccion == DireccionDeuda.MeDeben ? saldo : -saldo;
+        });
 
         // Agrupar participaciones por mes
         var porMes = participaciones
@@ -91,10 +98,20 @@ public class PersonaService(
     {
         if (vm.Id == 0)
         {
-            await personaRepo.AddAsync(new Persona
+            var persona = new Persona { Nombre = vm.Nombre, Notas = vm.Notas };
+            await personaRepo.AddAsync(persona);
+
+            // Crear cuenta de crédito automática para trackear deudas mensuales
+            await deudaRepo.AddAsync(new Deuda
             {
-                Nombre = vm.Nombre,
-                Notas  = vm.Notas
+                PersonaId     = persona.Id,
+                NombrePersona = persona.Nombre,
+                Monto         = 0,
+                Fecha         = DateTime.Today,
+                Descripcion   = "Cuenta de crédito",
+                Direccion     = DireccionDeuda.MeDeben,
+                Estado        = EstadoDeuda.Activa,
+                AceptaCuotas  = true
             });
         }
         else

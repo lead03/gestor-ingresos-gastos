@@ -37,6 +37,35 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 
+    // ── Migraciones manuales (schema incremental) ─────────────────────
+    // Columna AceptaCuotas en Deudas
+    var columnas = db.Database
+        .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('Deudas')")
+        .ToList();
+    if (!columnas.Contains("AceptaCuotas"))
+        db.Database.ExecuteSqlRaw(
+            "ALTER TABLE Deudas ADD COLUMN AceptaCuotas INTEGER NOT NULL DEFAULT 0");
+
+    // Tabla DeudaCuotas
+    var tablas = db.Database
+        .SqlQueryRaw<string>("SELECT name FROM sqlite_master WHERE type='table'")
+        .ToList();
+    if (!tablas.Contains("DeudaCuotas"))
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE DeudaCuotas (
+                Id          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                DeudaId     INTEGER NOT NULL,
+                Mes         INTEGER NOT NULL,
+                Anio        INTEGER NOT NULL,
+                Monto       TEXT    NOT NULL,
+                MontoPagado TEXT    NOT NULL DEFAULT '0',
+                Estado      TEXT    NOT NULL DEFAULT 'Activa',
+                Descripcion TEXT    NULL,
+                CONSTRAINT FK_DeudaCuotas_Deudas
+                    FOREIGN KEY (DeudaId) REFERENCES Deudas(Id) ON DELETE CASCADE
+            );
+            CREATE INDEX IX_DeudaCuotas_DeudaId ON DeudaCuotas(DeudaId);");
+
     // Seed TiposCategoriaGasto
     if (!db.TiposCategoriaGasto.Any())
     {

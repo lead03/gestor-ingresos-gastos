@@ -13,7 +13,7 @@ public class Deuda
     [MaxLength(80)]
     public string NombrePersona { get; set; } = "";
 
-    [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a $0.")]
+    [Range(0, double.MaxValue, ErrorMessage = "El monto no puede ser negativo.")]
     public decimal Monto { get; set; }
 
     public DateTime Fecha { get; set; }
@@ -25,6 +25,14 @@ public class Deuda
     public EstadoDeuda    Estado    { get; set; } = EstadoDeuda.Activa;
 
     public decimal? MontoPagado { get; set; }
+
+    /// <summary>
+    /// Indica que esta deuda es una cuenta de crédito mensual:
+    /// el saldo real se compone de cuotas (<see cref="Cuotas"/>), no de <see cref="Monto"/>.
+    /// </summary>
+    public bool AceptaCuotas { get; set; }
+
+    public ICollection<DeudaCuota> Cuotas { get; set; } = new List<DeudaCuota>();
 
     public string NombreMostrar => Persona?.Nombre ?? NombrePersona;
 }

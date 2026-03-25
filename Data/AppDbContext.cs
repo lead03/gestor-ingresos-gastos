@@ -15,7 +15,8 @@ public class AppDbContext : DbContext
     public DbSet<Tarjeta>           Tarjetas           => Set<Tarjeta>();
     public DbSet<TarjetaCuota>      TarjetaCuotas      => Set<TarjetaCuota>();
     public DbSet<Cuenta>            Cuentas            => Set<Cuenta>();
-    public DbSet<Deuda>             Deudas             => Set<Deuda>();
+    public DbSet<Deuda>      Deudas      => Set<Deuda>();
+    public DbSet<DeudaCuota> DeudaCuotas => Set<DeudaCuota>();
     public DbSet<Persona>           Personas           => Set<Persona>();
     public DbSet<EfectivoDesglose>    EfectivoDesgloses    => Set<EfectivoDesglose>();
     public DbSet<TarjetaFechaMensual> TarjetaFechasMensuales => Set<TarjetaFechaMensual>();
@@ -196,6 +197,20 @@ public class AppDbContext : DbContext
 
         mb.Entity<Deuda>().Property(d => d.Monto).HasPrecision(18, 2);
         mb.Entity<Deuda>().Property(d => d.MontoPagado).HasPrecision(18, 2);
+
+        // DeudaCuota → Deuda
+        mb.Entity<DeudaCuota>()
+            .HasOne(dc => dc.Deuda)
+            .WithMany(d => d.Cuotas)
+            .HasForeignKey(dc => dc.DeudaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        mb.Entity<DeudaCuota>()
+            .Property(dc => dc.Estado)
+            .HasConversion<string>();
+
+        mb.Entity<DeudaCuota>().Property(dc => dc.Monto).HasPrecision(18, 2);
+        mb.Entity<DeudaCuota>().Property(dc => dc.MontoPagado).HasPrecision(18, 2);
         mb.Entity<Tarjeta>().Property(t => t.LimiteCredito).HasPrecision(18, 2);
 
     }
