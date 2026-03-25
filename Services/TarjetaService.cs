@@ -32,7 +32,27 @@ public class TarjetaService(ITarjetaRepository repo)
         if (tarjetaId.HasValue)
             todasActivas = todasActivas.Where(tc => tc.TarjetaId == tarjetaId.Value).ToList();
 
+        // Agrupar por compra (tarjeta + fecha + monto + cant. cuotas) y mostrar
+        // UNA sola fila por compra: la cuota del mes seleccionado si existe,
+        // o la próxima cuota futura, evitando que una compra en 3 cuotas
+        // aparezca 3 veces porque todas tienen CuotasRestantes > 0.
         var comprasActivas = todasActivas
+            .GroupBy(tc => new { tc.TarjetaId, tc.FechaCompra, tc.MontoTotal, tc.TotalCuotas })
+            .Select(g =>
+            {
+                // Preferir la cuota exacta del mes visualizado
+                var cuota = g.FirstOrDefault(tc => tc.MesCierre == mes && tc.AnioCierre == anio)
+                         // Si no, la más próxima futura
+                         ?? g.Where(tc => tc.AnioCierre > anio
+                                       || (tc.AnioCierre == anio && tc.MesCierre > mes))
+                             .OrderBy(tc => tc.AnioCierre).ThenBy(tc => tc.MesCierre)
+                             .FirstOrDefault()
+                         // Si ya pasaron todas, la última registrada
+                         ?? g.OrderByDescending(tc => tc.AnioCierre)
+                             .ThenByDescending(tc => tc.MesCierre)
+                             .First();
+                return cuota;
+            })
             .Select(tc => new CompraActivaVM
             {
                 TarjetaCuotaId = tc.Id,

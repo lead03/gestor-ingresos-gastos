@@ -6,16 +6,66 @@ namespace ControlGastos.Repositories;
 
 public class GastoRepository(AppDbContext db) : IGastoRepository
 {
-    public Task<List<GastoItem>> GetByMesAsync(int mes, int anio) =>
-        db.Gastos
-          .Include(g => g.Categoria).ThenInclude(c => c.Tipo)
-          .Include(g => g.Cuenta)
-          .Include(g => g.Tarjeta)
-          .Include(g => g.TarjetaCuota)
-          .Include(g => g.Participantes).ThenInclude(p => p.Persona)
-          .Where(g => g.Mes == mes && g.Anio == anio)
-          .OrderBy(g => g.Dia)
-          .ToListAsync();
+    public async Task<List<GastoItem>> GetByMesAsync(int mes, int anio)
+    {
+        // 1. Gastos cuya fecha de registro cae en este mes
+        //    (incluye la 1.ª cuota TC, cuyo GastoItem vive en el mes de compra)
+        var gastosDirecto = await db.Gastos
+            .AsNoTracking()
+            .Include(g => g.Categoria).ThenInclude(c => c.Tipo)
+            .Include(g => g.Cuenta)
+            .Include(g => g.Tarjeta)
+            .Include(g => g.TarjetaCuota)
+            .Include(g => g.Participantes).ThenInclude(p => p.Persona)
+            .Where(g => g.Mes == mes && g.Anio == anio)
+            .OrderBy(g => g.Dia)
+            .ToListAsync();
+
+        // 2. Cuotas TC (2.ª, 3.ª, …) que cierran este mes y tienen GastoItem asociado
+        var cuotasEsteMes = await db.TarjetaCuotas
+            .AsNoTracking()
+            .Include(tc => tc.Tarjeta)
+            .Where(tc => tc.MesCierre == mes && tc.AnioCierre == anio
+                      && tc.GastoItemId != null)
+            .ToListAsync();
+
+        // IDs de GastoItems ya incluidos (para no duplicar la 1.ª cuota)
+        var gastoIdsDirecto = new HashSet<int>(gastosDirecto.Select(g => g.Id));
+
+        var gastoIdsParaIncluir = cuotasEsteMes
+            .Where(tc => tc.GastoItemId.HasValue
+                      && !gastoIdsDirecto.Contains(tc.GastoItemId.Value))
+            .Select(tc => tc.GastoItemId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (gastoIdsParaIncluir.Count == 0)
+            return gastosDirecto;
+
+        // 3. Cargar los GastoItems de esas cuotas anteriores
+        var gastosCuotas = await db.Gastos
+            .AsNoTracking()
+            .Include(g => g.Categoria).ThenInclude(c => c.Tipo)
+            .Include(g => g.Cuenta)
+            .Include(g => g.Tarjeta)
+            .Include(g => g.Participantes).ThenInclude(p => p.Persona)
+            .Where(g => gastoIdsParaIncluir.Contains(g.Id))
+            .ToListAsync();
+
+        // 4. Inyectar la cuota correcta del mes en cada GastoItem
+        //    para que MontoMes / MiParteMes devuelvan el importe de ESA cuota
+        foreach (var gasto in gastosCuotas)
+        {
+            var cuota = cuotasEsteMes.FirstOrDefault(tc => tc.GastoItemId == gasto.Id);
+            if (cuota != null)
+            {
+                gasto.TarjetaCuotaId = cuota.Id;
+                gasto.TarjetaCuota   = cuota;
+            }
+        }
+
+        return [.. gastosDirecto, .. gastosCuotas.OrderBy(g => g.Dia)];
+    }
 
     public Task<GastoItem?> GetByIdAsync(int id) =>
         db.Gastos.FindAsync(id).AsTask();
