@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="#1a1d27"/>
+  <rect x="1" y="1" width="30" height="30" rx="6.2" fill="none" stroke="#34d399" stroke-width="1.2" opacity="0.5"/>
+  <!-- Dollar sign (same path as navbar brand, scaled and centered) -->
+  <g transform="translate(5.8, 4.8) scale(0.85)"
+     stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="12" y1="1" x2="12" y2="23"/>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+  </g>
+</svg>
