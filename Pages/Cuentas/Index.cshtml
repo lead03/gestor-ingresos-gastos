@@ -5,14 +5,17 @@
     ViewData["Title"] = "Cuentas";
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
 
     // Serializar datos para edición inline
     var cuentasJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Cuentas.Select(c => new {
             id           = c.Id,
             nombre       = c.Nombre,
-            tipoId       = c.TipoId,
+            tipoEntidad  = c.TipoEntidad.ToString(),
+            bancoId      = c.BancoId,
+            billeteraId  = c.BilleteraId,
             moneda       = c.Moneda.ToString(),
             saldoInicial = c.SaldoInicial,
             alertaSaldo  = c.AlertaSaldo,
@@ -53,7 +56,7 @@ else
                     <div>
                         <div style="font-size:1rem;font-weight:700">@c.Nombre</div>
                         <div style="font-size:.78rem;color:var(--text2);margin-top:2px;display:flex;gap:4px;flex-wrap:wrap">
-                            <span class="badge @(c.TipoId == 1 ? "badge-fijo" : c.TipoId == 2 ? "badge-var" : "badge-ok")">
+                            <span class="badge @(c.TipoEntidad == ControlGastos.Models.TipoEntidad.Banco ? "badge-fijo" : c.TipoEntidad == ControlGastos.Models.TipoEntidad.Billetera ? "badge-var" : "badge-ok")">
                                 @c.TipoNombre
                             </span>
                             <span class="badge @(c.Moneda == ControlGastos.Models.Moneda.USD ? "badge-usd" : "badge-ok")"
@@ -119,13 +122,35 @@ else
 
                 <div class="form-group">
                     <label>Tipo</label>
-                    <select name="Form.TipoId" id="f-tipo" required>
+                    <select asp-for="Form.TipoEntidad" id="f-tipo" required onchange="toggleBancoDropdown()">
                         <option value="" disabled selected>— Seleccionar tipo —</option>
-                        <option value="0">Efectivo</option>
-                        <option value="1">Banco</option>
-                        <option value="2">Billetera digital</option>
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Banco">Banco</option>
+                        <option value="Billetera">Billetera digital</option>
                     </select>
-                    <span asp-validation-for="Form.TipoId" class="field-error"></span>
+                    <span asp-validation-for="Form.TipoEntidad" class="field-error"></span>
+                </div>
+
+                <div class="form-group" id="grupo-banco" style="display:none">
+                    <label>Banco</label>
+                    <select name="Form.BancoId" id="f-banco">
+                        <option value="">— Sin especificar —</option>
+                        @foreach (var b in Model.Form.OpcionesBanco)
+                        {
+                            <option value="@b.Id">@b.Nombre</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group" id="grupo-billetera" style="display:none">
+                    <label>Billetera</label>
+                    <select name="Form.BilleteraId" id="f-billetera">
+                        <option value="">— Sin especificar —</option>
+                        @foreach (var b in Model.Form.OpcionesBilletera)
+                        {
+                            <option value="@b.Id">@b.Nombre</option>
+                        }
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -175,6 +200,15 @@ const elAlerta = document.getElementById('f-alerta');
 setupMoneyInput(elSaldo);
 setupMoneyInput(elAlerta);
 
+// ── Banco / Billetera dropdown visibility ─────────────────────────
+function toggleBancoDropdown() {
+    const tipo = document.getElementById('f-tipo').value;
+    document.getElementById('grupo-banco').style.display      = tipo === 'Banco' ? '' : 'none';
+    document.getElementById('grupo-billetera').style.display  = tipo === 'Billetera' ? '' : 'none';
+    if (tipo !== 'Banco')     document.getElementById('f-banco').value     = '';
+    if (tipo !== 'Billetera') document.getElementById('f-billetera').value = '';
+}
+
 // ── Modal ──────────────────────────────────────────────────────────
 function openModal() {
     // Resetear para nueva cuenta
@@ -182,6 +216,10 @@ function openModal() {
     document.getElementById('f-id').value       = '0';
     document.getElementById('f-nombre').value   = '';
     document.getElementById('f-tipo').value     = '';
+    document.getElementById('f-banco').value    = '';
+    document.getElementById('f-billetera').value = '';
+    document.getElementById('grupo-banco').style.display     = 'none';
+    document.getElementById('grupo-billetera').style.display = 'none';
     document.getElementById('f-moneda').value   = 'ARS';
     elSaldo.value  = '';
     elAlerta.value = '';
@@ -197,8 +235,28 @@ function openModalEditar(id) {
     document.getElementById('modal-titulo').textContent = 'Editar cuenta';
     document.getElementById('f-id').value      = c.id;
     document.getElementById('f-nombre').value  = c.nombre;
-    document.getElementById('f-tipo').value    = c.tipoId;
+    document.getElementById('f-tipo').value    = c.tipoEntidad;
     document.getElementById('f-moneda').value  = c.moneda;
+
+    // Banco
+    const grupoBanco = document.getElementById('grupo-banco');
+    if (c.tipoEntidad === 'Banco') {
+        grupoBanco.style.display = '';
+        document.getElementById('f-banco').value = c.bancoId ?? '';
+    } else {
+        grupoBanco.style.display = 'none';
+        document.getElementById('f-banco').value = '';
+    }
+
+    // Billetera
+    const grupoBilletera = document.getElementById('grupo-billetera');
+    if (c.tipoEntidad === 'Billetera') {
+        grupoBilletera.style.display = '';
+        document.getElementById('f-billetera').value = c.billeteraId ?? '';
+    } else {
+        grupoBilletera.style.display = 'none';
+        document.getElementById('f-billetera').value = '';
+    }
 
     setMoneyField(elSaldo,  c.saldoInicial);
     setMoneyField(elAlerta, c.alertaSaldo);

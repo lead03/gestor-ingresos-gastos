@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using ControlGastos.Repositories;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ControlGastos.Services;
@@ -13,9 +14,9 @@ public record CotizacionResultado(
 );
 
 public class CotizacionService(
-    IHttpClientFactory   httpFactory,
-    IMemoryCache         cache,
-    ConfiguracionService configSvc)
+    IHttpClientFactory          httpFactory,
+    IMemoryCache                cache,
+    ICotizacionConfigRepository cotizacionRepo)
 {
     public static readonly Dictionary<string, string> TiposDisponibles = new()
     {
@@ -36,7 +37,8 @@ public class CotizacionService(
     /// </summary>
     public async Task<CotizacionResultado?> GetCotizacionConFuenteAsync()
     {
-        var tipo      = await configSvc.GetSettingAsync("TipoDolar") ?? "blue";
+        var config    = await cotizacionRepo.GetConfigAsync();
+        var tipo      = config.TipoDolar;
         var tipNombre = TiposDisponibles.GetValueOrDefault(tipo, tipo);
 
         // 1 — Memoria caché (valor vigente de la API)
@@ -55,29 +57,26 @@ public class CotizacionService(
             // Guardar en caché y persistir como "último valor conocido de API"
             var ahora = DateTime.Now;
             cache.Set(CacheKey, venta, TimeSpan.FromMinutes(30));
-            await configSvc.UpsertSettingAsync("UltimaCotizacionAPI",   venta.ToString(CultureInfo.InvariantCulture));
-            await configSvc.UpsertSettingAsync("UltimaCotizacionTipo",  tipNombre);
-            await configSvc.UpsertSettingAsync("UltimaCotizacionFecha", ahora.ToString("O"));
+            config.UltimoValor         = venta;
+            config.UltimoTipo          = tipNombre;
+            config.UltimaActualizacion = ahora;
+            await cotizacionRepo.SaveConfigAsync(config);
 
             return new(venta, $"API · {tipNombre}", "api", ahora);
         }
         catch
         {
             // 3 — Último valor de API persistido en DB
-            var ultimaStr   = await configSvc.GetSettingAsync("UltimaCotizacionAPI");
-            var ultimaTipo  = await configSvc.GetSettingAsync("UltimaCotizacionTipo")  ?? tipNombre;
-            var ultimaFecha = await configSvc.GetSettingAsync("UltimaCotizacionFecha");
-            DateTime? fechaDt = DateTime.TryParse(ultimaFecha, null, DateTimeStyles.RoundtripKind, out var fd) ? fd : null;
-
-            if (ultimaStr is not null &&
-                decimal.TryParse(ultimaStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var ultimaVal))
-                return new(ultimaVal, $"Último valor API · {ultimaTipo} (sin conexión)", "ultima_api", fechaDt);
+            if (config.UltimoValor.HasValue)
+            {
+                var ultimaTipo  = config.UltimoTipo ?? tipNombre;
+                var ultimaFecha = config.UltimaActualizacion;
+                return new(config.UltimoValor.Value, $"Último valor API · {ultimaTipo} (sin conexión)", "ultima_api", ultimaFecha);
+            }
 
             // 4 — Valor manual
-            var manualStr = await configSvc.GetSettingAsync("CotizacionManual");
-            if (manualStr is not null &&
-                decimal.TryParse(manualStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var manualVal))
-                return new(manualVal, "Manual", "manual");
+            if (config.CotizacionManual > 0)
+                return new(config.CotizacionManual, "Manual", "manual");
 
             return null;
         }
@@ -97,21 +96,27 @@ public class CotizacionService(
     public async Task SaveTipoDolarAsync(string tipo)
     {
         cache.Remove(CacheKey);
-        await configSvc.UpsertSettingAsync("TipoDolar", tipo);
+        var config = await cotizacionRepo.GetConfigAsync();
+        config.TipoDolar = tipo;
+        await cotizacionRepo.SaveConfigAsync(config);
     }
 
-    public async Task SaveCotizacionManualAsync(decimal valor) =>
-        await configSvc.UpsertSettingAsync("CotizacionManual",
-            valor.ToString(CultureInfo.InvariantCulture));
+    public async Task SaveCotizacionManualAsync(decimal valor)
+    {
+        var config = await cotizacionRepo.GetConfigAsync();
+        config.CotizacionManual = valor;
+        await cotizacionRepo.SaveConfigAsync(config);
+    }
 
-    public async Task<string> GetTipoDolarAsync() =>
-        await configSvc.GetSettingAsync("TipoDolar") ?? "blue";
+    public async Task<string> GetTipoDolarAsync()
+    {
+        var config = await cotizacionRepo.GetConfigAsync();
+        return config.TipoDolar;
+    }
 
     public async Task<decimal?> GetCotizacionManualAsync()
     {
-        var s = await configSvc.GetSettingAsync("CotizacionManual");
-        return s is not null &&
-               decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
-               ? v : null;
+        var config = await cotizacionRepo.GetConfigAsync();
+        return config.CotizacionManual > 0 ? config.CotizacionManual : null;
     }
 }

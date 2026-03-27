@@ -32,6 +32,9 @@ public class Deuda
     /// </summary>
     public bool AceptaCuotas { get; set; }
 
+    /// <summary>Vincula esta deuda a un GastoItem cuando fue auto-generada por el campo "¿Quién pagó?".</summary>
+    public int? GastoItemId { get; set; }
+
     public ICollection<DeudaCuota> Cuotas { get; set; } = new List<DeudaCuota>();
 
     public string NombreMostrar => Persona?.Nombre ?? NombrePersona;

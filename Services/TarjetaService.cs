@@ -132,7 +132,7 @@ public class TarjetaService(ITarjetaRepository repo)
             {
                 Nombre         = vm.Nombre,
                 Banco          = vm.Banco,
-                Red            = vm.Red,
+                RedTarjetaId   = vm.RedTarjetaId,
                 DiaCierre      = vm.DiaCierre,
                 DiaVencimiento = vm.DiaVencimiento,
                 LimiteCredito  = vm.LimiteCredito
@@ -147,7 +147,7 @@ public class TarjetaService(ITarjetaRepository repo)
 
             t.Nombre         = vm.Nombre;
             t.Banco          = vm.Banco;
-            t.Red            = vm.Red;
+            t.RedTarjetaId   = vm.RedTarjetaId;
             t.DiaCierre      = vm.DiaCierre;
             t.DiaVencimiento = vm.DiaVencimiento;
             t.LimiteCredito  = vm.LimiteCredito;

@@ -36,11 +36,11 @@
 
             <div class="form-group">
                 <label>Red</label>
-                <select asp-for="VM.Red">
+                <select asp-for="VM.RedTarjetaId">
                     <option value="">— Seleccionar —</option>
                     @foreach (var r in vm.OpcionesRed)
                     {
-                        <option value="@r">@r</option>
+                        <option value="@r.Id">@r.Nombre</option>
                     }
                 </select>
             </div>

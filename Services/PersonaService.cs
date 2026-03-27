@@ -24,8 +24,11 @@ public class PersonaService(
             var deudas = todasDeudas.Where(d => d.PersonaId == p.Id).ToList();
 
             // Balance: suma de gastos compartidos + deudas directas
+            // Excluye participaciones donde la persona fue quien pagó (no generan deuda hacia el usuario)
             decimal desdGastos = participaciones
                 .Where(par => par.Tipo == TipoParticipante.Persona)
+                .Where(par => par.GastoItem.PagadorPersonaId == null
+                           || par.GastoItem.PagadorPersonaId != p.Id)
                 .Sum(par => par.Monto);
 
             decimal desdDeudas = deudas
@@ -95,6 +98,52 @@ public class PersonaService(
                 Participaciones = g.ToList()
             }).ToList();
 
+        // ── Movimientos unificados del mes (signos pre-calculados) ────────────
+        var mvsGastos = filtradas.Select(g => new MovimientoPersonaVM
+        {
+            TipoMov     = g.EsCuota ? TipoMovimientoPersona.Credito : TipoMovimientoPersona.Gasto,
+            Fecha       = g.FechaCompra,
+            Categoria   = g.EsCuota
+                              ? $"{g.Categoria} (cuota {g.NumeroCuota}/{g.TotalCuotas})"
+                              : g.Categoria,
+            Descripcion = g.Descripcion,
+            Monto       = g.Monto,
+            RefId       = g.GastoItemId
+        });
+
+        var pagosFiltrados = (mes > 0 && anio > 0)
+            ? pagos.Where(p => p.Fecha.Month == mes && p.Fecha.Year == anio)
+            : pagos;
+        var mvsPagos = pagosFiltrados.Select(p => new MovimientoPersonaVM
+        {
+            TipoMov     = TipoMovimientoPersona.Pago,
+            Fecha       = p.Fecha,
+            Categoria   = "—",
+            Descripcion = p.Descripcion,
+            Monto       = p.Monto,
+            RefId       = p.Id
+        });
+
+        var deudasFiltradas = (mes > 0 && anio > 0)
+            ? deudas.Where(d => d.Fecha.Month == mes && d.Fecha.Year == anio)
+            : deudas;
+        var mvsDeudas = deudasFiltradas.Select(d => new MovimientoPersonaVM
+        {
+            TipoMov     = d.Direccion == DireccionDeuda.MeDeben
+                              ? TipoMovimientoPersona.DeudaMe
+                              : TipoMovimientoPersona.DeudaLe,
+            Fecha       = d.Fecha,
+            Categoria   = "—",
+            Descripcion = d.Descripcion,
+            Monto       = d.Monto - (d.MontoPagado ?? 0),
+            RefId       = d.Id,
+            GastoItemId = d.GastoItemId   // vincula de vuelta al gasto original
+        });
+
+        var movimientos = mvsGastos.Concat(mvsPagos).Concat(mvsDeudas)
+                                   .OrderBy(m => m.Fecha)
+                                   .ToList();
+
         return new PersonaDetalleVM
         {
             Persona          = persona,
@@ -104,7 +153,8 @@ public class PersonaService(
             Deudas           = deudas,
             TotalDeudas      = desdDeudas,
             Pagos            = pagos,
-            TotalPagos       = desdPagos
+            TotalPagos       = desdPagos,
+            Movimientos      = movimientos
         };
     }
 

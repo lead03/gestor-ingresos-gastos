@@ -225,11 +225,11 @@
                 @foreach (var r in Model.Redes)
                 {
                     <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
-                        <span style="font-size:.9rem">@r.Valor</span>
-                        <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                        <span style="font-size:.9rem">@r.Nombre</span>
+                        <form method="post" asp-page-handler="EliminarRed" style="display:inline">
                             <input type="hidden" name="id" value="@r.Id" />
                             <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                    onclick="return confirm('¿Eliminar @r.Valor?')">✕</button>
+                                    onclick="return confirm('¿Eliminar @r.Nombre?')">✕</button>
                         </form>
                     </li>
                 }
@@ -252,11 +252,11 @@
                 @foreach (var b in Model.Bancos)
                 {
                     <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
-                        <span style="font-size:.9rem">@b.Valor</span>
-                        <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                        <span style="font-size:.9rem">@b.Nombre</span>
+                        <form method="post" asp-page-handler="EliminarBanco" style="display:inline">
                             <input type="hidden" name="id" value="@b.Id" />
                             <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                    onclick="return confirm('¿Eliminar @b.Valor?')">✕</button>
+                                    onclick="return confirm('¿Eliminar @b.Nombre?')">✕</button>
                         </form>
                     </li>
                 }
@@ -279,11 +279,11 @@
                 @foreach (var b in Model.Billeteras)
                 {
                     <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
-                        <span style="font-size:.9rem">@b.Valor</span>
-                        <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                        <span style="font-size:.9rem">@b.Nombre</span>
+                        <form method="post" asp-page-handler="EliminarBilletera" style="display:inline">
                             <input type="hidden" name="id" value="@b.Id" />
                             <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                    onclick="return confirm('¿Eliminar @b.Valor?')">✕</button>
+                                    onclick="return confirm('¿Eliminar @b.Nombre?')">✕</button>
                         </form>
                     </li>
                 }
@@ -298,24 +298,61 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Cotización del dólar (USD → ARS)</span></div>
         <div style="padding:16px">
-            <form method="post" asp-page-handler="GuardarCotizacion" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-                <div>
-                    <label class="form-label">Tipo de dólar (API)</label>
-                    <select name="NuevoTipoDolar" class="form-input">
-                        @foreach (var t in ControlGastos.Services.CotizacionService.TiposDisponibles)
-                        {
-                            <option value="@t.Key" selected="@(Model.TipoDolarActual == t.Key)">@t.Value</option>
-                        }
-                    </select>
+            <form method="post" asp-page-handler="GuardarCotizacion" id="form-cotizacion">
+                <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+                    <div>
+                        <label class="form-label">Tipo de dólar</label>
+                        <select name="TipoDolar" class="form-input">
+                            @foreach (var t in ControlGastos.Services.CotizacionService.TiposDisponibles)
+                            {
+                                <option value="@t.Key" selected="@(Model.Config.TipoDolar == t.Key)">@t.Value</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Fuente de cotización</label>
+                        <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+                            <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;cursor:pointer">
+                                <input type="checkbox" name="UsarApi" id="usar-api-check" value="true"
+                                       @(Model.Config.UsarApi ? "checked" : "")
+                                       onchange="toggleApiFields(this.checked)" />
+                                Usar API (dolarapi.com)
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="form-label">Valor manual (respaldo si no hay API)</label>
-                    <input name="CotizacionManualInput" type="text" inputmode="decimal" id="cotizacion-manual"
-                           data-init-value="@(Model.CotizacionManual?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0")"
-                           placeholder="Ej: 1.200,00" class="form-input" style="width:140px" />
+                <div id="api-url-row" style="margin-bottom:16px;@(Model.Config.UsarApi ? "" : "display:none")">
+                    <label class="form-label">URL de la API</label>
+                    <input name="ApiUrl" type="text" class="form-input" style="max-width:400px"
+                           value="@Model.Config.ApiUrl" placeholder="https://dolarapi.com/v1/dolares" />
                 </div>
-                <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                <div id="manual-row" style="margin-bottom:16px;@(Model.Config.UsarApi ? "display:none" : "")">
+                    <label class="form-label">Valor manual (ARS por USD)</label>
+                    <input name="ManualValor" type="text" inputmode="decimal" id="cotizacion-manual"
+                           data-init-value="@Model.Config.CotizacionManual.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                           placeholder="Ej: 1.200,00" class="form-input" style="width:160px" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Guardar configuración</button>
             </form>
+
+            @* Último valor cacheado — solo lectura *@
+            @if (Model.Config.UltimoValor.HasValue)
+            {
+                <div style="margin-top:16px;padding:10px 14px;background:var(--bg2);border-radius:8px;font-size:.83rem">
+                    <div style="color:var(--text2);font-weight:600;margin-bottom:4px">Último valor guardado (caché DB)</div>
+                    <div>
+                        <strong style="color:var(--text)">$ @Model.Config.UltimoValor.Value.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-AR"))</strong>
+                        <span style="color:var(--text2);margin-left:8px">· @Model.Config.UltimoTipo</span>
+                        @if (Model.Config.UltimaActualizacion.HasValue)
+                        {
+                            <span style="color:var(--text2);margin-left:8px;font-size:.78rem">
+                                Actualizado el @Model.Config.UltimaActualizacion.Value.ToString("dd/MM/yyyy") a las @Model.Config.UltimaActualizacion.Value.ToString("HH:mm")
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+
             <div style="margin-top:12px;font-size:.85rem">
                 @if (Model.CotizacionActual.HasValue)
                 {
@@ -326,7 +363,7 @@
                         _            => ("var(--text2)", "✎"),
                     };
                     <span style="color:@color">@icon Cotización actual:</span>
-                    <strong style="color:var(--text);margin-left:4px">$ @Model.CotizacionActual.Value.ToString("N2")</strong>
+                    <strong style="color:var(--text);margin-left:4px">$ @Model.CotizacionActual.Value.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-AR"))</strong>
                     <span style="color:var(--text2);margin-left:8px;font-size:.78rem">· @Model.FuenteCotizacion</span>
 
                     @if (Model.FuenteCotizacionTipo == "ultima_api")
@@ -349,7 +386,7 @@
                 }
                 else
                 {
-                    <span style="color:#e05555">✕ Sin cotización disponible. Ingrese un valor manual.</span>
+                    <span style="color:#e05555">✕ Sin cotización disponible. Ingrese un valor manual o verifique la API.</span>
                     <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
                         <button type="button" id="btn-reintentar" onclick="reintentarCotizacion()"
                                 class="btn btn-ghost btn-sm">↺ Reintentar conexión</button>
@@ -428,10 +465,17 @@ document.addEventListener('DOMContentLoaded', function () {
     initPaginator('list-bancos',     'pag-bancos',     10, 'li');
     initPaginator('list-billeteras', 'pag-billeteras', 10, 'li');
 
-    setupMoneyInput(document.getElementById('cotizacion-manual'));
+    const cotizManualEl = document.getElementById('cotizacion-manual');
+    if (cotizManualEl) setupMoneyInput(cotizManualEl);
 });
-document.getElementById('panel-cotizacion').querySelector('form').addEventListener('submit', function () {
-    restoreOptionalMoneyForSubmit(document.getElementById('cotizacion-manual'));
+document.getElementById('form-cotizacion').addEventListener('submit', function () {
+    const cotizManualEl = document.getElementById('cotizacion-manual');
+    if (cotizManualEl) restoreOptionalMoneyForSubmit(cotizManualEl);
 });
+
+function toggleApiFields(usarApi) {
+    document.getElementById('api-url-row').style.display  = usarApi ? '' : 'none';
+    document.getElementById('manual-row').style.display   = usarApi ? 'none' : '';
+}
 </script>
 }

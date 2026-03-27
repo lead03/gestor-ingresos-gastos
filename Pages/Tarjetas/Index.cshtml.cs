@@ -114,15 +114,15 @@ public class EditTarjetaModel(TarjetaService svc, ConfiguracionService cfgSvc) :
                     Id             = t.Id,
                     Nombre         = t.Nombre,
                     Banco          = t.Banco,
-                    Red            = t.Red,
+                    RedTarjetaId   = t.RedTarjetaId,
                     DiaCierre      = t.DiaCierre,
                     DiaVencimiento = t.DiaVencimiento,
                     LimiteCredito  = t.LimiteCredito
                 };
             }
         }
-        VM.OpcionesRed   = (await cfgSvc.GetRedesAsync()).Select(c => c.Valor).ToList();
-        VM.OpcionesBanco = (await cfgSvc.GetBancosAsync()).Select(c => c.Valor).ToList();
+        VM.OpcionesRed   = await cfgSvc.GetRedesAsync();
+        VM.OpcionesBanco = (await cfgSvc.GetBancosAsync()).Select(b => b.Nombre).ToList();
         ViewData["Active"] = "tarjetas";
     }
 

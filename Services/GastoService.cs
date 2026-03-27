@@ -11,6 +11,7 @@ public class GastoService(
     ITarjetaRepository           tarjetaRepo,
     IPersonaRepository           personaRepo,
     ICuentaRepository            cuentaRepo,
+    IDeudaRepository             deudaRepo,
     CotizacionService            cotizacionSvc)
 {
     public async Task<GastoListVM> GetListAsync(int mes, int anio)
@@ -28,7 +29,7 @@ public class GastoService(
             TotalVariables    = items.Where(g => g.Categoria.TipoId == 2 && g.Moneda != Moneda.USD).Sum(MontoEfectivo),
             TotalFijosUsd     = items.Where(g => g.Categoria.TipoId == 1 && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
             TotalVariablesUsd = items.Where(g => g.Categoria.TipoId == 2 && g.Moneda == Moneda.USD).Sum(MontoEfectivo),
-            PorDia         = items.GroupBy(g => g.Dia)
+            PorDia         = items.GroupBy(g => g.Fecha.Day)
                                   .ToDictionary(grp => grp.Key, grp => grp.ToList())
         };
         var cotizRes = await cotizacionSvc.GetCotizacionConFuenteAsync();
@@ -56,12 +57,13 @@ public class GastoService(
             var g = await gastoRepo.GetByIdWithParticipantesAsync(id.Value);
             if (g != null)
             {
-                vm.Id = g.Id; vm.Mes = g.Mes; vm.Anio = g.Anio; vm.Dia = g.Dia;
+                vm.Id = g.Id; vm.Fecha = g.Fecha;
                 vm.CategoriaId = g.CategoriaId; vm.Monto = g.Monto;
                 vm.SeDivide = g.SeDivide; vm.Descripcion = g.Descripcion;
                 vm.CuentaId = g.CuentaId; vm.TarjetaId = g.TarjetaId;
                 vm.TarjetaCuotaId = g.TarjetaCuotaId;
                 vm.Moneda = g.Moneda;
+                vm.PagadorPersonaId = g.PagadorPersonaId;
                 if (g.TarjetaCuota != null) vm.CantidadCuotas = g.TarjetaCuota.TotalCuotas;
                 vm.Participantes = g.Participantes.Select(p => new ParticipanteFormVM
                 {
@@ -107,18 +109,21 @@ public class GastoService(
             tarjetaCuotaId = cuotaResult.Value; // ID de la primera cuota
         }
 
+        int?    pagadorId = vm.SeDivide ? vm.PagadorPersonaId : null;
+
         int gastoId;
         if (vm.Id == 0)
         {
             var gasto = new GastoItem
             {
-                Mes = vm.Mes, Anio = vm.Anio, Dia = vm.Dia,
+                Fecha = vm.Fecha,
                 CategoriaId = vm.CategoriaId, Monto = vm.Monto,
                 SeDivide = vm.SeDivide, MiParte = miParte,
                 Descripcion = vm.Descripcion,
                 CuentaId = vm.CuentaId, TarjetaId = vm.TarjetaId,
                 TarjetaCuotaId = tarjetaCuotaId,
-                Moneda = vm.Moneda
+                Moneda = vm.Moneda,
+                PagadorPersonaId = pagadorId
             };
             await gastoRepo.AddAsync(gasto);
             gastoId = gasto.Id;
@@ -131,13 +136,14 @@ public class GastoService(
             var g = await gastoRepo.GetByIdAsync(vm.Id);
             if (g == null) return Result.Fail($"Gasto {vm.Id} no encontrado.");
 
-            g.Mes = vm.Mes; g.Anio = vm.Anio; g.Dia = vm.Dia;
+            g.Fecha = vm.Fecha;
             g.CategoriaId = vm.CategoriaId; g.Monto = vm.Monto;
             g.SeDivide = vm.SeDivide; g.MiParte = miParte;
             g.Descripcion = vm.Descripcion;
             g.CuentaId = vm.CuentaId; g.TarjetaId = vm.TarjetaId;
             g.TarjetaCuotaId = tarjetaCuotaId;
             g.Moneda = vm.Moneda;
+            g.PagadorPersonaId = pagadorId;
 
             await gastoRepo.UpdateAsync(g);
             await participanteRepo.DeleteByGastoAsync(vm.Id);
@@ -147,10 +153,37 @@ public class GastoService(
                 await GuardarParticipantesAsync(vm.Id, vm.Participantes);
         }
 
+        // ── Deuda auto-generada por "¿Quién pagó?" ─────────────────
+        // Primero limpiar cualquier deuda previa vinculada a este gasto
+        await deudaRepo.DeleteByGastoItemIdAsync(gastoId);
+
+        // Si otra persona pagó, crear deuda "Le debo" por la parte del usuario
+        if (pagadorId.HasValue)
+        {
+            var pagador  = await personaRepo.GetByIdAsync(pagadorId.Value);
+            decimal miParteDeuda = vm.Participantes.Where(p => p.Tipo == "Yo").Sum(p => p.Monto);
+            if (miParteDeuda > 0 && pagador != null)
+            {
+                await deudaRepo.AddAsync(new Deuda
+                {
+                    PersonaId     = pagadorId,
+                    NombrePersona = pagador.Nombre,
+                    Monto         = miParteDeuda,
+                    Fecha         = vm.Fecha,
+                    Descripcion   = string.IsNullOrWhiteSpace(vm.Descripcion)
+                                        ? $"Pagó el gasto por mí"
+                                        : $"Pagó: {vm.Descripcion}",
+                    Direccion     = DireccionDeuda.LeDebo,
+                    Estado        = EstadoDeuda.Activa,
+                    GastoItemId   = gastoId
+                });
+            }
+        }
+
         // Actualizar GastoItemId en todas las cuotas del grupo
         if (vm.TarjetaId.HasValue && vm.CantidadCuotas >= 1)
         {
-            var fechaCompra = new DateTime(vm.Anio, vm.Mes, vm.Dia);
+            var fechaCompra = vm.Fecha;
             await tarjetaRepo.ActualizarGastoIdCuotasAsync(
                 vm.TarjetaId.Value, fechaCompra, vm.Monto, vm.CantidadCuotas, gastoId);
         }
@@ -158,7 +191,11 @@ public class GastoService(
         return Result.Ok();
     }
 
-    public Task DeleteAsync(int id) => gastoRepo.DeleteAsync(id);
+    public async Task DeleteAsync(int id)
+    {
+        await deudaRepo.DeleteByGastoItemIdAsync(id);
+        await gastoRepo.DeleteAsync(id);
+    }
 
     // ── Creación automática de cuotas ─────────────────────────────────
     private async Task<Result<int>> CrearCuotasAutomaticasAsync(GastoFormVM vm)
@@ -170,11 +207,11 @@ public class GastoService(
         if (tarjeta == null)
             return Result.Fail<int>("Tarjeta no encontrada.");
 
-        var fechaCompra = new DateTime(vm.Anio, vm.Mes, vm.Dia);
+        var fechaCompra = vm.Fecha;
         decimal montoCuota = Math.Round(vm.Monto / vm.CantidadCuotas, 2);
 
         // Usar DiaCierre del mes específico si existe; si no, el default de la tarjeta
-        var fechaMensual = await tarjetaRepo.GetFechaMensualAsync(vm.TarjetaId.Value, vm.Mes, vm.Anio);
+        var fechaMensual = await tarjetaRepo.GetFechaMensualAsync(vm.TarjetaId.Value, vm.Fecha.Month, vm.Fecha.Year);
         int diaCierre    = fechaMensual?.DiaCierre ?? tarjeta.DiaCierre;
 
         // Determinar mes de cierre de la primera cuota
@@ -306,8 +343,8 @@ public class GastoService(
             {
                 Id         = c.Id,
                 Nombre     = c.Nombre,
-                TipoId     = c.TipoId,
-                TipoNombre = c.TipoEntidad?.Nombre ?? "",
+                TipoEntidad = c.TipoEntidad,
+                TipoNombre  = c.TipoEntidad.ToString(),
                 SaldoActual = saldo,
                 AlertaSaldo = c.AlertaSaldo
             });

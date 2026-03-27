@@ -7,10 +7,10 @@ namespace ControlGastos.Repositories;
 public class TarjetaRepository(AppDbContext db) : ITarjetaRepository
 {
     public Task<List<Tarjeta>> GetAllAsync() =>
-        db.Tarjetas.ToListAsync();
+        db.Tarjetas.Include(t => t.RedTarjeta).ToListAsync();
 
     public Task<Tarjeta?> GetByIdAsync(int id) =>
-        db.Tarjetas.FindAsync(id).AsTask();
+        db.Tarjetas.Include(t => t.RedTarjeta).FirstOrDefaultAsync(t => t.Id == id);
 
     public Task<List<TarjetaCuota>> GetCuotasByMesAsync(int mes, int anio) =>
         db.TarjetaCuotas

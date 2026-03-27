@@ -12,9 +12,8 @@ public class Tarjeta
     [MaxLength(30)]
     public string Banco { get; set; } = "";
 
-    // "VISA" | "Mastercard" | "AMEX"
-    [MaxLength(20)]
-    public string Red { get; set; } = "VISA";
+    public int? RedTarjetaId { get; set; }
+    public RedTarjeta? RedTarjeta { get; set; }
 
     public int DiaCierre { get; set; }
     public int DiaVencimiento { get; set; }

@@ -4,7 +4,8 @@
     ViewData["Title"] = "Tarjetas";
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
     string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
 
     var tabInicial = Request.Query["tab"].ToString();
@@ -292,7 +293,7 @@
                             <td><strong>@t.Nombre</strong></td>
                             <td>@t.Banco</td>
                             <td>
-                                <span class="badge badge-fijo" style="font-size:.75rem">@t.Red</span>
+                                <span class="badge badge-fijo" style="font-size:.75rem">@t.RedTarjeta?.Nombre</span>
                             </td>
                             <td class="text-center">
                                 @vm.DiaCierreEfectivo(t)

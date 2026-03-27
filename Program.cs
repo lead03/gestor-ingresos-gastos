@@ -27,8 +27,8 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<DeudaService>();
 builder.Services.AddScoped<PersonaService>();
 builder.Services.AddScoped<CuentaService>();
-builder.Services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
 builder.Services.AddScoped<ConfiguracionService>();
+builder.Services.AddScoped<ICotizacionConfigRepository, CotizacionConfigRepository>();
 builder.Services.AddScoped<CotizacionService>();
 builder.Services.AddScoped<IPagoPersonaRepository, PagoPersonaRepository>();
 
@@ -36,8 +36,8 @@ var invariantCulture = System.Globalization.CultureInfo.InvariantCulture;
 builder.Services.Configure<Microsoft.AspNetCore.Builder.RequestLocalizationOptions>(opts =>
 {
     opts.DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture(invariantCulture);
-    opts.SupportedCultures    = new[] { invariantCulture };
-    opts.SupportedUICultures  = new[] { invariantCulture };
+    opts.SupportedCultures    = [invariantCulture];
+    opts.SupportedUICultures  = [invariantCulture];
 });
 
 var app = builder.Build();
@@ -45,65 +45,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-
-    // ── Migraciones manuales (schema incremental) ─────────────────────
-    // Columna AceptaCuotas en Deudas
-    var columnas = db.Database
-        .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('Deudas')")
-        .ToList();
-    if (!columnas.Contains("AceptaCuotas"))
-        db.Database.ExecuteSqlRaw(
-            "ALTER TABLE Deudas ADD COLUMN AceptaCuotas INTEGER NOT NULL DEFAULT 0");
-
-    // Tabla PagosPersona — drop y recrear si tiene schema viejo (IngresoId)
-    var tablas = db.Database
-        .SqlQueryRaw<string>("SELECT name FROM sqlite_master WHERE type='table'")
-        .ToList();
-    bool recrearPagos = false;
-    if (tablas.Contains("PagosPersona"))
-    {
-        var colsPagos = db.Database
-            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('PagosPersona')")
-            .ToList();
-        if (colsPagos.Contains("IngresoId"))
-        {
-            db.Database.ExecuteSqlRaw("DROP TABLE PagosPersona");
-            recrearPagos = true;
-        }
-    }
-    if (!tablas.Contains("PagosPersona") || recrearPagos)
-        db.Database.ExecuteSqlRaw(@"
-            CREATE TABLE PagosPersona (
-                Id          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                PersonaId   INTEGER NOT NULL,
-                CuentaId    INTEGER NULL,
-                Monto       TEXT    NOT NULL,
-                MonedaId    INTEGER NOT NULL DEFAULT 1,
-                Fecha       TEXT    NOT NULL,
-                Descripcion TEXT    NULL,
-                CONSTRAINT FK_PagosPersona_Personas
-                    FOREIGN KEY (PersonaId) REFERENCES Personas(Id) ON DELETE CASCADE,
-                CONSTRAINT FK_PagosPersona_Cuentas
-                    FOREIGN KEY (CuentaId) REFERENCES Cuentas(Id) ON DELETE SET NULL
-            );
-            CREATE INDEX IX_PagosPersona_PersonaId ON PagosPersona(PersonaId)");
-
-    // Tabla DeudaCuotas
-    if (!tablas.Contains("DeudaCuotas"))
-        db.Database.ExecuteSqlRaw(@"
-            CREATE TABLE DeudaCuotas (
-                Id          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                DeudaId     INTEGER NOT NULL,
-                Mes         INTEGER NOT NULL,
-                Anio        INTEGER NOT NULL,
-                Monto       TEXT    NOT NULL,
-                MontoPagado TEXT    NOT NULL DEFAULT '0',
-                Estado      TEXT    NOT NULL DEFAULT 'Activa',
-                Descripcion TEXT    NULL,
-                CONSTRAINT FK_DeudaCuotas_Deudas
-                    FOREIGN KEY (DeudaId) REFERENCES Deudas(Id) ON DELETE CASCADE
-            );
-            CREATE INDEX IX_DeudaCuotas_DeudaId ON DeudaCuotas(DeudaId);");
 
     // Seed TiposCategoriaGasto
     if (!db.TiposCategoriaGasto.Any())
@@ -195,53 +136,51 @@ using (var scope = app.Services.CreateScope())
             new ControlGastos.Models.CategoriaGasto { Nombre = "Entretenimiento", TipoId = 2 },
             new ControlGastos.Models.CategoriaGasto { Nombre = "Arte", TipoId = 2 },
             new ControlGastos.Models.CategoriaGasto { Nombre = "Gastos bancarios", TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Préstamo", TipoId = 2 },
+            new ControlGastos.Models.CategoriaGasto { Nombre = "Otros", TipoId = 2 },
             new ControlGastos.Models.CategoriaGasto { Nombre = "Impuestos en compras", TipoId = 2 }
         );
         db.SaveChanges();
     }
 
-    // Seed TiposEntidad
-    if (!db.TiposEntidad.Any())
-    {
-        db.TiposEntidad.AddRange(
-            new ControlGastos.Models.TipoEntidad { Id = 0, Nombre = "Efectivo" },
-            new ControlGastos.Models.TipoEntidad { Id = 1, Nombre = "Banco" },
-            new ControlGastos.Models.TipoEntidad { Id = 2, Nombre = "Billetera" }
-        );
-        db.SaveChanges();
-    }
-
-    // Seed ConfigOpciones (Redes)
-    if (!db.ConfigOpciones.Any(c => c.Tipo == "Red"))
+    // Seed RedesTarjeta
+    if (!db.RedesTarjeta.Any())
     {
         string[] redes = ["VISA", "Mastercard", "AMEX", "Naranja", "Cabal"];
         for (int i = 0; i < redes.Length; i++)
-            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Red", Valor = redes[i], Orden = i + 1 });
+            db.RedesTarjeta.Add(new ControlGastos.Models.RedTarjeta { Nombre = redes[i], Orden = i + 1 });
         db.SaveChanges();
     }
 
-    // Seed ConfigOpciones (Bancos)
-    if (!db.ConfigOpciones.Any(c => c.Tipo == "Banco"))
+    // Seed Bancos
+    if (!db.Bancos.Any())
     {
         string[] bancos = ["Galicia", "Santander", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC"];
         for (int i = 0; i < bancos.Length; i++)
-            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Banco", TipoEntidadId = 1, Valor = bancos[i], Orden = i + 1 });
+            db.Bancos.Add(new ControlGastos.Models.Banco { Nombre = bancos[i], Orden = i + 1 });
         db.SaveChanges();
     }
 
-    // Seed ConfigOpciones (Billeteras)
-    if (!db.ConfigOpciones.Any(c => c.Tipo == "Billetera"))
+    // Seed Billeteras
+    if (!db.Billeteras.Any())
     {
         string[] billeteras = ["MercadoPago", "Naranja X", "Ualá", "Lemon", "Brubank", "Personal Pay"];
         for (int i = 0; i < billeteras.Length; i++)
-            db.ConfigOpciones.Add(new ControlGastos.Models.ConfigOpcion { Tipo = "Billetera", TipoEntidadId = 2, Valor = billeteras[i], Orden = i + 1 });
+            db.Billeteras.Add(new ControlGastos.Models.Billetera { Nombre = billeteras[i], Orden = i + 1 });
         db.SaveChanges();
     }
 
     // Seed cuenta Efectivo si no hay ninguna activa
     if (!db.Cuentas.Any(c => c.Activa))
     {
-        db.Cuentas.Add(new ControlGastos.Models.Cuenta { Nombre = "Efectivo", TipoId = 0, SaldoInicial = 0, Activa = true });
+        db.Cuentas.Add(new ControlGastos.Models.Cuenta { Nombre = "Efectivo", TipoEntidad = ControlGastos.Models.TipoEntidad.Efectivo, SaldoInicial = 0, Activa = true });
+        db.SaveChanges();
+    }
+
+    // Seed CotizacionConfig (singleton Id=1)
+    if (!db.CotizacionConfigs.Any())
+    {
+        db.CotizacionConfigs.Add(new ControlGastos.Models.CotizacionConfig { Id = 1 });
         db.SaveChanges();
     }
 }

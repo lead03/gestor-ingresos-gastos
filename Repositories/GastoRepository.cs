@@ -18,8 +18,8 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
             .Include(g => g.Tarjeta)
             .Include(g => g.TarjetaCuota)
             .Include(g => g.Participantes).ThenInclude(p => p.Persona)
-            .Where(g => g.Mes == mes && g.Anio == anio && g.TarjetaCuotaId == null)
-            .OrderBy(g => g.Dia)
+            .Where(g => g.Fecha.Month == mes && g.Fecha.Year == anio && g.TarjetaCuotaId == null)
+            .OrderBy(g => g.Fecha)
             .ToListAsync();
 
         // 2. Cuotas TC (2.ª, 3.ª, …) que cierran este mes y tienen GastoItem asociado
@@ -65,7 +65,7 @@ public class GastoRepository(AppDbContext db) : IGastoRepository
             }
         }
 
-        return [.. gastosDirecto, .. gastosCuotas.OrderBy(g => g.Dia)];
+        return [.. gastosDirecto, .. gastosCuotas.OrderBy(g => g.Fecha)];
     }
 
     public Task<GastoItem?> GetByIdAsync(int id) =>
@@ -155,9 +155,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
           .Include(p => p.GastoItem).ThenInclude(g => g.Categoria)
           .Include(p => p.GastoItem).ThenInclude(g => g.TarjetaCuota)
           .Where(p => p.PersonaId == personaId)
-          .OrderByDescending(p => p.GastoItem.Anio)
-          .ThenByDescending(p => p.GastoItem.Mes)
-          .ThenByDescending(p => p.GastoItem.Dia)
+          .OrderByDescending(p => p.GastoItem.Fecha)
           .ToListAsync();
 
     public async Task<List<PersonaParticipacionVM>> GetExpandedByPersonaAsync(int personaId)
@@ -167,7 +165,10 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
             .AsNoTracking()
             .Include(p => p.GastoItem).ThenInclude(g => g.Categoria)
             .Include(p => p.GastoItem).ThenInclude(g => g.TarjetaCuota)
-            .Where(p => p.PersonaId == personaId && p.Tipo == TipoParticipante.Persona)
+            .Where(p => p.PersonaId == personaId
+                     && p.Tipo == TipoParticipante.Persona
+                     && (p.GastoItem.PagadorPersonaId == null
+                         || p.GastoItem.PagadorPersonaId != personaId))
             .ToListAsync();
 
         // 2. Para los gastos TC, traer TODAS sus cuotas (por GastoItemId)
@@ -202,7 +203,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
                 if (cuotasGasto.Count == 0)
                 {
                     // Fallback: sin cuotas encontradas, mostrar en mes de compra
-                    resultado.Add(MapDirect(par, g.Mes, g.Anio));
+                    resultado.Add(MapDirect(par, g.Fecha.Month, g.Fecha.Year));
                     continue;
                 }
 
@@ -216,9 +217,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
                     resultado.Add(new PersonaParticipacionVM
                     {
                         GastoItemId  = par.GastoItemId,
-                        Dia          = g.Dia,
-                        MesCompra    = g.Mes,
-                        AnioCompra   = g.Anio,
+                        FechaCompra  = g.Fecha,
                         Mes          = cuota.MesCierre,
                         Anio         = cuota.AnioCierre,
                         Categoria    = g.Categoria.Nombre,
@@ -232,7 +231,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
             else
             {
                 // Gasto directo: una sola entrada
-                resultado.Add(MapDirect(par, g.Mes, g.Anio));
+                resultado.Add(MapDirect(par, g.Fecha.Month, g.Fecha.Year));
             }
         }
 
@@ -242,9 +241,7 @@ public class GastoParticipanteRepository(AppDbContext db) : IGastoParticipanteRe
             new()
             {
                 GastoItemId = par.GastoItemId,
-                Dia         = par.GastoItem.Dia,
-                MesCompra   = par.GastoItem.Mes,
-                AnioCompra  = par.GastoItem.Anio,
+                FechaCompra = par.GastoItem.Fecha,
                 Mes         = mes,
                 Anio        = anio,
                 Categoria   = par.GastoItem.Categoria.Nombre,

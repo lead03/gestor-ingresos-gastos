@@ -20,11 +20,12 @@
         vm.Personas.Select(p => new { id = p.Id, nombre = p.Nombre }));
     var participantesJson = System.Text.Json.JsonSerializer.Serialize(
         vm.Participantes.Select(p => new { tipo = p.Tipo, descripcion = p.Descripcion, monto = p.Monto, personaId = p.PersonaId }));
+    int? pagadorInicial = vm.PagadorPersonaId;
 }
 
 <div class="page-header">
     <div><div class="page-title">@(esEdicion ? "Editar gasto" : "Nuevo gasto")</div></div>
-    <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">← Volver</a>
+    <a asp-page="./Index" asp-route-mes="@vm.Fecha.Month" asp-route-anio="@vm.Fecha.Year" class="btn btn-ghost">← Volver</a>
 </div>
 
 <div class="card" style="max-width:720px">
@@ -35,10 +36,8 @@
             <div class="form-group">
                 <label>Fecha</label>
                 <input type="date" id="fecha-gasto"
-                       value="@(new DateTime(vm.Anio, vm.Mes, vm.Dia).ToString("yyyy-MM-dd"))" />
-                <input type="hidden" asp-for="VM.Dia" id="h-dia" />
-                <input type="hidden" asp-for="VM.Mes" id="h-mes" />
-                <input type="hidden" asp-for="VM.Anio" id="h-anio" />
+                       value="@vm.Fecha.ToString("yyyy-MM-dd")" />
+                <input type="hidden" asp-for="VM.Fecha" id="h-fecha" />
             </div>
 
             <div class="form-group full">
@@ -140,10 +139,23 @@
             </div>
         </div>
 
+        <!-- ¿Quién pagó? — visible solo cuando hay personas en la división -->
+        <div id="seccion-pagador" style="display:none;margin-top:16px;padding:14px 16px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin-bottom:8px">¿Quién pagó el total?</div>
+            <select id="sel-pagador" onchange="onPagadorChange(this)"
+                    style="background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:.9rem;width:100%">
+                <option value="">Yo (pagué yo)</option>
+            </select>
+            <div style="font-size:.76rem;color:var(--text2);margin-top:6px">
+                Si otra persona pagó el total, se registrará automáticamente una deuda "Le debo" por tu parte.
+            </div>
+            <input type="hidden" asp-for="VM.PagadorPersonaId" id="h-pagador" />
+        </div>
+
         <div id="participantes-hidden"></div>
 
         <div class="modal-footer" style="margin-top:24px">
-            <a asp-page="./Index" asp-route-mes="@vm.Mes" asp-route-anio="@vm.Anio" class="btn btn-ghost">Cancelar</a>
+            <a asp-page="./Index" asp-route-mes="@vm.Fecha.Month" asp-route-anio="@vm.Fecha.Year" class="btn btn-ghost">Cancelar</a>
             <button type="submit" class="btn btn-primary" onclick="return prepararSubmit()">
                 @(esEdicion ? "Guardar cambios" : "Registrar gasto")
             </button>
@@ -154,21 +166,19 @@
 @section Scripts {
     <script src="~/js/money-input.js"></script>
     <script>
-        const TARJETAS      = JSON.parse('@Html.Raw(tarjetasJson)');
-        const CUENTAS_GASTO = JSON.parse('@Html.Raw(cuentasJson)');
-        const PERSONAS    = JSON.parse('@Html.Raw(personasJson)');
-        let participantes = JSON.parse('@Html.Raw(participantesJson)');
-        let nextKey = 0;
+        const TARJETAS        = JSON.parse('@Html.Raw(tarjetasJson)');
+        const CUENTAS_GASTO   = JSON.parse('@Html.Raw(cuentasJson)');
+        const PERSONAS        = JSON.parse('@Html.Raw(personasJson)');
+        let participantes     = JSON.parse('@Html.Raw(participantesJson)');
+        let nextKey           = 0;
         let tarjetaSeleccionada = null;
+        let pagadorInicial    = @(pagadorInicial.HasValue ? pagadorInicial.Value.ToString() : "null");
 
         const MAX_MONTO = 9_999_999_999.99;
 
         // ── Fecha ─────────────────────────────────────────────────────────────
         document.getElementById('fecha-gasto').addEventListener('change', function() {
-            const d = new Date(this.value + 'T00:00:00');
-            document.getElementById('h-dia').value  = d.getDate();
-            document.getElementById('h-mes').value  = d.getMonth() + 1;
-            document.getElementById('h-anio').value = d.getFullYear();
+            document.getElementById('h-fecha').value = this.value; // yyyy-MM-dd
             calcMontoCuota();
         });
         document.getElementById('fecha-gasto').dispatchEvent(new Event('change'));
@@ -236,8 +246,16 @@
         // ── División ──────────────────────────────────────────────────────────
         function toggleDivision(chk) {
             document.getElementById('seccion-participantes').style.display = chk.checked ? 'block' : 'none';
+            if (!chk.checked) {
+                // Limpiar participantes y pagador al desactivar la división
+                participantes = [];
+                renderParticipantes();
+                document.getElementById('h-pagador').value = '';
+                document.getElementById('seccion-pagador').style.display = 'none';
+            }
             if (chk.checked && participantes.length === 0) agregarParticipante('Yo');
             actualizarTotales();
+            actualizarPagadorSelect();
         }
 
         function agregarParticipante(tipo, datos = {}) {
@@ -253,6 +271,7 @@
                 descripcion: datos.descripcion ?? (tipo === 'Yo' ? 'Yo' : tipo === 'Pagado' ? 'Pagado' : ''),
                 monto: datos.monto ?? 0, personaId: datos.personaId ?? null });
             renderParticipantes();
+            actualizarPagadorSelect();
         }
 
         function renderParticipantes() {
@@ -295,6 +314,7 @@
             }
             participantes[idx].personaId   = pid;
             participantes[idx].descripcion = sel.options[sel.selectedIndex].text;
+            actualizarPagadorSelect();
         }
         function onDescChange(idx,input)      { participantes[idx].descripcion = input.value; }
         function onMontoPartChange(idx,input) { participantes[idx].monto = getRawMoney(input); actualizarTotales(); }
@@ -329,7 +349,69 @@
 
             calcMontoCuota();
         }
-        function eliminarParticipante(idx)    { participantes.splice(idx,1); renderParticipantes(); }
+        function eliminarParticipante(idx)    { participantes.splice(idx,1); renderParticipantes(); actualizarPagadorSelect(); }
+
+        // ── ¿Quién pagó? ──────────────────────────────────────────────────────
+        function actualizarPagadorSelect() {
+            const chk      = document.getElementById('chk-divide');
+            const seccion  = document.getElementById('seccion-pagador');
+            const personas = participantes.filter(p => p.tipo === 'Persona' && p.personaId);
+
+            if (!chk.checked || personas.length === 0) {
+                seccion.style.display = 'none';
+                document.getElementById('h-pagador').value = '';
+                return;
+            }
+            seccion.style.display = 'block';
+
+            const sel    = document.getElementById('sel-pagador');
+            const prevId = sel.value;
+            sel.innerHTML = '<option value="">Yo (pagué yo)</option>';
+            personas.forEach(p => {
+                const per = PERSONAS.find(x => x.id === p.personaId);
+                if (!per) return;
+                const opt      = document.createElement('option');
+                opt.value      = per.id;
+                opt.textContent = per.nombre;
+                sel.appendChild(opt);
+            });
+
+            // Restaurar selección previa si sigue siendo válida
+            const restored = pagadorInicial
+                ? Array.from(sel.options).some(o => parseInt(o.value) === pagadorInicial)
+                : false;
+            if (restored) {
+                sel.value = pagadorInicial;
+                pagadorInicial = null; // usarlo solo una vez
+            } else if (Array.from(sel.options).some(o => o.value === prevId)) {
+                sel.value = prevId;
+            } else {
+                sel.value = '';
+            }
+
+            onPagadorChange(sel);
+        }
+
+        function onPagadorChange(sel) {
+            document.getElementById('h-pagador').value = sel.value || '';
+
+            const otroPago  = sel.value !== '';
+            const selMedio  = document.getElementById('sel-medio');
+
+            if (otroPago) {
+                // Bloquear medio de pago y limpiar selección
+                selMedio.value    = '';
+                selMedio.disabled = true;
+                selMedio.style.opacity = '0.45';
+                document.getElementById('h-cuenta').value  = '';
+                document.getElementById('h-tarjeta').value = '';
+                mostrarCuotas(false);
+            } else {
+                // Restaurar medio de pago
+                selMedio.disabled = false;
+                selMedio.style.opacity = '';
+            }
+        }
 
         function dividirIgual() {
             const total = getRawMoney(document.getElementById('monto-total'));
@@ -357,9 +439,10 @@
             restoreMoneyForSubmit(montoEl);
             document.querySelectorAll('.part-monto').forEach(restoreMoneyForSubmit);
 
-            // Validar medio de pago obligatorio
+            // Validar medio de pago (no obligatorio si otra persona pagó)
+            const otroPago = document.getElementById('h-pagador').value !== '';
             const medioVal = document.getElementById('sel-medio').value;
-            if (!medioVal) { mostrarError('Medio de pago requerido', 'Debe seleccionar un medio de pago (cuenta o tarjeta).'); return false; }
+            if (!medioVal && !otroPago) { mostrarError('Medio de pago requerido', 'Debe seleccionar un medio de pago (cuenta o tarjeta).'); return false; }
             const total = parseFloat(montoEl.value) || 0;
             if (total <= 0) { mostrarError('Monto inválido','El monto debe ser mayor a $0.'); return false; }
             if (total > MAX_MONTO) {
@@ -402,6 +485,7 @@
                 if (participantes.length > 0) renderParticipantes(); else agregarParticipante('Yo');
             }
             actualizarTotales();
+            actualizarPagadorSelect();
 
             // Restaurar medio de pago al editar
             const cuentaId  = '@(vm.CuentaId?.ToString() ?? "")';

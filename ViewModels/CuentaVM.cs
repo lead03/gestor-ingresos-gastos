@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ControlGastos.Models;
+using System.Collections.Generic;
 
 namespace ControlGastos.ViewModels;
 
@@ -13,8 +14,12 @@ public class CuentaResumenVM
 {
     public int        Id                 { get; set; }
     public string     Nombre             { get; set; } = "";
-    public int        TipoId             { get; set; }
+    public TipoEntidad TipoEntidad        { get; set; }
     public string     TipoNombre         { get; set; } = "";
+    public int?       BancoId            { get; set; }
+    public string?    BancoNombre        { get; set; }
+    public int?       BilleteraId        { get; set; }
+    public string?    BilletteraNombre   { get; set; }
     public decimal    SaldoInicial       { get; set; }
     public decimal    SaldoActual  { get; set; }
     public decimal?   AlertaSaldo  { get; set; }
@@ -55,7 +60,10 @@ public class CuentaFormVM : IValidatableObject
     public string Nombre { get; set; } = "";
 
     [Required(ErrorMessage = "El tipo de cuenta es obligatorio.")]
-    public int? TipoId { get; set; }
+    public TipoEntidad TipoEntidad { get; set; }
+
+    public int? BancoId { get; set; }
+    public int? BilleteraId { get; set; }
 
     [Range(0, 9999999999.99, ErrorMessage = "El saldo inicial no puede ser negativo ni superar $ 9.999.999.999,99.")]
     public decimal SaldoInicial { get; set; }
@@ -63,6 +71,9 @@ public class CuentaFormVM : IValidatableObject
     public decimal? AlertaSaldo { get; set; }
     public Moneda   Moneda      { get; set; } = Moneda.ARS;
     public bool     Activa      { get; set; } = true;
+
+    public List<Banco>     OpcionesBanco     { get; set; } = new();
+    public List<Billetera> OpcionesBilletera { get; set; } = new();
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {

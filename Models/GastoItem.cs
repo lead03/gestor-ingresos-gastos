@@ -5,9 +5,7 @@ namespace ControlGastos.Models;
 public class GastoItem
 {
     public int Id { get; set; }
-    public int Mes  { get; set; }
-    public int Anio { get; set; }
-    public int Dia  { get; set; }
+    public DateTime Fecha { get; set; }
 
     public int CategoriaId { get; set; }
     public CategoriaGasto Categoria { get; set; } = null!;
@@ -34,6 +32,10 @@ public class GastoItem
     public TarjetaCuota? TarjetaCuota { get; set; }
 
     public ICollection<GastoParticipante> Participantes { get; set; } = new List<GastoParticipante>();
+
+    /// <summary>Persona que pagó el total del gasto en lugar del usuario. Null = pagó el usuario.</summary>
+    public int?     PagadorPersonaId { get; set; }
+    public Persona? PagadorPersona   { get; set; }
 
     // Nombre del medio de pago para mostrar
     public string MedioPagoNombre =>

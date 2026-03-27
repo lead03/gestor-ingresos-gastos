@@ -10,6 +10,9 @@ public interface IDeudaRepository
     Task UpdateAsync(Deuda deuda);
     Task DeleteAsync(int id);
 
+    // ── Auto-generadas desde gastos ─────────────────────────────────
+    Task DeleteByGastoItemIdAsync(int gastoItemId);
+
     // ── Cuotas mensuales ────────────────────────────────────────────
     Task<List<DeudaCuota>> GetCuotasByMesAsync(int mes, int anio);
     Task<DeudaCuota?> GetCuotaByIdAsync(int id);

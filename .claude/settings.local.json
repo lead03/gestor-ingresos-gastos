@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(Select-String -Pattern \"error CS|warning CS\")",
+      "Bash(git checkout:*)",
+      "Bash(findstr /C:\"error CS\" /C:\"Build succeeded\" /C:\"ERROR al compilar\")",
+      "Bash(find /c/Users/leand/Projects/ControlGastos/Pages -name *.cshtml -type f)"
+    ]
+  }
+}

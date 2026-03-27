@@ -52,7 +52,7 @@ public class DashboardService(
                 .ToList(),
             PorDia = Enumerable.Range(1, DateTime.DaysInMonth(anio, mes))
                 .Select(d => (d,
-                    gastos.Where(g => g.Dia == d).Sum(MontoEfectivo),
+                    gastos.Where(g => g.Fecha.Day == d).Sum(MontoEfectivo),
                     ingresos.Where(i => i.Dia == d).Sum(i => i.Monto)
                 )).ToList()
         };

@@ -5,10 +5,8 @@ namespace ControlGastos.ViewModels;
 
 public class GastoFormVM : IValidatableObject
 {
-    public int Id   { get; set; }
-    public int Mes  { get; set; } = DateTime.Today.Month;
-    public int Anio { get; set; } = DateTime.Today.Year;
-    public int Dia  { get; set; } = DateTime.Today.Day;
+    public int      Id    { get; set; }
+    public DateTime Fecha { get; set; } = DateTime.Today;
 
     [Required(ErrorMessage = "Debe seleccionar una categoría.")]
     [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar una categoría.")]
@@ -38,6 +36,9 @@ public class GastoFormVM : IValidatableObject
     public int? TarjetaCuotaId { get; set; }
 
     public List<ParticipanteFormVM> Participantes { get; set; } = new();
+
+    /// <summary>PersonaId de quien pagó el total del gasto. Null = pagó el usuario.</summary>
+    public int? PagadorPersonaId { get; set; }
 
     // Listas para selects
     public List<CategoriaGasto>  Categorias { get; set; } = new();

@@ -1,17 +1,20 @@
 using ControlGastos.Models;
+using ControlGastos.Repositories;
 using ControlGastos.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ControlGastos.Pages.Configuracion;
 
-public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc, IngresoService ingresoSvc) : PageModel
+public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc, IngresoService ingresoSvc, ICotizacionConfigRepository cotizacionRepo) : PageModel
 {
-    public List<ConfigOpcion>   Redes      { get; set; } = new();
-    public List<ConfigOpcion>   Bancos     { get; set; } = new();
-    public List<ConfigOpcion>   Billeteras { get; set; } = new();
+    public List<RedTarjeta>     Redes      { get; set; } = new();
+    public List<Banco>          Bancos     { get; set; } = new();
+    public List<Billetera>      Billeteras { get; set; } = new();
     public List<CategoriaGasto> Categorias { get; set; } = new();
     public List<TipoIngreso>    TiposIngreso { get; set; } = new();
+
+    public CotizacionConfig Config { get; set; } = new();
 
     public string   TipoDolarActual       { get; set; } = "blue";
     public decimal? CotizacionActual      { get; set; }
@@ -34,6 +37,12 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     [BindProperty] public int     EditTipoId            { get; set; }
     [BindProperty] public string  EditTipoNombre        { get; set; } = "";
 
+    // CotizacionConfig form bindings
+    [BindProperty] public string  TipoDolar    { get; set; } = "blue";
+    [BindProperty] public string  ApiUrl       { get; set; } = "https://dolarapi.com/v1/dolares";
+    [BindProperty] public bool    UsarApi      { get; set; } = true;
+    [BindProperty] public decimal ManualValor  { get; set; } = 0;
+
     public async Task OnGetAsync()
     {
         await CargarAsync();
@@ -43,25 +52,37 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     public async Task<IActionResult> OnPostAgregarRedAsync()
     {
         if (!string.IsNullOrWhiteSpace(NuevaRed)) await svc.AddRedAsync(NuevaRed);
-        return RedirectToPage();
+        return RedirectToPage(null, "redes");
+    }
+
+    public async Task<IActionResult> OnPostEliminarRedAsync(int id)
+    {
+        await svc.DeleteRedAsync(id);
+        return RedirectToPage(null, "redes");
     }
 
     public async Task<IActionResult> OnPostAgregarBancoAsync()
     {
         if (!string.IsNullOrWhiteSpace(NuevoBanco)) await svc.AddBancoAsync(NuevoBanco);
-        return RedirectToPage();
+        return RedirectToPage(null, "bancos");
+    }
+
+    public async Task<IActionResult> OnPostEliminarBancoAsync(int id)
+    {
+        await svc.DeleteBancoAsync(id);
+        return RedirectToPage(null, "bancos");
     }
 
     public async Task<IActionResult> OnPostAgregarBilleteraAsync()
     {
         if (!string.IsNullOrWhiteSpace(NuevaBilletera)) await svc.AddBilleteraAsync(NuevaBilletera);
-        return RedirectToPage();
+        return RedirectToPage(null, "billeteras");
     }
 
-    public async Task<IActionResult> OnPostEliminarAsync(int id)
+    public async Task<IActionResult> OnPostEliminarBilleteraAsync(int id)
     {
-        await svc.DeleteAsync(id);
-        return RedirectToPage();
+        await svc.DeleteBilleteraAsync(id);
+        return RedirectToPage(null, "billeteras");
     }
 
     // ── Categorías ────────────────────────────────────────────────
@@ -101,9 +122,12 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
 
     public async Task<IActionResult> OnPostGuardarCotizacionAsync()
     {
-        await cotizacionSvc.SaveTipoDolarAsync(NuevoTipoDolar);
-        if (CotizacionManualInput > 0)
-            await cotizacionSvc.SaveCotizacionManualAsync(CotizacionManualInput);
+        var config = await cotizacionRepo.GetConfigAsync();
+        config.TipoDolar        = TipoDolar;
+        config.ApiUrl           = ApiUrl;
+        config.UsarApi          = UsarApi;
+        config.CotizacionManual = ManualValor;
+        await cotizacionRepo.SaveConfigAsync(config);
         return RedirectToPage(null, "cotizacion");
     }
 
@@ -141,13 +165,18 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         Billeteras   = await svc.GetBilleterasAsync();
         Categorias   = await gastoSvc.GetTodasCategoriasAsync();
         TiposIngreso = await ingresoSvc.GetTodosTiposAsync();
-        TipoDolarActual  = await cotizacionSvc.GetTipoDolarAsync();
+        Config           = await cotizacionRepo.GetConfigAsync();
+        TipoDolarActual  = Config.TipoDolar;
+        TipoDolar        = Config.TipoDolar;
+        ApiUrl           = Config.ApiUrl;
+        UsarApi          = Config.UsarApi;
+        ManualValor      = Config.CotizacionManual;
         var cotizRes         = await cotizacionSvc.GetCotizacionConFuenteAsync();
         CotizacionActual     = cotizRes?.Valor;
         FuenteCotizacion     = cotizRes?.Fuente;
         FuenteCotizacionTipo = cotizRes?.FuenteTipo;
         FechaUltimaApi       = cotizRes?.FechaUltimaApi;
-        CotizacionManual = await cotizacionSvc.GetCotizacionManualAsync();
+        CotizacionManual = Config.CotizacionManual > 0 ? Config.CotizacionManual : null;
         ViewData["Active"] = "configuracion";
     }
 }

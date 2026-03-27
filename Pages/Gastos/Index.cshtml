@@ -4,7 +4,8 @@
     ViewData["Title"] = "Gastos";
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
     string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
 }
 
@@ -37,7 +38,7 @@
             <span class="val" style="font-size:.78rem;color:#64b5f6">+ U$D @Peso(vm.TotalUsd)</span>
             @if (vm.CotizacionDolar.HasValue)
             {
-                <span class="val" style="font-size:.72rem;color:var(--text2)">≈ $ @((vm.TotalUsd * vm.CotizacionDolar.Value).ToString("N2"))</span>
+                <span class="val" style="font-size:.72rem;color:var(--text2)">≈ $ @((vm.TotalUsd * vm.CotizacionDolar.Value).ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-AR")))</span>
                 @if (vm.FuenteCotizacionTipo == "ultima_api")
                 {
                     <span style="font-size:.7rem;color:#e0a800;margin-left:4px" title="@vm.FuenteCotizacion">⚡</span>
@@ -82,13 +83,17 @@
                 {
                     decimal miParte = g.MiParteMes;
                     <tr>
-                        <td class="text-center">@g.Dia</td>
+                        <td class="text-center">@g.Fecha.Day</td>
                         <td>@g.Categoria.Nombre</td>
                         <td>
                             @g.Descripcion
                             @if (g.SeDivide)
                             {
                                 <span class="badge badge-var" title="Dividido entre @g.Participantes.Count persona(s)">÷@g.Participantes.Count</span>
+                                @foreach (var p in g.Participantes.Where(p => p.Tipo == ControlGastos.Models.TipoParticipante.Persona))
+                                {
+                                    <span class="badge" style="background:rgba(251,191,36,.13);color:#fbbf24;margin-left:2px">@p.NombreMostrar</span>
+                                }
                             }
                             @if (g.TarjetaCuotaId.HasValue)
                             {
@@ -107,7 +112,7 @@
                             }
                             @if (g.Moneda == ControlGastos.Models.Moneda.USD && vm.CotizacionDolar.HasValue)
                             {
-                                <div style="font-size:.72rem;color:var(--text2)">≈ $ @((g.MontoMes * vm.CotizacionDolar.Value).ToString("N2"))</div>
+                                <div style="font-size:.72rem;color:var(--text2)">≈ $ @((g.MontoMes * vm.CotizacionDolar.Value).ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-AR")))</div>
                             }
                             @if (g.TarjetaCuota != null && g.TarjetaCuota.TotalCuotas > 1)
                             {
@@ -120,7 +125,7 @@
                             @(g.Moneda == ControlGastos.Models.Moneda.USD ? "U$D" : "$") @Peso(miParte)
                             @if (g.Moneda == ControlGastos.Models.Moneda.USD && vm.CotizacionDolar.HasValue)
                             {
-                                <div style="font-size:.72rem;color:var(--text2)">≈ $ @((miParte * vm.CotizacionDolar.Value).ToString("N2"))</div>
+                                <div style="font-size:.72rem;color:var(--text2)">≈ $ @((miParte * vm.CotizacionDolar.Value).ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-AR")))</div>
                             }
                         </td>
                         <td class="text-center">

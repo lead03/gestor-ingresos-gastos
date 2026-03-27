@@ -4,13 +4,14 @@
     ViewData["Title"] = Model.VM.Cuenta.Nombre;
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
 }
 
 <div class="page-header">
     <div>
         <div class="page-title">@vm.Cuenta.Nombre</div>
-        <div class="page-subtitle">@vm.Cuenta.TipoEntidad?.Nombre</div>
+        <div class="page-subtitle">@vm.Cuenta.TipoEntidad</div>
     </div>
     <a asp-page="./Index" class="btn btn-ghost">← Cuentas</a>
 </div>

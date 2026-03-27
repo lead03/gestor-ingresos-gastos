@@ -2,6 +2,30 @@ using ControlGastos.Models;
 
 namespace ControlGastos.ViewModels;
 
+// ── Movimiento unificado (pre-calculado por el servicio) ──────────────────
+public class MovimientoPersonaVM
+{
+    public TipoMovimientoPersona TipoMov     { get; set; }
+    public DateTime              Fecha       { get; set; }
+    public string                Categoria   { get; set; } = "—";
+    public string?               Descripcion { get; set; }
+    public decimal               Monto       { get; set; }   // siempre positivo
+    public int                   RefId       { get; set; }   // GastoItemId | PagoId | DeudaId
+    /// <summary>Solo para DeudaLe/DeudaMe auto-generadas desde un Gasto.</summary>
+    public int?                  GastoItemId { get; set; }
+
+    // String para data-tipo en HTML — debe coincidir con TipoMov en tipos-movimiento.js
+    public string Tipo => TipoMov == TipoMovimientoPersona.Credito ? "Crédito" : TipoMov.ToString();
+
+    // +1 si aumenta lo que me deben, -1 si lo reduce
+    public int     Signo    => TipoMov is TipoMovimientoPersona.Gasto
+                                        or TipoMovimientoPersona.Credito
+                                        or TipoMovimientoPersona.DeudaMe ? 1 : -1;
+    public decimal MontoNeto => Monto * Signo;
+    public string  Color    => Signo >= 0 ? "green" : "amber";
+    public string  Prefijo  => Signo >= 0 ? "+" : "−";
+}
+
 // ── Formulario pago recibido ──────────────────────────────────────────────
 public class PagoPersonaFormVM
 {
@@ -66,6 +90,9 @@ public class PersonaDetalleVM
     // Pagos recibidos
     public List<PagoPersona> Pagos { get; set; } = new();
     public decimal TotalPagos { get; set; }
+
+    // Movimientos del mes — pre-calculados por el servicio (signos, colores incluidos)
+    public List<MovimientoPersonaVM> Movimientos { get; set; } = new();
 }
 
 public class PersonaMesVM
@@ -83,10 +110,8 @@ public class PersonaMesVM
 /// </summary>
 public class PersonaParticipacionVM
 {
-    // ── Fecha para mostrar (fecha de compra original) ─────────────────
-    public int    Dia         { get; set; }
-    public int    MesCompra   { get; set; }
-    public int    AnioCompra  { get; set; }
+    // ── Fecha de compra original ──────────────────────────────────────
+    public DateTime FechaCompra { get; set; }
 
     // ── Mes en que aparece (= mes de cierre si es TC cuota) ───────────
     public int    Mes  { get; set; }

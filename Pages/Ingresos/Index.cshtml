@@ -4,7 +4,8 @@
     ViewData["Title"] = "Ingresos";
     Layout = "/Pages/Shared/_Layout.cshtml";
     var vm = Model.VM;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
     string MesNombre(int m) => new DateTime(2000, m, 1).ToString("MMMM");
 }
 

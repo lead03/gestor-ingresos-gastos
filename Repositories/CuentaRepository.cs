@@ -8,15 +8,17 @@ public class CuentaRepository(AppDbContext db) : ICuentaRepository
 {
     public Task<List<Cuenta>> GetAllActivasAsync() =>
         db.Cuentas
-          .Include(c => c.TipoEntidad)
+          .Include(c => c.Banco)
+          .Include(c => c.Billetera)
           .Where(c => c.Activa)
-          .OrderBy(c => c.TipoId)
+          .OrderBy(c => c.TipoEntidad)
           .ThenBy(c => c.Nombre)
           .ToListAsync();
 
     public Task<Cuenta?> GetByIdAsync(int id) =>
         db.Cuentas
-          .Include(c => c.TipoEntidad)
+          .Include(c => c.Banco)
+          .Include(c => c.Billetera)
           .FirstOrDefaultAsync(c => c.Id == id);
 
     public async Task AddAsync(Cuenta cuenta)
@@ -46,7 +48,7 @@ public class CuentaRepository(AppDbContext db) : ICuentaRepository
         db.Gastos
           .Include(g => g.Categoria)
           .Where(g => g.CuentaId == cuentaId)
-          .OrderByDescending(g => g.Anio).ThenByDescending(g => g.Mes).ThenByDescending(g => g.Dia)
+          .OrderByDescending(g => g.Fecha)
           .ToListAsync();
 
     public Task<List<Ingreso>> GetIngresosByCuentaAsync(int cuentaId) =>

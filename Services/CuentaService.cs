@@ -17,14 +17,18 @@ public class CuentaService(ICuentaRepository repo)
             var saldo = await CalcularSaldoAsync(c);
             resumen.Add(new CuentaResumenVM
             {
-                Id           = c.Id,
-                Nombre       = c.Nombre,
-                TipoId       = c.TipoId,
-                TipoNombre   = c.TipoEntidad?.Nombre ?? "",
-                SaldoInicial = c.SaldoInicial,
-                SaldoActual  = saldo,
-                AlertaSaldo  = c.AlertaSaldo,
-                Moneda       = c.Moneda,
+                Id              = c.Id,
+                Nombre          = c.Nombre,
+                TipoEntidad     = c.TipoEntidad,
+                TipoNombre      = c.TipoEntidad.ToString(),
+                BancoId         = c.BancoId,
+                BancoNombre     = c.Banco?.Nombre,
+                BilleteraId     = c.BilleteraId,
+                BilletteraNombre = c.Billetera?.Nombre,
+                SaldoInicial    = c.SaldoInicial,
+                SaldoActual     = saldo,
+                AlertaSaldo     = c.AlertaSaldo,
+                Moneda          = c.Moneda,
             });
         }
 
@@ -43,11 +47,11 @@ public class CuentaService(ICuentaRepository repo)
 
         movimientos.AddRange(gastos.Select(g => new MovimientoCuentaVM
         {
-            Fecha       = new DateTime(g.Anio, g.Mes, g.Dia),
+            Fecha       = g.Fecha,
             Descripcion = g.Descripcion ?? g.Categoria.Nombre,
             Categoria   = g.Categoria.Nombre,
             Tipo        = "Gasto",
-            Monto       = g.SeDivide ? g.MiParte ?? g.Monto : g.Monto
+            Monto       = g.Monto   // siempre el monto físico completo salido de la cuenta
         }));
 
         movimientos.AddRange(ingresos.Select(i => new MovimientoCuentaVM
@@ -63,7 +67,7 @@ public class CuentaService(ICuentaRepository repo)
 
         var saldoActual = cuenta.SaldoInicial
                         + ingresos.Sum(i => i.Monto)
-                        - gastos.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
+                        - gastos.Sum(g => g.Monto);
 
         cuenta.SaldoActual = saldoActual;
 
@@ -85,13 +89,17 @@ public class CuentaService(ICuentaRepository repo)
             var saldo = await CalcularSaldoAsync(c);
             resultado.Add(new CuentaResumenVM
             {
-                Id         = c.Id,
-                Nombre     = c.Nombre,
-                TipoId     = c.TipoId,
-                TipoNombre = c.TipoEntidad?.Nombre ?? "",
-                SaldoActual  = saldo,
-                AlertaSaldo  = c.AlertaSaldo,
-                Moneda       = c.Moneda,
+                Id               = c.Id,
+                Nombre           = c.Nombre,
+                TipoEntidad      = c.TipoEntidad,
+                TipoNombre       = c.TipoEntidad.ToString(),
+                BancoId          = c.BancoId,
+                BancoNombre      = c.Banco?.Nombre,
+                BilleteraId      = c.BilleteraId,
+                BilletteraNombre = c.Billetera?.Nombre,
+                SaldoActual      = saldo,
+                AlertaSaldo      = c.AlertaSaldo,
+                Moneda           = c.Moneda,
             });
         }
         return resultado;
@@ -104,7 +112,9 @@ public class CuentaService(ICuentaRepository repo)
             await repo.AddAsync(new Cuenta
             {
                 Nombre       = vm.Nombre,
-                TipoId       = vm.TipoId!.Value,
+                TipoEntidad  = vm.TipoEntidad,
+                BancoId      = vm.BancoId,
+                BilleteraId  = vm.BilleteraId,
                 Moneda       = vm.Moneda,
                 SaldoInicial = vm.SaldoInicial,
                 AlertaSaldo  = vm.AlertaSaldo,
@@ -116,9 +126,11 @@ public class CuentaService(ICuentaRepository repo)
             var c = await repo.GetByIdAsync(vm.Id);
             if (c == null) return Result.Fail("Cuenta no encontrada.");
 
-            c.Nombre  = vm.Nombre;
-            c.TipoId  = vm.TipoId!.Value;
-            c.Moneda  = vm.Moneda;
+            c.Nombre      = vm.Nombre;
+            c.TipoEntidad = vm.TipoEntidad;
+            c.BancoId     = vm.BancoId;
+            c.BilleteraId = vm.BilleteraId;
+            c.Moneda      = vm.Moneda;
             c.SaldoInicial = vm.SaldoInicial;
             c.AlertaSaldo  = vm.AlertaSaldo;
             c.Activa       = vm.Activa;
@@ -151,6 +163,6 @@ public class CuentaService(ICuentaRepository repo)
 
         return c.SaldoInicial
              + ingresos.Sum(i => i.Monto)
-             - gastos.Sum(g => g.SeDivide ? g.MiParte ?? g.Monto : g.Monto);
+             - gastos.Sum(g => g.Monto);
     }
 }

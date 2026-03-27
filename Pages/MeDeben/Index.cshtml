@@ -7,7 +7,8 @@
     var vm   = Model.VM;
     var mes  = (int)ViewData["Mes"]!;
     var anio = (int)ViewData["Anio"]!;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
 
     var nombresMeses = new[]{ "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
                               "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };

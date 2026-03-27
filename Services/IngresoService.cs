@@ -28,7 +28,7 @@ public class IngresoService(IIngresoRepository repo, ICuentaRepository cuentaRep
         var vm = new IngresoFormVM
         {
             Tipos   = tipos,
-            Cuentas = cuentas.Select(c => new CuentaResumenVM { Id = c.Id, Nombre = c.Nombre, TipoId = c.TipoId, TipoNombre = c.TipoEntidad?.Nombre ?? "", Moneda = c.Moneda }).ToList()
+            Cuentas = cuentas.Select(c => new CuentaResumenVM { Id = c.Id, Nombre = c.Nombre, TipoEntidad = c.TipoEntidad, TipoNombre = c.TipoEntidad.ToString(), Moneda = c.Moneda }).ToList()
         };
 
         if (id.HasValue)

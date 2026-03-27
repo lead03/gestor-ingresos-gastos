@@ -62,8 +62,7 @@ public class TarjetaFormVM
     [MaxLength(30)]
     public string Banco { get; set; } = "";
 
-    [MaxLength(20)]
-    public string Red { get; set; } = "VISA";
+    public int? RedTarjetaId { get; set; }
 
     [Range(1, 31, ErrorMessage = "Día inválido.")]
     public int DiaCierre { get; set; } = 1;
@@ -75,8 +74,8 @@ public class TarjetaFormVM
     public decimal? LimiteCredito { get; set; }
 
     // Para los desplegables dinámicos
-    public List<string> OpcionesRed   { get; set; } = new();
-    public List<string> OpcionesBanco { get; set; } = new();
+    public List<RedTarjeta> OpcionesRed   { get; set; } = new();
+    public List<string>     OpcionesBanco { get; set; } = new();
 }
 
 // ── Form fechas mensuales de una tarjeta ─────────────────────────────────

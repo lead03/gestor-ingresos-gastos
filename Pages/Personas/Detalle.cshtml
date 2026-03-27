@@ -7,43 +7,19 @@
     var vm   = Model.VM;
     var mes  = (int)ViewData["Mes"]!;
     var anio = (int)ViewData["Anio"]!;
-    string Peso(decimal v) => v.ToString("N2");
+    var esAR = System.Globalization.CultureInfo.GetCultureInfo("es-AR");
+    string Peso(decimal v) => v.ToString("N2", esAR);
 
     var nombresMeses = new[]{ "", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
                               "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
     string LabelMes(int m, int a) => $"{nombresMeses[m]} {a}";
 
-    // Gastos del mes seleccionado
-    var filasGastos = vm.PorMes.FirstOrDefault()?.Participaciones
-                      ?? new List<ControlGastos.ViewModels.PersonaParticipacionVM>();
+    // Movimientos ya ordenados y con signos pre-calculados por el servicio
+    var movs = vm.Movimientos;
 
-    // Pagos del mes seleccionado
-    var filasPagos = vm.Pagos.Where(p => p.Fecha.Month == mes && p.Fecha.Year == anio).ToList();
-
-    // Tabla unificada ordenada por fecha
-    // (tipo, fecha, categoria, descripcion, monto, refId)
-    var filas = filasGastos
-        .Select(g => (
-            Tipo:        g.EsCuota ? "Crédito" : "Gasto",
-            Fecha:       new DateTime(g.AnioCompra, g.MesCompra, g.Dia),
-            Categoria:   g.EsCuota ? $"{g.Categoria} (cuota {g.NumeroCuota}/{g.TotalCuotas})" : g.Categoria,
-            Descripcion: g.Descripcion,
-            Monto:       g.Monto,
-            RefId:       g.GastoItemId
-        ))
-        .Concat(filasPagos.Select(p => (
-            Tipo:        "Pago",
-            Fecha:       p.Fecha,
-            Categoria:   "—",
-            Descripcion: p.Descripcion,
-            Monto:       p.Monto,
-            RefId:       p.Id
-        )))
-        .OrderBy(f => f.Fecha)
-        .ToList();
-
-    decimal totalGastosMes = filasGastos.Sum(g => g.Monto);
-    decimal totalPagosMes  = filasPagos.Sum(p => p.Monto);
+    decimal totalGastosMes = movs.Where(m => m.TipoMov == TipoMovimientoPersona.Gasto
+                                          || m.TipoMov == TipoMovimientoPersona.Credito).Sum(m => m.Monto);
+    decimal totalPagosMes  = movs.Where(m => m.TipoMov == TipoMovimientoPersona.Pago).Sum(m => m.Monto);
 }
 
 <div class="page-header">
@@ -72,8 +48,8 @@
         <div class="kpi-value @vm.ClaseBalance">@vm.EstadoBalance</div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-label">Gastos compartidos</div>
-        <div class="kpi-value accent">@vm.TotalMovimientos movimiento(s)</div>
+        <div class="kpi-label">Movimientos del mes</div>
+        <div class="kpi-value accent">@movs.Count movimiento(s)</div>
     </div>
     @if (vm.TotalDeudas != 0)
     {
@@ -97,7 +73,7 @@
 <div class="card" style="margin-bottom:20px">
     <div class="card-header">
         <span class="card-title">Movimientos — @LabelMes(mes, anio)</span>
-        @if (filas.Any())
+        @if (movs.Any())
         {
             <div style="display:flex;gap:16px">
                 <div style="text-align:right">
@@ -115,7 +91,7 @@
         }
     </div>
 
-    @if (!filas.Any())
+    @if (!movs.Any())
     {
         <div style="padding:24px;text-align:center;color:var(--text2)">
             Sin movimientos este mes.
@@ -123,11 +99,13 @@
     }
     else
     {
-        var cntTodos      = filas.Count;
-        var cntGasto      = filas.Count(f => f.Tipo == "Gasto");
-        var cntCredito    = filas.Count(f => f.Tipo == "Crédito");
-        var cntPago       = filas.Count(f => f.Tipo == "Pago");
-        var cntSinCredito = filas.Count(f => f.Tipo != "Crédito");
+        var cntTodos      = movs.Count;
+        var cntGasto      = movs.Count(f => f.TipoMov == TipoMovimientoPersona.Gasto);
+        var cntCredito    = movs.Count(f => f.TipoMov == TipoMovimientoPersona.Credito);
+        var cntPago       = movs.Count(f => f.TipoMov == TipoMovimientoPersona.Pago);
+        var cntDeuda      = movs.Count(f => f.TipoMov == TipoMovimientoPersona.DeudaMe
+                                         || f.TipoMov == TipoMovimientoPersona.DeudaLe);
+        var cntSinCredito = movs.Count(f => f.TipoMov != TipoMovimientoPersona.Credito);
 
         <!-- Filtros -->
         <div style="display:flex;gap:6px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--border)">
@@ -140,6 +118,9 @@
             }
             @if (cntPago > 0) {
             <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Pago"        onclick="filtrarMovimientos(this)">Pagos <span class="cnt">@cntPago</span></button>
+            }
+            @if (cntDeuda > 0) {
+            <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="Deuda"       onclick="filtrarMovimientos(this)">Deudas <span class="cnt">@cntDeuda</span></button>
             }
             @if (cntCredito > 0 && cntSinCredito > 0) {
             <button class="btn btn-ghost btn-sm filtro-mov"        data-filtro="sin-credito" onclick="filtrarMovimientos(this)">Sin crédito <span class="cnt">@cntSinCredito</span></button>
@@ -159,38 +140,57 @@
                     </tr>
                 </thead>
                 <tbody id="tbody-movimientos">
-                    @foreach (var f in filas)
+                    @foreach (var f in movs)
                     {
-                        <tr data-tipo="@f.Tipo" data-monto="@f.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-signo="@(f.Tipo == "Pago" ? 1 : -1)">
+                        <tr data-tipo="@f.Tipo"
+                            data-monto="@f.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            data-signo="@f.Signo">
                             <td>@f.Fecha.ToString("dd/MM/yy")</td>
                             <td class="text-center">
-                                @if (f.Tipo == "Gasto")
-                                {
-                                    <span class="badge badge-var">Gasto</span>
-                                }
-                                else if (f.Tipo == "Crédito")
-                                {
-                                    <span class="badge badge-fijo">Crédito</span>
-                                }
-                                else
-                                {
-                                    <span class="badge badge-ok">Pago</span>
-                                }
+                                @if      (f.TipoMov == TipoMovimientoPersona.Gasto)   { <span class="badge badge-var">Gasto</span> }
+                                else if  (f.TipoMov == TipoMovimientoPersona.Credito) { <span class="badge badge-fijo">Crédito</span> }
+                                else if  (f.TipoMov == TipoMovimientoPersona.DeudaMe) { <span class="badge badge-ok"   title="Deuda directa — te debe">Me debe</span> }
+                                else if  (f.TipoMov == TipoMovimientoPersona.DeudaLe) { <span class="badge badge-pend" title="Deuda directa — le debés">Le debo</span> }
+                                else                                                   { <span class="badge badge-ok">Pago</span> }
                             </td>
                             <td>@f.Categoria</td>
                             <td style="color:var(--text2)">@(string.IsNullOrEmpty(f.Descripcion) ? "—" : f.Descripcion)</td>
-                            <td class="text-right amount @(f.Tipo == "Pago" ? "green" : "amber")">
-                                @(f.Tipo == "Pago" ? "+" : "")$ @Peso(f.Monto)
-                            </td>
+                            <td class="text-right amount @f.Color">@f.Prefijo$ @Peso(f.Monto)</td>
                             <td class="text-center">
-                                @if (f.Tipo == "Gasto" || f.Tipo == "Crédito")
+                                @if (f.TipoMov == TipoMovimientoPersona.Gasto || f.TipoMov == TipoMovimientoPersona.Credito)
                                 {
-                                    <a href="/Gastos/Edit/@f.RefId" class="btn btn-ghost btn-sm" title="Editar gasto">✎</a>
+                                    <div style="display:flex;gap:4px;justify-content:center">
+                                        <a href="/Gastos/Edit/@f.RefId" class="btn btn-ghost btn-sm" title="Editar gasto">✎</a>
+                                        <form method="post" asp-page-handler="DeleteGasto"
+                                              asp-route-id="@vm.Persona.Id" asp-route-mes="@mes" asp-route-anio="@anio"
+                                              asp-route-gastoId="@f.RefId" style="display:inline">
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Eliminar gasto"
+                                                    onclick="return confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')">✕</button>
+                                        </form>
+                                    </div>
                                 }
-                                else
+                                else if (f.TipoMov == TipoMovimientoPersona.Pago)
                                 {
                                     <button type="button" class="btn btn-ghost btn-sm" title="Editar pago"
                                             onclick="abrirEditPago(@f.RefId, '@f.Fecha.ToString("yyyy-MM-dd")', @f.Monto.ToString(System.Globalization.CultureInfo.InvariantCulture), '@(f.Descripcion ?? "")')">✎</button>
+                                }
+                                else if (f.GastoItemId.HasValue)
+                                {
+                                    @* Deuda auto-generada desde un Gasto → editar/eliminar como gasto *@
+                                    <div style="display:flex;gap:4px;justify-content:center">
+                                        <a href="/Gastos/Edit/@f.GastoItemId" class="btn btn-ghost btn-sm" title="Editar gasto">✎</a>
+                                        <form method="post" asp-page-handler="DeleteGasto"
+                                              asp-route-id="@vm.Persona.Id" asp-route-mes="@mes" asp-route-anio="@anio"
+                                              asp-route-gastoId="@f.GastoItemId" style="display:inline">
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Eliminar gasto"
+                                                    onclick="return confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')">✕</button>
+                                        </form>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @* Deuda directa sin gasto de origen → gestionar en Deudas *@
+                                    <a href="/MeDeben" class="btn btn-ghost btn-sm" title="Editar en Deudas">✎</a>
                                 }
                             </td>
                         </tr>
@@ -212,49 +212,6 @@
     }
 </div>
 
-<!-- ── Deudas directas ────────────────────────────────────────────────── -->
-@if (vm.Deudas.Any())
-{
-    <div class="card">
-        <div class="card-header"><span class="card-title">Deudas directas</span></div>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Descripción</th>
-                        <th class="text-center">Dirección</th>
-                        <th class="text-right">Monto</th>
-                        <th class="text-right">Pagado</th>
-                        <th class="text-right">Saldo</th>
-                        <th class="text-center">Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in vm.Deudas)
-                    {
-                        decimal saldo = d.Monto - (d.MontoPagado ?? 0);
-                        <tr>
-                            <td>@d.Fecha.ToString("dd/MM/yy")</td>
-                            <td>@d.Descripcion</td>
-                            <td class="text-center">
-                                <span class="badge @(d.Direccion == DireccionDeuda.MeDeben ? "badge-ok" : "badge-pend")">
-                                    @(d.Direccion == DireccionDeuda.MeDeben ? "Me debe" : "Le debo")
-                                </span>
-                            </td>
-                            <td class="text-right amount">$ @Peso(d.Monto)</td>
-                            <td class="text-right amount pos">$ @Peso(d.MontoPagado ?? 0)</td>
-                            <td class="text-right amount amber">$ @Peso(saldo)</td>
-                            <td class="text-center">
-                                <span class="badge @(d.Estado == EstadoDeuda.Pagada ? "badge-ok" : "badge-pend")">@d.Estado</span>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-}
 
 <!-- ── Modal: Nuevo pago ──────────────────────────────────────────────── -->
 <div class="modal-bg" id="modal-pago">
@@ -347,6 +304,7 @@
 </div>
 
 @section Scripts {
+<script src="~/js/tipos-movimiento.js"></script>
 <script src="~/js/money-input.js"></script>
 <script>
 const CUENTAS_PAGO  = @Html.Raw(Model.CuentasJson);
@@ -401,34 +359,34 @@ function filtrarMovimientos(btn) {
 
     let count = 0, sum = 0;
     rows.forEach(tr => {
-        const tipo  = tr.dataset.tipo;
+        const tipo = tr.dataset.tipo;
         let visible = true;
-        if      (filtro === 'Gasto')        visible = tipo === 'Gasto';
-        else if (filtro === 'Crédito')      visible = tipo === 'Crédito';
-        else if (filtro === 'Pago')         visible = tipo === 'Pago';
-        else if (filtro === 'sin-credito')  visible = tipo !== 'Crédito';
+        if      (filtro === FiltroMov.Gasto)       visible = tipo === TipoMov.Gasto;
+        else if (filtro === FiltroMov.Credito)     visible = tipo === TipoMov.Credito;
+        else if (filtro === FiltroMov.Pago)        visible = tipo === TipoMov.Pago;
+        else if (filtro === FiltroMov.Deuda)       visible = tipo === TipoMov.DeudaMe || tipo === TipoMov.DeudaLe;
+        else if (filtro === FiltroMov.SinCredito)  visible = tipo !== TipoMov.Credito;
         tr.style.display = visible ? '' : 'none';
         if (visible) {
             count++;
-            const monto = parseFloat(tr.dataset.monto) || 0;
-            const signo = parseInt(tr.dataset.signo, 10);
-            sum += monto * signo;
+            sum += (parseFloat(tr.dataset.monto) || 0) * parseInt(tr.dataset.signo, 10);
         }
     });
 
-    const fmt = n => Math.abs(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('tfoot-count').textContent = count + ' movimiento' + (count !== 1 ? 's' : '');
+    const fmt     = n => Math.abs(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const montoEl = document.getElementById('tfoot-monto');
-    const esMixto = filtro === 'todos' || filtro === 'sin-credito';
+    document.getElementById('tfoot-count').textContent = count + ' movimiento' + (count !== 1 ? 's' : '');
+
+    const esMixto = filtro === FiltroMov.Todos || filtro === FiltroMov.SinCredito || filtro === FiltroMov.Deuda;
     if (esMixto) {
         montoEl.textContent = (sum >= 0 ? '+' : '−') + '$ ' + fmt(sum);
         montoEl.className   = sum >= 0 ? 'amount green' : 'amount amber';
-    } else if (filtro === 'Pago') {
+    } else if (filtro === FiltroMov.Pago) {
+        montoEl.textContent = '−$ ' + fmt(sum);
+        montoEl.className   = 'amount amber';
+    } else {
         montoEl.textContent = '+$ ' + fmt(sum);
         montoEl.className   = 'amount green';
-    } else {
-        montoEl.textContent = '$ ' + fmt(Math.abs(sum));
-        montoEl.className   = 'amount amber';
     }
 }
 

@@ -23,9 +23,11 @@ public class AppDbContext : DbContext
     public DbSet<TarjetaFechaMensual> TarjetaFechasMensuales => Set<TarjetaFechaMensual>();
     public DbSet<TipoIngreso>         TiposIngreso           => Set<TipoIngreso>();
     public DbSet<IngresoDistribucion> IngresoDistribuciones  => Set<IngresoDistribucion>();
-    public DbSet<TipoEntidad> TiposEntidad => Set<TipoEntidad>();
-    public DbSet<ConfigOpcion>     ConfigOpciones    => Set<ConfigOpcion>();
     public DbSet<MonedaItem>   Monedas        => Set<MonedaItem>();
+    public DbSet<RedTarjeta> RedesTarjeta => Set<RedTarjeta>();
+    public DbSet<Banco> Bancos => Set<Banco>();
+    public DbSet<Billetera> Billeteras => Set<Billetera>();
+    public DbSet<CotizacionConfig> CotizacionConfigs => Set<CotizacionConfig>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -39,7 +41,7 @@ public class AppDbContext : DbContext
         // GastoItem → Categoria
         mb.Entity<GastoItem>()
             .HasOne(g => g.Categoria)
-            .WithMany(c => c.Gastos)
+            .WithMany()
             .HasForeignKey(g => g.CategoriaId);
 
         // GastoItem → Cuenta (medio de pago)
@@ -63,6 +65,14 @@ public class AppDbContext : DbContext
             .HasOne(g => g.TarjetaCuota)
             .WithMany(tc => tc.GastosAsociados)
             .HasForeignKey(g => g.TarjetaCuotaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // GastoItem → Persona (Pagador — quien pagó en lugar del usuario)
+        mb.Entity<GastoItem>()
+            .HasOne(g => g.PagadorPersona)
+            .WithMany()
+            .HasForeignKey(g => g.PagadorPersonaId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
@@ -105,15 +115,11 @@ public class AppDbContext : DbContext
             .HasIndex(f => new { f.TarjetaId, f.Mes, f.Anio })
             .IsUnique();
 
-        mb.Entity<ConfigOpcion>()
-            .HasIndex(c => new { c.Tipo, c.Valor })
-            .IsUnique();
-
-        // ConfigOpcion → TipoEntidad (nullable)
-        mb.Entity<ConfigOpcion>()
-            .HasOne(c => c.TipoEntidad)
-            .WithMany(t => t.Opciones)
-            .HasForeignKey(c => c.TipoEntidadId)
+        // RedTarjeta → Tarjeta
+        mb.Entity<Tarjeta>()
+            .HasOne(t => t.RedTarjeta)
+            .WithMany(r => r.Tarjetas)
+            .HasForeignKey(t => t.RedTarjetaId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
@@ -173,18 +179,33 @@ public class AppDbContext : DbContext
             .Property(d => d.Estado)
             .HasConversion<string>();
 
-        // Cuenta → TipoEntidad
+        // Cuenta → Banco
         mb.Entity<Cuenta>()
-            .HasOne(c => c.TipoEntidad)
-            .WithMany(t => t.Cuentas)
-            .HasForeignKey(c => c.TipoId)
+            .HasOne(c => c.Banco)
+            .WithMany(b => b.Cuentas)
+            .HasForeignKey(c => c.BancoId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // TipoEntidad.Id puede ser 0 (Efectivo), no auto-generado
-        mb.Entity<TipoEntidad>()
-            .Property(t => t.Id)
+        // Cuenta → Billetera
+        mb.Entity<Cuenta>()
+            .HasOne(c => c.Billetera)
+            .WithMany(b => b.Cuentas)
+            .HasForeignKey(c => c.BilleteraId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Cuenta.TipoEntidad — stored as string for readability
+        mb.Entity<Cuenta>()
+            .Property(c => c.TipoEntidad)
+            .HasConversion<string>();
+
+        // CotizacionConfig — singleton con Id=1 fijo
+        mb.Entity<CotizacionConfig>()
+            .Property(c => c.Id)
             .ValueGeneratedNever();
+        mb.Entity<CotizacionConfig>().Property(c => c.CotizacionManual).HasPrecision(18, 2);
+        mb.Entity<CotizacionConfig>().Property(c => c.UltimoValor).HasPrecision(18, 2);
 
         // Precisiones
         mb.Entity<GastoItem>().Property(g => g.Monto).HasPrecision(18, 2);
@@ -221,13 +242,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(p => p.PersonaId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // PagoPersona → Cuenta (nullable)
+        // PagoPersona → Cuenta (requerido)
         mb.Entity<PagoPersona>()
             .HasOne(p => p.Cuenta)
             .WithMany()
             .HasForeignKey(p => p.CuentaId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.SetNull);
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Restrict);
 
         mb.Entity<PagoPersona>()
             .Property(p => p.Moneda)

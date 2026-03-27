@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace ControlGastos.Pages.Personas;
 
-public class DetalleModel(PersonaService svc, ICuentaRepository cuentaRepo) : PageModel
+public class DetalleModel(PersonaService svc, ICuentaRepository cuentaRepo, GastoService gastoSvc) : PageModel
 {
     public PersonaDetalleVM VM { get; set; } = null!;
     public string CuentasJson  { get; set; } = "[]";
@@ -52,6 +52,12 @@ public class DetalleModel(PersonaService svc, ICuentaRepository cuentaRepo) : Pa
         if (!result.Success)
             TempData["Error"] = result.Error;
 
+        return RedirectToPage(new { id, mes, anio });
+    }
+
+    public async Task<IActionResult> OnPostDeleteGastoAsync(int gastoId, int id, int mes, int anio)
+    {
+        await gastoSvc.DeleteAsync(gastoId);
         return RedirectToPage(new { id, mes, anio });
     }
 }

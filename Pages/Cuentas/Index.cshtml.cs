@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ControlGastos.Pages.Cuentas;
 
-public class IndexModel(CuentaService svc) : PageModel
+public class IndexModel(CuentaService svc, ConfiguracionService cfgSvc) : PageModel
 {
     public CuentaListVM VM { get; set; } = null!;
 
@@ -15,6 +15,8 @@ public class IndexModel(CuentaService svc) : PageModel
     public async Task OnGetAsync()
     {
         VM = await svc.GetListAsync();
+        Form.OpcionesBanco     = await cfgSvc.GetBancosAsync();
+        Form.OpcionesBilletera = await cfgSvc.GetBilleterasAsync();
         ViewData["Active"] = "cuentas";
     }
 
@@ -23,6 +25,8 @@ public class IndexModel(CuentaService svc) : PageModel
         if (!ModelState.IsValid)
         {
             VM = await svc.GetListAsync();
+            Form.OpcionesBanco     = await cfgSvc.GetBancosAsync();
+            Form.OpcionesBilletera = await cfgSvc.GetBilleterasAsync();
             return Page();
         }
 

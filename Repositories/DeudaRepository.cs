@@ -41,6 +41,14 @@ public class DeudaRepository(AppDbContext db) : IDeudaRepository
         }
     }
 
+    // ── Auto-generadas desde gastos ──────────────────────────────────
+
+    public async Task DeleteByGastoItemIdAsync(int gastoItemId)
+    {
+        var d = await db.Deudas.FirstOrDefaultAsync(x => x.GastoItemId == gastoItemId);
+        if (d != null) { db.Deudas.Remove(d); await db.SaveChangesAsync(); }
+    }
+
     // ── Cuotas mensuales ─────────────────────────────────────────────
 
     public Task<List<DeudaCuota>> GetCuotasByMesAsync(int mes, int anio) =>
