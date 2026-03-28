@@ -37,7 +37,10 @@ public class ConfiguracionService(AppDbContext db)
     {
         nombre = nombre.Trim();
 
+        // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
+#pragma warning disable CA1862
         var existe = await db.Bancos.AnyAsync(b => b.Nombre.ToLower() == nombre.ToLower());
+#pragma warning restore CA1862
         if (existe)
             return Result.Fail(string.Format(ErrBancoYaExiste, nombre));
 
@@ -51,7 +54,10 @@ public class ConfiguracionService(AppDbContext db)
     {
         nombre = nombre.Trim();
 
-        var existe = await db.Bancos.AnyAsync(b => b.Nombre.ToLower() == nombre.ToLower() && b.Id != id);
+        // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
+#pragma warning disable CA1862
+        var existe = await db.Bancos.AnyAsync(b => b.Id != id && b.Nombre.ToLower() == nombre.ToLower());
+#pragma warning restore CA1862
         if (existe)
             return Result.Fail(string.Format(ErrBancoYaExiste, nombre));
 
@@ -71,7 +77,7 @@ public class ConfiguracionService(AppDbContext db)
 
         if (b == null) return Result.Fail(ErrBancoNoEncontrado);
 
-        if (b.Cuentas.Any())
+        if (b.Cuentas.Count > 0)
             return Result.Fail($"No se puede eliminar '{b.Nombre}' porque tiene {b.Cuentas.Count} cuenta(s) asociada(s).");
 
         db.Bancos.Remove(b);

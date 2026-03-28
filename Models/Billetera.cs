@@ -11,5 +11,5 @@ public class Billetera
 
     public int Orden { get; set; }
 
-    public ICollection<Cuenta> Cuentas { get; set; } = new List<Cuenta>();
+    public ICollection<Cuenta> Cuentas { get; set; } = [];
 }

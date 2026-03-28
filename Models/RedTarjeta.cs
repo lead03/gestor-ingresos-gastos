@@ -11,5 +11,5 @@ public class RedTarjeta
 
     public int Orden { get; set; }
 
-    public ICollection<Tarjeta> Tarjetas { get; set; } = new List<Tarjeta>();
+    public ICollection<Tarjeta> Tarjetas { get; set; } = [];
 }

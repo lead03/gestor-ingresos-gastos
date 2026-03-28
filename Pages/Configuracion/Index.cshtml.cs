@@ -10,11 +10,11 @@ namespace ControlGastos.Pages.Configuracion;
 
 public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc, IngresoService ingresoSvc, ICotizacionConfigRepository cotizacionRepo) : PageModel
 {
-    public List<RedTarjeta> Redes { get; set; } = new();
-    public List<BancoVM> Bancos { get; set; } = new();
-    public List<Billetera> Billeteras { get; set; } = new();
-    public List<CategoriaGasto> Categorias { get; set; } = new();
-    public List<TipoIngreso> TiposIngreso { get; set; } = new();
+    public List<RedTarjeta>     Redes        { get; set; } = [];
+    public List<BancoVM>        Bancos       { get; set; } = [];
+    public List<Billetera>      Billeteras   { get; set; } = [];
+    public List<CategoriaGasto> Categorias   { get; set; } = [];
+    public List<TipoIngreso>    TiposIngreso { get; set; } = [];
 
     public CotizacionConfig Config { get; set; } = new();
 
