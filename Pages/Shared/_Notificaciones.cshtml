@@ -1,0 +1,32 @@
+@*
+    _Notificaciones.cshtml — Partial global para notificaciones toast.
+    Incluido en _Layout.cshtml después de toast.js.
+
+    El servidor usa TempData con estas claves para disparar toasts:
+      TempData["Exito"]    → toast verde  (operación completada)
+      TempData["Error"]    → toast rojo   (error de negocio o validación)
+      TempData["Info"]     → toast teal   (información neutral)
+      TempData["Atencion"] → toast naranja (advertencia no crítica)
+*@
+@using ControlGastos.Helpers
+@{
+    var exito    = TempData[TempDataKeys.Exito]    as string;
+    var error    = TempData[TempDataKeys.Error]    as string;
+    var info     = TempData[TempDataKeys.Info]     as string;
+    var atencion = TempData[TempDataKeys.Atencion] as string;
+
+    // Construir las llamadas JS en C# para evitar ambigüedades de parsing de Razor
+    var calls = new System.Text.StringBuilder();
+    if (exito    != null) calls.AppendLine($"mostrarToast({System.Text.Json.JsonSerializer.Serialize(exito)},    'exito');");
+    if (error    != null) calls.AppendLine($"mostrarToast({System.Text.Json.JsonSerializer.Serialize(error)},    'error');");
+    if (info     != null) calls.AppendLine($"mostrarToast({System.Text.Json.JsonSerializer.Serialize(info)},     'info');");
+    if (atencion != null) calls.AppendLine($"mostrarToast({System.Text.Json.JsonSerializer.Serialize(atencion)}, 'atencion');");
+}
+@if (calls.Length > 0)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            @Html.Raw(calls.ToString())
+        });
+    </script>
+}

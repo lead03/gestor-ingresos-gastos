@@ -1,3 +1,4 @@
+using ControlGastos.Helpers;
 using ControlGastos.Repositories;
 using ControlGastos.Services;
 using ControlGastos.ViewModels;
@@ -41,7 +42,7 @@ public class DetalleModel(PersonaService svc, ICuentaRepository cuentaRepo, Gast
     {
         var result = await svc.SavePagoAsync(PagoForm);
         if (!result.Success)
-            TempData["Error"] = result.Error;
+            TempData[TempDataKeys.Error] = result.Error;
 
         return RedirectToPage(new { id, mes, anio });
     }
@@ -50,7 +51,7 @@ public class DetalleModel(PersonaService svc, ICuentaRepository cuentaRepo, Gast
     {
         var result = await svc.EditPagoAsync(PagoForm);
         if (!result.Success)
-            TempData["Error"] = result.Error;
+            TempData[TempDataKeys.Error] = result.Error;
 
         return RedirectToPage(new { id, mes, anio });
     }

@@ -1,15 +1,28 @@
+using ControlGastos.Common;
 using ControlGastos.Data;
 using ControlGastos.Models;
+using ControlGastos.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControlGastos.Services;
 
 public class ConfiguracionService(AppDbContext db)
 {
+    // ── Mensajes de error de Banco ─────────────────────────────
+    private const string ErrBancoYaExiste   = "Ya existe un banco con el nombre '{0}'.";
+    private const string ErrBancoNoEncontrado = "Banco no encontrado.";
     public Task<List<RedTarjeta>> GetRedesAsync() =>
         db.RedesTarjeta.OrderBy(r => r.Orden).ThenBy(r => r.Nombre).ToListAsync();
-    public Task<List<Banco>> GetBancosAsync() =>
-        db.Bancos.OrderBy(b => b.Orden).ThenBy(b => b.Nombre).ToListAsync();
+    public Task<List<BancoVM>> GetBancosAsync() =>
+        db.Bancos
+            .OrderBy(b => b.Orden).ThenBy(b => b.Nombre)
+            .Select(b => new BancoVM
+            {
+                Id = b.Id,
+                Nombre = b.Nombre,
+                CuentasCount = b.Cuentas.Count()
+            })
+            .ToListAsync();
     public Task<List<Billetera>> GetBilleterasAsync() =>
         db.Billeteras.OrderBy(b => b.Orden).ThenBy(b => b.Nombre).ToListAsync();
 
@@ -20,17 +33,50 @@ public class ConfiguracionService(AppDbContext db)
         await db.SaveChangesAsync();
     }
 
-    public async Task AddBancoAsync(string nombre)
+    public async Task<Result> AddBancoAsync(string nombre)
     {
+        nombre = nombre.Trim();
+
+        var existe = await db.Bancos.AnyAsync(b => b.Nombre.ToLower() == nombre.ToLower());
+        if (existe)
+            return Result.Fail(string.Format(ErrBancoYaExiste, nombre));
+
         var maxOrden = await db.Bancos.MaxAsync(b => (int?)b.Orden) ?? 0;
-        db.Bancos.Add(new Banco { Nombre = nombre.Trim(), Orden = maxOrden + 1 });
+        db.Bancos.Add(new Banco { Nombre = nombre, Orden = maxOrden + 1 });
         await db.SaveChangesAsync();
+        return Result.Ok();
     }
 
-    public async Task DeleteBancoAsync(int id)
+    public async Task<Result> EditBancoAsync(int id, string nombre)
     {
+        nombre = nombre.Trim();
+
+        var existe = await db.Bancos.AnyAsync(b => b.Nombre.ToLower() == nombre.ToLower() && b.Id != id);
+        if (existe)
+            return Result.Fail(string.Format(ErrBancoYaExiste, nombre));
+
         var b = await db.Bancos.FindAsync(id);
-        if (b != null) { db.Bancos.Remove(b); await db.SaveChangesAsync(); }
+        if (b == null) return Result.Fail(ErrBancoNoEncontrado);
+
+        b.Nombre = nombre;
+        await db.SaveChangesAsync();
+        return Result.Ok();
+    }
+
+    public async Task<Result> DeleteBancoAsync(int id)
+    {
+        var b = await db.Bancos
+            .Include(x => x.Cuentas)
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (b == null) return Result.Fail(ErrBancoNoEncontrado);
+
+        if (b.Cuentas.Any())
+            return Result.Fail($"No se puede eliminar '{b.Nombre}' porque tiene {b.Cuentas.Count} cuenta(s) asociada(s).");
+
+        db.Bancos.Remove(b);
+        await db.SaveChangesAsync();
+        return Result.Ok();
     }
 
     public async Task AddBilleteraAsync(string nombre)

@@ -1,3 +1,4 @@
+using ControlGastos.Helpers;
 using ControlGastos.Models;
 using ControlGastos.Services;
 using ControlGastos.ViewModels;
@@ -65,7 +66,7 @@ public class IndexModel(DeudaService svc) : PageModel
     public async Task<IActionResult> OnPostSaveCuotaAsync(int mes, int anio)
     {
         var result = await svc.SaveCuotaAsync(CuotaForm);
-        if (!result.Success) TempData["Error"] = result.Error;
+        if (!result.Success) TempData[TempDataKeys.Error] = result.Error;
         return RedirectToPage(new { mes, anio });
     }
 

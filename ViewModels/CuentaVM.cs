@@ -72,7 +72,7 @@ public class CuentaFormVM : IValidatableObject
     public Moneda   Moneda      { get; set; } = Moneda.ARS;
     public bool     Activa      { get; set; } = true;
 
-    public List<Banco>     OpcionesBanco     { get; set; } = new();
+    public List<BancoVM> OpcionesBanco { get; set; } = new();
     public List<Billetera> OpcionesBilletera { get; set; } = new();
 
     public IEnumerable<ValidationResult> Validate(ValidationContext context)

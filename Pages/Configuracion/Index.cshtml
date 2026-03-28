@@ -1,5 +1,6 @@
 @page
 @model ControlGastos.Pages.Configuracion.IndexModel
+@using ControlGastos.Helpers
 @{
     ViewData["Title"] = "Configuración";
     Layout = "/Pages/Shared/_Layout.cshtml";
@@ -244,23 +245,58 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Bancos</span></div>
         <div style="padding:16px">
-            <form method="post" asp-page-handler="AgregarBanco" style="display:flex;gap:8px;margin-bottom:16px">
-                <input name="NuevoBanco" type="text" placeholder="Ej: Galicia" class="form-input" style="flex:1" />
-                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+
+            <form method="post" asp-page-handler="AgregarBanco" id="form-agregar-banco" style="margin-bottom:16px">
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                    <div style="flex:1">
+                        <input asp-for="FormBanco.Nombre" class="input" placeholder="Nombre del banco" autocomplete="off" />
+                        <span asp-validation-for="FormBanco.Nombre" class="field-error"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+                </div>
             </form>
-            <ul id="list-bancos" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
-                @foreach (var b in Model.Bancos)
-                {
-                    <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
-                        <span style="font-size:.9rem">@b.Nombre</span>
-                        <form method="post" asp-page-handler="EliminarBanco" style="display:inline">
-                            <input type="hidden" name="id" value="@b.Id" />
-                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                    onclick="return confirm('¿Eliminar @b.Nombre?')">✕</button>
-                        </form>
-                    </li>
-                }
-            </ul>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th style="text-align:center">Cuentas vinculadas</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-bancos">
+                    @foreach (var b in Model.Bancos)
+                    {
+                        <tr data-id="@b.Id" data-nombre="@b.Nombre" data-cuentas="@b.CuentasCount">
+                            <td>
+                                <span class="banco-nombre-display">@b.Nombre</span>
+                                <input class="banco-nombre-input input input-sm" type="text"
+                                       value="@b.Nombre" style="display:none" />
+                                <span class="banco-nombre-error field-error" style="display:none"></span>
+                            </td>
+                            <td style="text-align:center;color:var(--text2)">
+                                @(b.CuentasCount == 0 ? "—" : b.CuentasCount.ToString())
+                            </td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <div class="banco-acciones-display" style="display:flex;gap:6px;justify-content:flex-end">
+                                    <button type="button" class="btn-edit"
+                                            onclick="editarBancoInline(this)">✎</button>
+                                    <button type="button" class="btn-delete"
+                                            onclick="confirmarEliminarBanco(this)">✕</button>
+                                </div>
+                                <div class="banco-acciones-edicion" style="display:none;gap:6px;justify-content:flex-end">
+                                    <button type="button" class="btn btn-sm btn-primary"
+                                            onclick="guardarBancoInline(this)">✓ Guardar</button>
+                                    <button type="button" class="btn btn-sm btn-ghost"
+                                            onclick="cancelarBancoInline(this)">Cancelar</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
             <div class="paginator" id="pag-bancos"></div>
         </div>
     </div>
@@ -398,9 +434,35 @@
     </div>
 </div>
 
+
+@* ── Modales de Banco (fuera de los tab-panels para evitar herencia de display:none) ── *@
+
+@* Form oculto — se envía al confirmar la edición desde el modal *@
+<form method="post" asp-page-handler="EditarBanco" id="form-editar-banco-hidden" style="display:none">
+    <input type="hidden" name="FormBanco.Id"     id="editar-banco-id-campo" />
+    <input type="hidden" name="FormBanco.Nombre" id="editar-banco-nombre-campo" />
+</form>
+
+<partial name="_ModalConfirm" view-data='@(new ViewDataDictionary(ViewData) {
+    { "Id",              "modal-confirmar-banco" },
+    { "TipoModal",       TipoModal.Alerta },
+    { "ConfirmText",     "Guardar" },
+    { "ConfirmClass",    "btn btn-primary" },
+    { "ConfirmCallback", "submitEditarBanco" }
+})' />
+
+<partial name="_ModalConfirm" view-data='@(new ViewDataDictionary(ViewData) {
+    { "Id",        "modal-eliminar-banco" },
+    { "TipoModal", TipoModal.Peligro },
+    { "Handler",   "EliminarBanco" }
+})' />
+
 @section Scripts {
-<script src="~/js/money-input.js"></script>
+<script src="~/js/money-input.js" asp-append-version="true"></script>
+<script src="~/js/config-shared.js" asp-append-version="true"></script>
+<script src="~/js/config-banco.js" asp-append-version="true"></script>
 <script>
+
 const TABS_CFG = ['categorias','tipos-ingreso','redes','bancos','billeteras','cotizacion'];
 
 initTabs(TABS_CFG, function (id) { history.replaceState(null, '', '#' + id); });
@@ -455,18 +517,27 @@ async function reintentarCotizacion() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    const hash = window.location.hash.replace('#', '') || 'categorias';
+    const serverTab = '@(ViewData["ActiveTab"] as string ?? "")';
+    const hash = window.location.hash.replace('#', '') || serverTab || 'categorias';
     switchTab(TABS_CFG.includes(hash) ? hash : 'categorias');
 
     initPaginator('list-fijos',      'pag-fijos',      10, 'li');
     initPaginator('list-variables',  'pag-variables',  10, 'li');
     initPaginator('list-tipos',      'pag-tipos',      10, 'li');
     initPaginator('list-redes',      'pag-redes',      10, 'li');
-    initPaginator('list-bancos',     'pag-bancos',     10, 'li');
+    initPaginator('tabla-bancos',    'pag-bancos',     10);
     initPaginator('list-billeteras', 'pag-billeteras', 10, 'li');
 
     const cotizManualEl = document.getElementById('cotizacion-manual');
     if (cotizManualEl) setupMoneyInput(cotizManualEl);
+
+    // Init modals
+    initModal('modal-eliminar-banco');
+    initModal('modal-confirmar-banco');
+
+    // jQuery Validate
+    $.validator.setDefaults({ ignore: [] });
+    $('#form-agregar-banco').validate();
 });
 document.getElementById('form-cotizacion').addEventListener('submit', function () {
     const cotizManualEl = document.getElementById('cotizacion-manual');

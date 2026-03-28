@@ -6,7 +6,7 @@ public class Banco
 {
     public int Id { get; set; }
 
-    [Required, MaxLength(60)]
+    [MaxLength(60)]
     public string Nombre { get; set; } = "";
 
     public int Orden { get; set; }

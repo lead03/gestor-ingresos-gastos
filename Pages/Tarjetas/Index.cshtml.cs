@@ -1,3 +1,4 @@
+using ControlGastos.Helpers;
 using ControlGastos.Services;
 using ControlGastos.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +30,7 @@ public class IndexModel(TarjetaService svc) : PageModel
     {
         var result = await svc.DeleteTarjetaAsync(tarjetaId);
         if (!result.Success)
-            TempData["Error"] = result.Error;
+            TempData[TempDataKeys.Error] = result.Error;
         return RedirectToPage(new { mes, anio, tab = "gestionar" });
     }
 }

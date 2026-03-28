@@ -25,9 +25,10 @@
 
     /* ── Semánticos ─────────────────────────────────────────────────────── */
     --green:   #4caf7d;   /* Ingresos, estados positivos, OK                */
-    --red:     #f44747;   /* Gastos, errores, alertas, peligro              */
-    --amber:   #ffb347;   /* Advertencias, "mi parte" dividida              */
-    --teal:    #26c6da;   /* Uso informativo (cotización, info)             */
+    --red:     #f44747;   /* Gastos, errores, peligro                       */
+    --amber:   #ffb347;   /* Alerta — modificación con impacto              */
+    --orange:  #ff7043;   /* Atención — posible efecto no deseado           */
+    --teal:    #26c6da;   /* Informativo (cotización, info)                 */
 
     /* ── Forma ──────────────────────────────────────────────────────────── */
     --radius:  10px;

@@ -118,6 +118,9 @@
         @RenderBody()
     </main>
 
+    <!-- Contenedor de toasts -->
+    <div id="toast-container" role="region" aria-live="polite" aria-label="Notificaciones"></div>
+
     <!-- Modal de error global -->
     <div class="modal-bg" id="modal-error">
         <div class="modal" style="max-width:400px;text-align:center">
@@ -148,6 +151,11 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/toast.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    <partial name="_Notificaciones" />
 </body>
 </html>

@@ -130,6 +130,32 @@ body {
     height: 260px;
 }
 
+@media (max-width: 540px) {
+    /* ── Modal responsive ── */
+    .modal {
+        margin: 12px;
+        width: calc(100% - 24px);
+        padding: 20px 18px;
+        max-height: 85vh;
+    }
+    .modal-confirm-body {
+        padding: 18px 18px 16px;
+    }
+
+    /* ── Toast responsive ── */
+    #toast-container {
+        left: 0;
+        right: 0;
+        top: 70px;
+        padding: 0 12px;
+        align-items: stretch;
+    }
+    .toast {
+        min-width: unset;
+        max-width: unset;
+    }
+}
+
 @media (max-width: 768px) {
     .charts-grid {
         grid-template-columns: 1fr;
@@ -374,6 +400,47 @@ textarea {
     flex-wrap: wrap;
 }
 
+/* ─── Action buttons — cambiar aquí afecta todo el sitio ────────── */
+.btn-edit,
+.btn-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 7px;
+    font-size: .82rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    text-decoration: none;
+}
+
+    .btn-edit:active,
+    .btn-delete:active {
+        transform: scale(.97);
+    }
+
+.btn-edit {
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border);
+}
+
+    .btn-edit:hover {
+        color: var(--text);
+    }
+
+.btn-delete {
+    background: rgba(244,71,71,.15);
+    color: var(--red);
+    border: 1px solid rgba(244,71,71,.3);
+}
+
+    .btn-delete:hover {
+        background: rgba(244,71,71,.25);
+    }
+
 /* ─── Month nav ─────────────────────────────────────────────────────── */
 .month-nav {
     display: flex;
@@ -489,6 +556,147 @@ textarea {
     margin-top: 20px;
 }
 
+/* ── Modal confirm — header con banda de color e ícono ─────────────── */
+.modal-confirm {
+    padding: 0;
+    overflow: hidden;
+}
+
+.modal-confirm-header {
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.modal-confirm-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    user-select: none;
+}
+
+.modal-confirm-body {
+    padding: 24px 28px 22px;
+    text-align: center;
+}
+
+/* Colores de header por tipo */
+.modal-bg[data-tipo="peligro"]     .modal-confirm-header { background: var(--red); }
+.modal-bg[data-tipo="alerta"]      .modal-confirm-header { background: var(--amber); }
+.modal-bg[data-tipo="atencion"]    .modal-confirm-header { background: var(--orange); }
+.modal-bg[data-tipo="informativo"] .modal-confirm-header { background: var(--teal); }
+
+/* Íconos por tipo */
+.modal-bg[data-tipo="peligro"]     .modal-confirm-icon::before { content: '✕'; }
+.modal-bg[data-tipo="alerta"]      .modal-confirm-icon::before { content: '✎'; }
+.modal-bg[data-tipo="atencion"]    .modal-confirm-icon::before { content: '!'; }
+.modal-bg[data-tipo="informativo"] .modal-confirm-icon::before { content: 'i'; font-style: italic; }
+
+/* ── Toast notifications ───────────────────────────────────────────── */
+#toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    min-width: 280px;
+    max-width: 360px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    animation: toast-entrada 0.25s ease;
+}
+
+.toast.toast-saliendo {
+    animation: toast-salida 0.25s ease forwards;
+}
+
+.toast-exito   { border-left: 4px solid var(--green); }
+.toast-error   { border-left: 4px solid var(--red); }
+.toast-info    { border-left: 4px solid var(--teal); }
+.toast-atencion { border-left: 4px solid var(--orange); }
+
+.toast-icon {
+    font-size: 1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+.toast-exito    .toast-icon { color: var(--green); }
+.toast-error    .toast-icon { color: var(--red); }
+.toast-info     .toast-icon { color: var(--teal); font-style: italic; }
+.toast-atencion .toast-icon { color: var(--orange); }
+
+.toast-mensaje {
+    font-size: .88rem;
+    color: var(--text);
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0 2px;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: color var(--transition-fast);
+}
+.toast-close:hover { color: var(--text); }
+
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    animation: toast-progreso 5s linear forwards;
+}
+.toast-exito    .toast-progress { background: var(--green); }
+.toast-error    .toast-progress { background: var(--red); }
+.toast-info     .toast-progress { background: var(--teal); }
+.toast-atencion .toast-progress { background: var(--orange); }
+
+@keyframes toast-entrada {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-salida {
+    to   { opacity: 0; transform: translateX(24px); }
+}
+@keyframes toast-progreso {
+    from { width: 100%; }
+    to   { width: 0; }
+}
+
 /* ── Tabs ──────────────────────────────────────────────────────────── */
 .tab-btn {
     padding: 8px 18px;
@@ -537,6 +745,36 @@ textarea {
 
 .tab-panel {
     display: none;
+}
+
+/* ── Validation ────────────────────────────────────────────────────── */
+.field-error {
+    display: block;
+    color: var(--red);
+    font-size: .8rem;
+    margin-top: 4px;
+}
+
+/* ── Input alias ────────────────────────────────────────────────────── */
+.input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 7px;
+    font-size: .9rem;
+    width: 100%;
+    transition: border-color .15s;
+}
+
+    .input:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+
+.input-sm {
+    padding: 4px 8px;
+    font-size: .85rem;
 }
 
 /* ── Config labels ─────────────────────────────────────────────────── */
