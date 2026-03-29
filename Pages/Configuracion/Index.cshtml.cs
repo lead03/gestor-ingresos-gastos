@@ -12,7 +12,7 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
 {
     public List<RedTarjeta>     Redes        { get; set; } = [];
     public List<BancoVM>        Bancos       { get; set; } = [];
-    public List<Billetera>      Billeteras   { get; set; } = [];
+    public List<BilleteraVM>    Billeteras   { get; set; } = [];
     public List<CategoriaGasto> Categorias   { get; set; } = [];
     public List<TipoIngreso>    TiposIngreso { get; set; } = [];
 
@@ -26,11 +26,12 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     public DateTime? FechaUltimaApi { get; set; }
 
 
-    private const string TabBancos = "bancos";
+    private const string TabBancos      = "bancos";
+    private const string TabBilleteras  = "billeteras";
 
-    [BindProperty] public BancoVM FormBanco { get; set; } = new();
+    [BindProperty] public BancoVM     FormBanco     { get; set; } = new();
+    [BindProperty] public BilleteraVM FormBilletera { get; set; } = new();
     [BindProperty] public string NuevaRed { get; set; } = "";
-    [BindProperty] public string NuevaBilletera { get; set; } = "";
     [BindProperty] public string NuevaCatNombre { get; set; } = "";
     [BindProperty] public int NuevaCatTipoId { get; set; } = 2;
     [BindProperty] public int EditCatId { get; set; }
@@ -125,14 +126,58 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
 
     public async Task<IActionResult> OnPostAgregarBilleteraAsync()
     {
-        if (!string.IsNullOrWhiteSpace(NuevaBilletera)) await svc.AddBilleteraAsync(NuevaBilletera);
-        return RedirectToPage(null, "billeteras");
+        foreach (var key in ModelState.Keys
+            .Where(k => !k.StartsWith(nameof(FormBilletera))).ToList())
+            ModelState.Remove(key);
+
+        if (!ModelState.IsValid)
+        {
+            ViewData["ActiveTab"] = TabBilleteras;
+            await CargarAsync();
+            return Page();
+        }
+
+        var result = await svc.AddBilleteraAsync(FormBilletera.Nombre);
+        if (!result.Success)
+        {
+            ModelState.AddModelError(
+                $"{nameof(FormBilletera)}.{nameof(BilleteraVM.Nombre)}", result.Error!);
+            ViewData["ActiveTab"] = TabBilleteras;
+            await CargarAsync();
+            return Page();
+        }
+
+        TempData[TempDataKeys.Exito] = $"Billetera \"{FormBilletera.Nombre}\" agregada correctamente.";
+        return RedirectToPage(new { tab = TabBilleteras });
+    }
+
+    public async Task<IActionResult> OnPostEditarBilleteraAsync()
+    {
+        foreach (var key in ModelState.Keys
+            .Where(k => !k.StartsWith(nameof(FormBilletera))).ToList())
+            ModelState.Remove(key);
+
+        if (!ModelState.IsValid)
+            return RedirectToPage(new { tab = TabBilleteras });
+
+        var result = await svc.EditBilleteraAsync(FormBilletera.Id, FormBilletera.Nombre);
+        if (!result.Success)
+            TempData[TempDataKeys.Error] = result.Error;
+        else
+            TempData[TempDataKeys.Exito] = $"Billetera renombrada a \"{FormBilletera.Nombre}\" correctamente.";
+
+        return RedirectToPage(new { tab = TabBilleteras });
     }
 
     public async Task<IActionResult> OnPostEliminarBilleteraAsync(int id)
     {
-        await svc.DeleteBilleteraAsync(id);
-        return RedirectToPage(null, "billeteras");
+        var result = await svc.DeleteBilleteraAsync(id);
+        if (!result.Success)
+            TempData[TempDataKeys.Error] = result.Error;
+        else
+            TempData[TempDataKeys.Exito] = "Billetera eliminada correctamente.";
+
+        return RedirectToPage(new { tab = TabBilleteras });
     }
 
     // ── Categorías ────────────────────────────────────────────────

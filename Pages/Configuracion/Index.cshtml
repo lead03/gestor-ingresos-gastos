@@ -305,25 +305,68 @@
 <!-- ══ BILLETERAS ════════════════════════════════════════════════════ -->
 <div id="panel-billeteras" class="tab-panel">
     <div class="card">
-        <div class="card-header"><span class="card-title">Billeteras virtuales</span></div>
+        <div class="card-header"><span class="card-title">Billeteras</span></div>
         <div style="padding:16px">
-            <form method="post" asp-page-handler="AgregarBilletera" style="display:flex;gap:8px;margin-bottom:16px">
-                <input name="NuevaBilletera" type="text" placeholder="Ej: MercadoPago" class="form-input" style="flex:1" />
-                <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+
+            <!-- Form agregar — asp-for genera los data-val-* que lee el JS -->
+            <form method="post" asp-page-handler="AgregarBilletera"
+                  id="form-agregar-billetera" style="margin-bottom:16px">
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                    <div style="flex:1">
+                        <input asp-for="FormBilletera.Nombre" class="input"
+                               placeholder="Nombre" autocomplete="off" />
+                        <span asp-validation-for="FormBilletera.Nombre" class="field-error"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">+ Agregar</button>
+                </div>
             </form>
-            <ul id="list-billeteras" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px">
-                @foreach (var b in Model.Billeteras)
-                {
-                    <li style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg2);border-radius:6px">
-                        <span style="font-size:.9rem">@b.Nombre</span>
-                        <form method="post" asp-page-handler="EliminarBilletera" style="display:inline">
-                            <input type="hidden" name="id" value="@b.Id" />
-                            <button type="submit" class="btn btn-ghost btn-sm" style="color:#e05555"
-                                    onclick="return confirm('¿Eliminar @b.Nombre?')">✕</button>
-                        </form>
-                    </li>
-                }
-            </ul>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th style="text-align:center">Cuentas vinculadas</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-billeteras">
+                    @foreach (var e in Model.Billeteras)
+                    {
+                        <tr data-id="@e.Id"
+                            data-nombre="@e.Nombre"
+                            data-dependientes="@e.CuentasCount">
+                            <td>
+                                <span class="billetera-nombre-display">@e.Nombre</span>
+                                <input class="billetera-nombre-input input input-sm"
+                                       type="text" value="@e.Nombre" style="display:none" />
+                                <span class="billetera-nombre-error field-error"
+                                      style="display:none"></span>
+                            </td>
+                            <td style="text-align:center;color:var(--text2)">
+                                @(e.CuentasCount == 0 ? "—" : e.CuentasCount.ToString())
+                            </td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <div class="billetera-acciones-display"
+                                     style="display:flex;gap:6px;justify-content:flex-end">
+                                    <button type="button" class="btn-edit"
+                                            onclick="editarBilleteraInline(this)">✎</button>
+                                    <button type="button" class="btn-delete"
+                                            onclick="confirmarEliminarBilletera(this)">✕</button>
+                                </div>
+                                <div class="billetera-acciones-edicion"
+                                     style="display:none;gap:6px;justify-content:flex-end">
+                                    <button type="button" class="btn btn-sm btn-primary"
+                                            onclick="guardarBilleteraInline(this)">✓ Guardar</button>
+                                    <button type="button" class="btn btn-sm btn-ghost"
+                                            onclick="cancelarBilleteraInline(this)">Cancelar</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
             <div class="paginator" id="pag-billeteras"></div>
         </div>
     </div>
@@ -457,10 +500,34 @@
     { "Handler",   "EliminarBanco" }
 })' />
 
+@* ── Modales de Billetera (fuera de los tab-panels para evitar herencia de display:none) ── *@
+
+@* Form oculto — se envía al confirmar la edición desde el modal *@
+<form method="post" asp-page-handler="EditarBilletera"
+      id="form-editar-billetera-hidden" style="display:none">
+    <input type="hidden" name="FormBilletera.Id"     id="editar-billetera-id-campo" />
+    <input type="hidden" name="FormBilletera.Nombre" id="editar-billetera-nombre-campo" />
+</form>
+
+<partial name="_ModalConfirm" view-data='@(new ViewDataDictionary(ViewData) {
+    { "Id",              "modal-confirmar-billetera" },
+    { "TipoModal",       TipoModal.Alerta },
+    { "ConfirmText",     "Guardar" },
+    { "ConfirmClass",    "btn btn-primary" },
+    { "ConfirmCallback", "submitEditarBilletera" }
+})' />
+
+<partial name="_ModalConfirm" view-data='@(new ViewDataDictionary(ViewData) {
+    { "Id",        "modal-eliminar-billetera" },
+    { "TipoModal", TipoModal.Peligro },
+    { "Handler",   "EliminarBilletera" }
+})' />
+
 @section Scripts {
 <script src="~/js/money-input.js" asp-append-version="true"></script>
 <script src="~/js/config-shared.js" asp-append-version="true"></script>
 <script src="~/js/config-banco.js" asp-append-version="true"></script>
+<script src="~/js/config-billetera.js" asp-append-version="true"></script>
 <script>
 
 const TABS_CFG = ['categorias','tipos-ingreso','redes','bancos','billeteras','cotizacion'];
@@ -526,7 +593,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initPaginator('list-tipos',      'pag-tipos',      10, 'li');
     initPaginator('list-redes',      'pag-redes',      10, 'li');
     initPaginator('tabla-bancos',    'pag-bancos',     10);
-    initPaginator('list-billeteras', 'pag-billeteras', 10, 'li');
+    initPaginator('tabla-billeteras', 'pag-billeteras', 10);
 
     const cotizManualEl = document.getElementById('cotizacion-manual');
     if (cotizManualEl) setupMoneyInput(cotizManualEl);
@@ -534,10 +601,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Init modals
     initModal('modal-eliminar-banco');
     initModal('modal-confirmar-banco');
+    initModal('modal-confirmar-billetera');
+    initModal('modal-eliminar-billetera');
 
     // jQuery Validate
     $.validator.setDefaults({ ignore: [] });
     $('#form-agregar-banco').validate();
+    $('#form-agregar-billetera').validate();
 });
 document.getElementById('form-cotizacion').addEventListener('submit', function () {
     const cotizManualEl = document.getElementById('cotizacion-manual');

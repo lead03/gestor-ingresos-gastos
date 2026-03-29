@@ -186,6 +186,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Billetera
+        mb.Entity<Billetera>().Property(e => e.Nombre).HasMaxLength(60);
+
         // Cuenta → Billetera
         mb.Entity<Cuenta>()
             .HasOne(c => c.Billetera)

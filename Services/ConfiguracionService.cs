@@ -1,18 +1,42 @@
 using ControlGastos.Common;
 using ControlGastos.Data;
 using ControlGastos.Models;
+using ControlGastos.Repositories;
 using ControlGastos.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControlGastos.Services;
 
-public class ConfiguracionService(AppDbContext db)
+public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeteraRepo)
 {
     // ── Mensajes de error de Banco ─────────────────────────────
-    private const string ErrBancoYaExiste   = "Ya existe un banco con el nombre '{0}'.";
+    private const string ErrBancoYaExiste = "Ya existe un banco con el nombre '{0}'.";
     private const string ErrBancoNoEncontrado = "Banco no encontrado.";
+
+    // ── Mensajes de error de Billetera ─────────────────────────
+    private const string ErrBilleteraYaExiste = "Ya existe una billetera con el nombre '{0}'.";
+    private const string ErrBilleteraNoEncontrada = "Billetera no encontrada.";
+
+    // ══ Redes ══════════════════════════════════════════════════
+
     public Task<List<RedTarjeta>> GetRedesAsync() =>
         db.RedesTarjeta.OrderBy(r => r.Orden).ThenBy(r => r.Nombre).ToListAsync();
+
+    public async Task AddRedAsync(string nombre)
+    {
+        var maxOrden = await db.RedesTarjeta.MaxAsync(r => (int?)r.Orden) ?? 0;
+        db.RedesTarjeta.Add(new RedTarjeta { Nombre = nombre.Trim(), Orden = maxOrden + 1 });
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteRedAsync(int id)
+    {
+        var r = await db.RedesTarjeta.FindAsync(id);
+        if (r != null) { db.RedesTarjeta.Remove(r); await db.SaveChangesAsync(); }
+    }
+
+    // ══ Bancos ══════════════════════════════════════════════════
+
     public Task<List<BancoVM>> GetBancosAsync() =>
         db.Bancos
             .OrderBy(b => b.Orden).ThenBy(b => b.Nombre)
@@ -23,15 +47,6 @@ public class ConfiguracionService(AppDbContext db)
                 CuentasCount = b.Cuentas.Count()
             })
             .ToListAsync();
-    public Task<List<Billetera>> GetBilleterasAsync() =>
-        db.Billeteras.OrderBy(b => b.Orden).ThenBy(b => b.Nombre).ToListAsync();
-
-    public async Task AddRedAsync(string nombre)
-    {
-        var maxOrden = await db.RedesTarjeta.MaxAsync(r => (int?)r.Orden) ?? 0;
-        db.RedesTarjeta.Add(new RedTarjeta { Nombre = nombre.Trim(), Orden = maxOrden + 1 });
-        await db.SaveChangesAsync();
-    }
 
     public async Task<Result> AddBancoAsync(string nombre)
     {
@@ -85,22 +100,53 @@ public class ConfiguracionService(AppDbContext db)
         return Result.Ok();
     }
 
-    public async Task AddBilleteraAsync(string nombre)
+    // ══ Billeteras ══════════════════════════════════════════════
+
+    public async Task<List<BilleteraVM>> GetBilleterasAsync() =>
+        await billeteraRepo.GetAllWithCountAsync();
+
+    public async Task<Result> AddBilleteraAsync(string nombre)
     {
-        var maxOrden = await db.Billeteras.MaxAsync(b => (int?)b.Orden) ?? 0;
-        db.Billeteras.Add(new Billetera { Nombre = nombre.Trim(), Orden = maxOrden + 1 });
-        await db.SaveChangesAsync();
+        nombre = nombre.Trim();
+
+        // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
+#pragma warning disable CA1862
+        if (await db.Billeteras.AnyAsync(e => e.Nombre.ToLower() == nombre.ToLower()))
+#pragma warning restore CA1862
+            return Result.Fail(string.Format(ErrBilleteraYaExiste, nombre));
+
+        var maxOrden = await db.Billeteras.MaxAsync(e => (int?)e.Orden) ?? 0;
+        await billeteraRepo.AddAsync(new Billetera { Nombre = nombre, Orden = maxOrden + 1 });
+        return Result.Ok();
     }
 
-    public async Task DeleteBilleteraAsync(int id)
+    public async Task<Result> EditBilleteraAsync(int id, string nombre)
     {
-        var b = await db.Billeteras.FindAsync(id);
-        if (b != null) { db.Billeteras.Remove(b); await db.SaveChangesAsync(); }
+        nombre = nombre.Trim();
+
+        // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
+#pragma warning disable CA1862
+        if (await db.Billeteras.AnyAsync(e => e.Id != id && e.Nombre.ToLower() == nombre.ToLower()))
+#pragma warning restore CA1862
+            return Result.Fail(string.Format(ErrBilleteraYaExiste, nombre));
+
+        var entidad = await billeteraRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail(ErrBilleteraNoEncontrada);
+
+        entidad.Nombre = nombre;
+        await billeteraRepo.UpdateAsync(entidad);
+        return Result.Ok();
     }
 
-    public async Task DeleteRedAsync(int id)
+    public async Task<Result> DeleteBilleteraAsync(int id)
     {
-        var r = await db.RedesTarjeta.FindAsync(id);
-        if (r != null) { db.RedesTarjeta.Remove(r); await db.SaveChangesAsync(); }
+        if (await billeteraRepo.TieneVinculadosAsync(id))
+            return Result.Fail("No se puede eliminar porque tiene cuentas asociadas vinculadas.");
+
+        var entidad = await billeteraRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail(ErrBilleteraNoEncontrada);
+
+        await billeteraRepo.DeleteAsync(entidad);
+        return Result.Ok();
     }
 }

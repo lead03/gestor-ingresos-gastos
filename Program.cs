@@ -18,6 +18,7 @@ builder.Services.AddScoped<ITarjetaRepository, TarjetaRepository>();
 builder.Services.AddScoped<IDeudaRepository, DeudaRepository>();
 builder.Services.AddScoped<ICuentaRepository, CuentaRepository>();
 builder.Services.AddScoped<IPersonaRepository, PersonaRepository>();
+builder.Services.AddScoped<IBilleteraRepository, BilleteraRepository>();
 
 // Services
 builder.Services.AddScoped<GastoService>();
