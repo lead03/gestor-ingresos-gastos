@@ -30,6 +30,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        // CategoriaGasto
+        mb.Entity<CategoriaGasto>().Property(e => e.Nombre).HasMaxLength(80);
+
         // CategoriaGasto → TipoCategoriaGasto
         mb.Entity<CategoriaGasto>()
             .HasOne(c => c.Tipo)
@@ -37,10 +40,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasForeignKey(c => c.TipoId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // GastoItem → Categoria
+        // GastoItem → CategoriaGasto
         mb.Entity<GastoItem>()
             .HasOne(g => g.Categoria)
-            .WithMany()
+            .WithMany(c => c.GastoItems)
             .HasForeignKey(g => g.CategoriaId);
 
         // GastoItem → Cuenta (medio de pago)

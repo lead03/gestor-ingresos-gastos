@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ControlGastos.Services;
 
-public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeteraRepo)
+public class ConfiguracionService(AppDbContext db, ICategoriaGastoRepository categoriaRepo, IBancoRepository bancoRepo, IBilleteraRepository billeteraRepo)
 {
     // ── Mensajes de error de Banco ─────────────────────────────
     private const string ErrBancoYaExiste = "Ya existe un banco con el nombre '{0}'.";
@@ -16,6 +16,76 @@ public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeter
     // ── Mensajes de error de Billetera ─────────────────────────
     private const string ErrBilleteraYaExiste = "Ya existe una billetera con el nombre '{0}'.";
     private const string ErrBilleteraNoEncontrada = "Billetera no encontrada.";
+
+    // ── Mensajes de error de CategoriaGasto ────────────────────
+    private const string ErrCategoriaNoEncontrada = "Categoría no encontrada.";
+
+    // ══ Categorías de gasto ═════════════════════════════════════
+
+    public async Task<List<CategoriaGastoVM>> GetCategoriasGastoAsync() =>
+        await categoriaRepo.GetAllWithCountAsync();
+
+    public async Task<Result> AddCategoriaGastoAsync(string nombre, int tipoId)
+    {
+        nombre = nombre.Trim();
+
+        // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
+#pragma warning disable CA1862
+        if (await db.CategoriasGasto.AnyAsync(e => e.TipoId == tipoId && e.Nombre.ToLower() == nombre.ToLower()))
+#pragma warning restore CA1862
+            return Result.Fail($"Ya existe una categoría con ese nombre en el mismo tipo.");
+
+        await categoriaRepo.AddAsync(new CategoriaGasto { Nombre = nombre, TipoId = tipoId, Habilitada = true });
+        return Result.Ok();
+    }
+
+    public async Task<Result> EditCategoriaGastoAsync(int id, string nombre, int tipoId)
+    {
+        nombre = nombre.Trim();
+
+        // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
+#pragma warning disable CA1862
+        if (await db.CategoriasGasto.AnyAsync(e => e.Id != id && e.TipoId == tipoId && e.Nombre.ToLower() == nombre.ToLower()))
+#pragma warning restore CA1862
+            return Result.Fail($"Ya existe una categoría con ese nombre en el mismo tipo.");
+
+        var entidad = await categoriaRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail(ErrCategoriaNoEncontrada);
+
+        entidad.Nombre = nombre;
+        entidad.TipoId = tipoId;
+        await categoriaRepo.UpdateAsync(entidad);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Si tiene gastos → deshabilita (soft delete). Si no → elimina permanentemente.
+    /// </summary>
+    public async Task<Result<string>> DeleteCategoriaGastoAsync(int id)
+    {
+        var entidad = await categoriaRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail<string>(ErrCategoriaNoEncontrada);
+
+        if (await categoriaRepo.TieneVinculadosAsync(id))
+        {
+            entidad.Habilitada = false;
+            await categoriaRepo.UpdateAsync(entidad);
+            return Result.Ok<string>("deshabilitada");
+        }
+
+        await categoriaRepo.DeleteAsync(entidad);
+        return Result.Ok<string>("eliminada");
+    }
+
+    public async Task<Result> HabilitarCategoriaGastoAsync(int id)
+    {
+        var entidad = await categoriaRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail(ErrCategoriaNoEncontrada);
+
+        entidad.Habilitada = true;
+        await categoriaRepo.UpdateAsync(entidad);
+        return Result.Ok();
+    }
 
     // ══ Redes ══════════════════════════════════════════════════
 
@@ -37,16 +107,8 @@ public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeter
 
     // ══ Bancos ══════════════════════════════════════════════════
 
-    public Task<List<BancoVM>> GetBancosAsync() =>
-        db.Bancos
-            .OrderBy(b => b.Orden).ThenBy(b => b.Nombre)
-            .Select(b => new BancoVM
-            {
-                Id = b.Id,
-                Nombre = b.Nombre,
-                CuentasCount = b.Cuentas.Count()
-            })
-            .ToListAsync();
+    public async Task<List<BancoVM>> GetBancosAsync() =>
+        await bancoRepo.GetAllWithCountAsync();
 
     public async Task<Result> AddBancoAsync(string nombre)
     {
@@ -54,14 +116,11 @@ public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeter
 
         // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
 #pragma warning disable CA1862
-        var existe = await db.Bancos.AnyAsync(b => b.Nombre.ToLower() == nombre.ToLower());
+        if (await db.Bancos.AnyAsync(b => b.Nombre.ToLower() == nombre.ToLower()))
 #pragma warning restore CA1862
-        if (existe)
             return Result.Fail(string.Format(ErrBancoYaExiste, nombre));
 
-        var maxOrden = await db.Bancos.MaxAsync(b => (int?)b.Orden) ?? 0;
-        db.Bancos.Add(new Banco { Nombre = nombre, Orden = maxOrden + 1 });
-        await db.SaveChangesAsync();
+        await bancoRepo.AddAsync(new Banco { Nombre = nombre });
         return Result.Ok();
     }
 
@@ -71,32 +130,27 @@ public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeter
 
         // CA1862: ToLower() es intencional — StringComparison no es traducible a SQL por EF Core
 #pragma warning disable CA1862
-        var existe = await db.Bancos.AnyAsync(b => b.Id != id && b.Nombre.ToLower() == nombre.ToLower());
+        if (await db.Bancos.AnyAsync(b => b.Id != id && b.Nombre.ToLower() == nombre.ToLower()))
 #pragma warning restore CA1862
-        if (existe)
             return Result.Fail(string.Format(ErrBancoYaExiste, nombre));
 
-        var b = await db.Bancos.FindAsync(id);
-        if (b == null) return Result.Fail(ErrBancoNoEncontrado);
+        var entidad = await bancoRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail(ErrBancoNoEncontrado);
 
-        b.Nombre = nombre;
-        await db.SaveChangesAsync();
+        entidad.Nombre = nombre;
+        await bancoRepo.UpdateAsync(entidad);
         return Result.Ok();
     }
 
     public async Task<Result> DeleteBancoAsync(int id)
     {
-        var b = await db.Bancos
-            .Include(x => x.Cuentas)
-            .FirstOrDefaultAsync(x => x.Id == id);
+        if (await bancoRepo.TieneVinculadosAsync(id))
+            return Result.Fail("No se puede eliminar porque tiene cuentas asociadas vinculadas.");
 
-        if (b == null) return Result.Fail(ErrBancoNoEncontrado);
+        var entidad = await bancoRepo.GetByIdAsync(id);
+        if (entidad is null) return Result.Fail(ErrBancoNoEncontrado);
 
-        if (b.Cuentas.Count > 0)
-            return Result.Fail($"No se puede eliminar '{b.Nombre}' porque tiene {b.Cuentas.Count} cuenta(s) asociada(s).");
-
-        db.Bancos.Remove(b);
-        await db.SaveChangesAsync();
+        await bancoRepo.DeleteAsync(entidad);
         return Result.Ok();
     }
 
@@ -115,8 +169,7 @@ public class ConfiguracionService(AppDbContext db, IBilleteraRepository billeter
 #pragma warning restore CA1862
             return Result.Fail(string.Format(ErrBilleteraYaExiste, nombre));
 
-        var maxOrden = await db.Billeteras.MaxAsync(e => (int?)e.Orden) ?? 0;
-        await billeteraRepo.AddAsync(new Billetera { Nombre = nombre, Orden = maxOrden + 1 });
+        await billeteraRepo.AddAsync(new Billetera { Nombre = nombre });
         return Result.Ok();
     }
 

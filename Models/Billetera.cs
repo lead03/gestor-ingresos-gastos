@@ -9,7 +9,5 @@ public class Billetera
     [Required, MaxLength(60)]
     public string Nombre { get; set; } = "";
 
-    public int Orden { get; set; }
-
     public ICollection<Cuenta> Cuentas { get; set; } = [];
 }

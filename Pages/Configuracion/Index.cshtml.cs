@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ControlGastos.Pages.Configuracion;
 
-public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, CotizacionService cotizacionSvc, IngresoService ingresoSvc, ICotizacionConfigRepository cotizacionRepo) : PageModel
+public class IndexModel(ConfiguracionService svc, CotizacionService cotizacionSvc, IngresoService ingresoSvc, ICotizacionConfigRepository cotizacionRepo) : PageModel
 {
     public List<RedTarjeta>     Redes        { get; set; } = [];
     public List<BancoVM>        Bancos       { get; set; } = [];
     public List<BilleteraVM>    Billeteras   { get; set; } = [];
-    public List<CategoriaGasto> Categorias   { get; set; } = [];
+    public List<CategoriaGastoVM> Categorias  { get; set; } = [];
     public List<TipoIngreso>    TiposIngreso { get; set; } = [];
 
     public CotizacionConfig Config { get; set; } = new();
@@ -26,17 +26,14 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
     public DateTime? FechaUltimaApi { get; set; }
 
 
+    private const string TabCategorias  = "categorias";
     private const string TabBancos      = "bancos";
     private const string TabBilleteras  = "billeteras";
 
-    [BindProperty] public BancoVM     FormBanco     { get; set; } = new();
-    [BindProperty] public BilleteraVM FormBilletera { get; set; } = new();
+    [BindProperty] public CategoriaGastoVM FormCategoriaGasto { get; set; } = new();
+    [BindProperty] public BancoVM          FormBanco          { get; set; } = new();
+    [BindProperty] public BilleteraVM      FormBilletera      { get; set; } = new();
     [BindProperty] public string NuevaRed { get; set; } = "";
-    [BindProperty] public string NuevaCatNombre { get; set; } = "";
-    [BindProperty] public int NuevaCatTipoId { get; set; } = 2;
-    [BindProperty] public int EditCatId { get; set; }
-    [BindProperty] public string EditCatNombre { get; set; } = "";
-    [BindProperty] public int EditCatTipoId { get; set; } = 2;
     [BindProperty] public string NuevoTipoDolar { get; set; } = "blue";
     [BindProperty] public decimal CotizacionManualInput { get; set; }
     [BindProperty] public string NuevoTipoNombre { get; set; } = "";
@@ -180,31 +177,74 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         return RedirectToPage(new { tab = TabBilleteras });
     }
 
-    // ── Categorías ────────────────────────────────────────────────
-    public async Task<IActionResult> OnPostAgregarCatAsync()
+    // ── Categorías de gasto ───────────────────────────────────────
+    public async Task<IActionResult> OnPostAgregarCategoriaGastoAsync()
     {
-        if (!string.IsNullOrWhiteSpace(NuevaCatNombre))
-            await gastoSvc.AgregarCategoriaAsync(NuevaCatNombre, NuevaCatTipoId);
-        return RedirectToPage(null, "categorias");
+        foreach (var key in ModelState.Keys
+            .Where(k => !k.StartsWith(nameof(FormCategoriaGasto))).ToList())
+            ModelState.Remove(key);
+
+        if (!ModelState.IsValid)
+        {
+            ViewData["ActiveTab"] = TabCategorias;
+            await CargarAsync();
+            return Page();
+        }
+
+        var result = await svc.AddCategoriaGastoAsync(FormCategoriaGasto.Nombre, FormCategoriaGasto.TipoId);
+        if (!result.Success)
+        {
+            ModelState.AddModelError(
+                $"{nameof(FormCategoriaGasto)}.{nameof(CategoriaGastoVM.Nombre)}", result.Error!);
+            ViewData["ActiveTab"] = TabCategorias;
+            await CargarAsync();
+            return Page();
+        }
+
+        TempData[TempDataKeys.Exito] = $"Categoría \"{FormCategoriaGasto.Nombre}\" agregada correctamente.";
+        return RedirectToPage(new { tab = TabCategorias });
     }
 
-    public async Task<IActionResult> OnPostEditarCatAsync()
+    public async Task<IActionResult> OnPostEditarCategoriaGastoAsync()
     {
-        if (EditCatId > 0 && !string.IsNullOrWhiteSpace(EditCatNombre))
-            await gastoSvc.EditarCategoriaAsync(EditCatId, EditCatNombre, EditCatTipoId);
-        return RedirectToPage(null, "categorias");
+        foreach (var key in ModelState.Keys
+            .Where(k => !k.StartsWith(nameof(FormCategoriaGasto))).ToList())
+            ModelState.Remove(key);
+
+        if (!ModelState.IsValid)
+            return RedirectToPage(new { tab = TabCategorias });
+
+        var result = await svc.EditCategoriaGastoAsync(FormCategoriaGasto.Id, FormCategoriaGasto.Nombre, FormCategoriaGasto.TipoId);
+        if (!result.Success)
+            TempData[TempDataKeys.Error] = result.Error;
+        else
+            TempData[TempDataKeys.Exito] = $"Categoría renombrada a \"{FormCategoriaGasto.Nombre}\" correctamente.";
+
+        return RedirectToPage(new { tab = TabCategorias });
     }
 
-    public async Task<IActionResult> OnPostDeshabilitarCatAsync(int id)
+    public async Task<IActionResult> OnPostEliminarCategoriaGastoAsync(int id)
     {
-        await gastoSvc.DeshabilitarOEliminarAsync(id);
-        return RedirectToPage(null, "categorias");
+        var result = await svc.DeleteCategoriaGastoAsync(id);
+        if (!result.Success)
+            TempData[TempDataKeys.Error] = result.Error;
+        else if (result.Value == "deshabilitada")
+            TempData[TempDataKeys.Atencion] = "La categoría fue deshabilitada porque tiene gastos asociados.";
+        else
+            TempData[TempDataKeys.Exito] = "Categoría eliminada correctamente.";
+
+        return RedirectToPage(new { tab = TabCategorias });
     }
 
-    public async Task<IActionResult> OnPostHabilitarCatAsync(int id)
+    public async Task<IActionResult> OnPostHabilitarCategoriaGastoAsync(int id)
     {
-        await gastoSvc.HabilitarCategoriaAsync(id);
-        return RedirectToPage(null, "categorias");
+        var result = await svc.HabilitarCategoriaGastoAsync(id);
+        if (!result.Success)
+            TempData[TempDataKeys.Error] = result.Error;
+        else
+            TempData[TempDataKeys.Exito] = "Categoría habilitada correctamente.";
+
+        return RedirectToPage(new { tab = TabCategorias });
     }
 
     public async Task<IActionResult> OnPostReintentarCotizacionAsync()
@@ -258,7 +298,7 @@ public class IndexModel(ConfiguracionService svc, GastoService gastoSvc, Cotizac
         Redes = await svc.GetRedesAsync();
         Bancos = await svc.GetBancosAsync();
         Billeteras = await svc.GetBilleterasAsync();
-        Categorias = await gastoSvc.GetTodasCategoriasAsync();
+        Categorias = await svc.GetCategoriasGastoAsync();
         TiposIngreso = await ingresoSvc.GetTodosTiposAsync();
         Config = await cotizacionRepo.GetConfigAsync();
         TipoDolarActual = Config.TipoDolar;

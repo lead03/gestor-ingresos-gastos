@@ -18,6 +18,8 @@ builder.Services.AddScoped<ITarjetaRepository, TarjetaRepository>();
 builder.Services.AddScoped<IDeudaRepository, DeudaRepository>();
 builder.Services.AddScoped<ICuentaRepository, CuentaRepository>();
 builder.Services.AddScoped<IPersonaRepository, PersonaRepository>();
+builder.Services.AddScoped<ICategoriaGastoRepository, CategoriaGastoRepository>();
+builder.Services.AddScoped<IBancoRepository, BancoRepository>();
 builder.Services.AddScoped<IBilleteraRepository, BilleteraRepository>();
 
 // Services
@@ -158,7 +160,7 @@ using (var scope = app.Services.CreateScope())
     {
         string[] bancos = ["Galicia", "Santander", "Macro", "BBVA", "Provincia", "Nación", "HSBC", "ICBC"];
         for (int i = 0; i < bancos.Length; i++)
-            db.Bancos.Add(new ControlGastos.Models.Banco { Nombre = bancos[i], Orden = i + 1 });
+            db.Bancos.Add(new ControlGastos.Models.Banco { Nombre = bancos[i] });
         db.SaveChanges();
     }
 
@@ -167,7 +169,7 @@ using (var scope = app.Services.CreateScope())
     {
         string[] billeteras = ["MercadoPago", "Naranja X", "Ualá", "Lemon", "Brubank", "Personal Pay"];
         for (int i = 0; i < billeteras.Length; i++)
-            db.Billeteras.Add(new ControlGastos.Models.Billetera { Nombre = billeteras[i], Orden = i + 1 });
+            db.Billeteras.Add(new ControlGastos.Models.Billetera { Nombre = billeteras[i] });
         db.SaveChanges();
     }
 
